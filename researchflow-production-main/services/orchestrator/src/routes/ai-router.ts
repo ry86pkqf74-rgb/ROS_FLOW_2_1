@@ -100,6 +100,34 @@ const CostEstimateSchema = z.object({
   outputTokens: z.number().positive(),
 });
 
+const DispatchRequestSchema = z.object({
+  task_type: z.string(),
+  request_id: z.string().min(1),
+  workflow_id: z.string().optional(),
+  user_id: z.string().optional(),
+  mode: z.enum(['DEMO', 'LIVE']).optional(),
+  risk_tier: z.enum(['PHI', 'SENSITIVE', 'NON_SENSITIVE']).optional(),
+  domain_id: z.string().optional(),
+  inputs: z.record(z.any()).optional(),
+  budgets: z.record(z.any()).optional(),
+});
+
+// Parse AGENT_ENDPOINTS_JSON at module initialization
+// Format: {"agent-stage2-lit": "http://agent-stage2-lit:8010", ...}
+const AGENT_ENDPOINTS: Record<string, string> = (() => {
+  const envVar = process.env.AGENT_ENDPOINTS_JSON;
+  if (!envVar) {
+    console.warn('[ai-router] AGENT_ENDPOINTS_JSON not set, agent dispatch will fail');
+    return {};
+  }
+  try {
+    return JSON.parse(envVar);
+  } catch (error) {
+    console.error('[ai-router] Failed to parse AGENT_ENDPOINTS_JSON:', error);
+    return {};
+  }
+})();
+
 /**
  * GET /api/ai/router/tiers
  * Get available model tiers and their configurations
@@ -130,6 +158,85 @@ router.get(
         phiCompliant: tier.phiCompliant,
       })),
       defaultTier: governanceMode === 'LIVE' ? 'standard' : 'economy',
+    });
+  })
+);
+
+/**
+ * POST /api/ai/router/dispatch
+ * Route task to appropriate agent service (Milestone 1: Stage 2 only)
+ */
+router.post(
+  '/dispatch',
+  requirePermission('ANALYZE'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'AUTHENTICATION_REQUIRED',
+        message: 'Authentication required',
+      });
+    }
+
+    const validation = DispatchRequestSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'Invalid request body',
+        details: validation.error.flatten(),
+      });
+    }
+
+    const { task_type, request_id, workflow_id, user_id, mode, risk_tier, domain_id, inputs, budgets } =
+      validation.data;
+
+    // Milestone 1: Only support STAGE_2_LITERATURE_REVIEW
+    if (task_type !== 'STAGE_2_LITERATURE_REVIEW') {
+      return res.status(400).json({
+        error: 'UNSUPPORTED_TASK_TYPE',
+        message: `Task type "${task_type}" not supported in Milestone 1. Only "STAGE_2_LITERATURE_REVIEW" is available.`,
+        supportedTypes: ['STAGE_2_LITERATURE_REVIEW'],
+      });
+    }
+
+    // Map to agent
+    const agent_name = 'agent-stage2-lit';
+    const agent_url = AGENT_ENDPOINTS[agent_name];
+
+    if (!agent_url) {
+      return res.status(500).json({
+        error: 'AGENT_NOT_CONFIGURED',
+        message: `Agent "${agent_name}" not found in AGENT_ENDPOINTS_JSON configuration`,
+        agent_name,
+      });
+    }
+
+    // Log dispatch decision
+    await logAction({
+      eventType: 'AI_ROUTING',
+      action: 'DISPATCH_REQUESTED',
+      userId: user.id,
+      resourceType: 'ai_router',
+      resourceId: request_id,
+      details: {
+        task_type,
+        agent_name,
+        request_id,
+        workflow_id,
+        mode,
+        risk_tier,
+        domain_id,
+      },
+    });
+
+    res.json({
+      dispatch_type: 'agent',
+      agent_name,
+      agent_url,
+      budgets: budgets || {},
+      rag_plan: {},
+      request_id,
     });
   })
 );

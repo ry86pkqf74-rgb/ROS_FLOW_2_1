@@ -16,9 +16,41 @@ import crypto from 'crypto';
 const router = Router();
 
 // Request validation schemas
+const Stage2InputsSchema = z.object({
+  query: z.string().optional(),
+  databases: z.array(z.enum(['pubmed', 'semantic_scholar'])).default(['pubmed']),
+  max_results: z.number().int().min(1).max(200).default(25),
+  year_range: z.object({
+    from: z.number().int().optional(),
+    to: z.number().int().optional(),
+  }).optional(),
+  study_types: z.array(z.enum([
+    'clinical_trial',
+    'randomized_controlled_trial',
+    'cohort_study',
+    'case_control_study',
+    'cross_sectional_study',
+    'systematic_review',
+    'meta_analysis',
+    'case_report',
+    'observational_study',
+    'review'
+  ])).optional(),
+  mesh_terms: z.array(z.string()).optional(),
+  include_keywords: z.array(z.string()).optional(),
+  exclude_keywords: z.array(z.string()).optional(),
+  language: z.string().default('en'),
+  dedupe: z.boolean().default(true),
+  require_abstract: z.boolean().default(true),
+});
+
 const Stage2ExecuteSchema = z.object({
   workflow_id: z.string().uuid('Invalid workflow ID format'),
   research_question: z.string().min(10, 'Research question must be at least 10 characters'),
+  mode: z.enum(['DEMO', 'LIVE']).default('DEMO'),
+  risk_tier: z.enum(['PHI', 'SENSITIVE', 'NON_SENSITIVE']).default('NON_SENSITIVE'),
+  domain_id: z.string().default('clinical'),
+  inputs: Stage2InputsSchema.optional(),
 });
 
 // BullMQ Queue setup
@@ -72,8 +104,11 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const { workflow_id, research_question } = parsed.data;
+    const { workflow_id, research_question, mode, risk_tier, domain_id } = parsed.data;
     const userId = (req as any).user?.id;
+
+    // Parse and validate inputs with defaults
+    const inputs = Stage2InputsSchema.parse(parsed.data.inputs ?? {});
 
     // Generate job ID
     const job_id = crypto.randomUUID();
@@ -81,7 +116,7 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
     // Get queue instance
     const queue = getWorkflowStagesQueue();
 
-    // Dispatch job to BullMQ queue
+    // Dispatch job to BullMQ queue with deterministic payload
     const job = await queue.add(
       'stage-2-execute',
       {
@@ -89,6 +124,10 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
         job_id,
         workflow_id,
         research_question,
+        mode,
+        risk_tier,
+        domain_id,
+        inputs,
         user_id: userId,
         timestamp: new Date().toISOString(),
       },
@@ -98,9 +137,9 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
       }
     );
 
-    console.log(`[Stage 2] Job ${job_id} dispatched for workflow ${workflow_id}`);
+    console.log(`[Stage 2] Job ${job_id} dispatched for workflow ${workflow_id} (${mode}/${risk_tier}/${domain_id})`);
 
-    // Return job ID for status polling
+    // Return job ID for status polling with routing info and normalized inputs
     res.status(202).json({
       success: true,
       job_id,
@@ -108,6 +147,12 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
       workflow_id,
       status: 'queued',
       message: 'Stage 2 execution job has been queued',
+      routing: {
+        mode,
+        risk_tier,
+        domain_id,
+      },
+      normalized_inputs: inputs,
     });
 
   } catch (error) {
