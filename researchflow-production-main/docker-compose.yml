@@ -168,6 +168,13 @@ services:
       - ZOOM_VERIFICATION_TOKEN=${ZOOM_VERIFICATION_TOKEN}
       # Guideline Engine Proxy
       - GUIDELINE_ENGINE_URL=http://guideline-engine:8001
+      # Agentic Orchestration (Step 5)
+      - INFERENCE_POLICY=local_only
+      - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000"}'
+      - VECTOR_BACKEND=chroma
+      - CHROMADB_URL=http://chromadb:8000
+      - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -518,6 +525,85 @@ services:
 
 
   # ===================
+  # ChromaDB - Vector Database for RAG (Step 5)
+  # ===================
+  chromadb:
+    image: chromadb/chroma:0.4.22
+    container_name: researchflow-chromadb
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - ANONYMIZED_TELEMETRY=${CHROMA_TELEMETRY:-false}
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
+      - CHROMA_SERVER_AUTH_PROVIDER=${CHROMA_AUTH_PROVIDER:-chromadb.auth.token.TokenAuthServerProvider}
+      - PERSIST_DIRECTORY=/chroma/chroma
+    expose:
+      - "8000"
+    volumes:
+      - chromadb-data:/chroma/chroma
+    networks:
+      - backend  # Internal network only
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===================
+  # Agent Stage 2 - Literature Review Agent (Step 5)
+  # ===================
+  agent-stage2-lit:
+    build:
+      context: .
+      dockerfile: services/agents/agent-stage2-lit/Dockerfile
+    container_name: researchflow-agent-stage2-lit
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - INFERENCE_POLICY=${INFERENCE_POLICY:-local_only}
+      - VECTOR_BACKEND=${VECTOR_BACKEND:-chroma}
+      - CHROMADB_URL=http://chromadb:8000
+      - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
+      - OLLAMA_URL=http://ollama:11434
+      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
+      - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - backend  # Internal network only
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ===================
   # Vector Database for RAG (Phase 2)
   # ===================
   vector-db:
@@ -568,6 +654,8 @@ volumes:
   ollama-models:
     driver: local
   ollama-cache:
+    driver: local
+  chromadb-data:
     driver: local
 
 networks:
