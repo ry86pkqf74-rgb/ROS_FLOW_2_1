@@ -1,0 +1,11 @@
+{
+    "graphs": {
+          "researchflow": "./agents/graph.py:app",
+          "design_workflow": "./agents/graph.py:design_workflow",
+          "compliance_workflow": "./agents/graph.py:compliance_workflow",
+          "deployment_workflow": "./agents/graph.py:deployment_workflow"
+    },
+    "dependencies": ["."],
+    "python_version": "3.11",
+    "env": ".env"
+}

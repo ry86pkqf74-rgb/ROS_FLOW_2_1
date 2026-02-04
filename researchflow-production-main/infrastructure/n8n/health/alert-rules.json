@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "credential-expiry",
+      "name": "Credential Expiry Alert",
+      "condition": "credential.daysUntilExpiry < 7",
+      "severity": "warning",
+      "channels": ["slack", "email"]
+    },
+    {
+      "id": "credential-failure",
+      "name": "Credential Validation Failure",
+      "condition": "credential.valid === false",
+      "severity": "critical",
+      "channels": ["slack", "email", "pagerduty"]
+    },
+    {
+      "id": "execution-budget",
+      "name": "Execution Budget Warning",
+      "condition": "budget.usagePercent > 70",
+      "severity": "warning",
+      "channels": ["slack"]
+    },
+    {
+      "id": "execution-critical",
+      "name": "Execution Budget Critical",
+      "condition": "budget.usagePercent > 90",
+      "severity": "critical",
+      "channels": ["slack", "email"]
+    }
+  ]
+}

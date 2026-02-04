@@ -1,0 +1,49 @@
+{
+  "env": "test",
+  "timezone": "America/New_York",
+  "network": {
+    "name": "researchflow-test"
+  },
+  "services": {
+    "postgres": {
+      "host": "localhost",
+      "port": 5433,
+      "database": "researchflow_test",
+      "user": "researchflow",
+      "password": "researchflow",
+      "connectTimeoutMs": 5000
+    },
+    "redis": {
+      "url": "redis://localhost:6380/0",
+      "connectTimeoutMs": 2000
+    },
+    "mockserver": {
+      "baseUrl": "http://localhost:1080",
+      "statusPath": "/status"
+    }
+  },
+  "mockApis": {
+    "externalServiceA": {
+      "baseUrl": "http://localhost:1080",
+      "paths": {
+        "token": "/oauth/token",
+        "health": "/health",
+        "resource": "/v1/resource"
+      }
+    },
+    "externalServiceB": {
+      "baseUrl": "http://localhost:1080",
+      "paths": {
+        "search": "/v2/search",
+        "detail": "/v2/detail"
+      }
+    }
+  },
+  "limits": {
+    "testTimeoutMs": 120000,
+    "httpTimeoutMs": 10000,
+    "maxRetries": 2,
+    "maxConcurrency": 4,
+    "maxPayloadBytes": 1048576
+  }
+}

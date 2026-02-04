@@ -1,0 +1,51 @@
+groups:
+  - name: researchflow.rules
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(ros_stage_executions_total{status="failed"}[2m]))
+            / clamp_min(sum(rate(ros_stage_executions_total[2m])), 1e-9)
+            > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: researchflow
+        annotations:
+          summary: "High error rate detected"
+          description: "Stage failure rate is above 10% over the last 2 minutes."
+
+      - alert: SlowStageExecution
+        expr: |
+          max(
+            histogram_quantile(0.95, sum by (le, stage_id) (rate(ros_stage_duration_seconds_bucket[5m])))
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: researchflow
+        annotations:
+          summary: "Slow stage execution (p95 > 30s)"
+          description: "At least one stage has p95 duration above 30s for 5 minutes."
+
+      - alert: QueueBacklog
+        expr: |
+          max(
+            (bullmq_queue_waiting + bullmq_queue_active + bullmq_queue_delayed)
+          ) > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: researchflow
+        annotations:
+          summary: "Queue backlog high"
+          description: "BullMQ queue depth (waiting+active+delayed) exceeded 100 for 10 minutes."
+
+      - alert: ServiceUnhealthy
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: researchflow
+        annotations:
+          summary: "Service down"
+          description: "Prometheus target is down (up == 0) for 1 minute."

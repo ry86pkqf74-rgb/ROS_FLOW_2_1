@@ -1,0 +1,46 @@
+# ============================================
+# ResearchFlow - ConfigMap (Non-Sensitive Configuration)
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: researchflow-config
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+data:
+  # Environment
+  NODE_ENV: "production"
+  LOG_LEVEL: "warn"
+
+  # Governance
+  GOVERNANCE_MODE: "LIVE"
+  PHI_SCAN_ENABLED: "true"
+  PHI_FAIL_CLOSED: "true"
+
+  # Feature flags
+  AUTH_ALLOW_STATELESS_JWT: "false"
+  CHAT_AGENT_ENABLED: "true"
+  DASHBOARD_ENABLED: "true"
+
+  # Service URLs (internal)
+  WORKER_URL: "http://worker.researchflow.svc.cluster.local:8000"
+  GUIDELINE_ENGINE_URL: "http://guideline-engine.researchflow.svc.cluster.local:8001"
+  ORCHESTRATOR_URL: "http://orchestrator.researchflow.svc.cluster.local:3001"
+
+  # Timeouts
+  EXTRACTION_TIMEOUT_SECONDS: "60"
+  ENRICHMENT_TIMEOUT_SECONDS: "30"
+  LITERATURE_CACHE_TTL: "3600"
+  CONFERENCE_CACHE_TTL: "86400"
+
+  # Storage paths
+  UPLOADS_PATH: "/data/uploads"
+  ARTIFACTS_PATH: "/data/artifacts"
+  PROJECTS_PATH: "/data/projects"
+  LOG_PATH: "/data/logs"
+
+  # AI Configuration
+  CHAT_AGENT_MODEL: "gpt-4"
+  CHAT_AGENT_PROVIDER: "openai"

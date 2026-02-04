@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-02-04T06:27:22.455272",
+  "system_info": {
+    "platform": "macOS-26.2-arm64-arm-64bit",
+    "python_version": "3.9.6",
+    "cpu_cores": 10,
+    "memory_total_gb": 32.0,
+    "memory_available_gb": 8.71,
+    "memory_percent": 72.8,
+    "cpu_percent": 9.1,
+    "disk_free_gb": 1337.54
+  },
+  "component_tests": {
+    "analytics": {
+      "success": false,
+      "error": "'EnhancedMonitor' object has no attribute 'get_performance_insights'"
+    },
+    "integration": {
+      "success": false,
+      "error": "'EnhancedMonitor' object has no attribute 'get_performance_insights'"
+    }
+  },
+  "performance_metrics": {
+    "processing_time": 0.018036842346191406,
+    "throughput_items_per_sec": 5544207.6878337655,
+    "memory_after_test": 73.1,
+    "test_data_size": 100000
+  },
+  "summary": {
+    "total_tests": 3,
+    "successful_tests": 1,
+    "success_rate": 33.33333333333333,
+    "baseline_established": false,
+    "timestamp": "2026-02-04T06:27:22.919796"
+  }
+}

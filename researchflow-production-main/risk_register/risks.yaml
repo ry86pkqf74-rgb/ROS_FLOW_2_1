@@ -1,0 +1,490 @@
+---
+# ResearchFlow Risk Register
+# NIST AI Risk Management Framework (RMF) - Risk Catalog
+# Last Updated: 2026-01-30
+# Phase 2: Support for governance and risk management
+
+risks:
+  # =====================================================================
+  # MODEL BIAS AND FAIRNESS RISKS
+  # =====================================================================
+  
+  - risk_id: "RIS-001"
+    risk_statement: "Model produces biased predictions that disproportionately affect protected populations (race, gender, age) in clinical recommendations"
+    nist_function: "Measure"
+    severity: "Critical"
+    likelihood: "High"
+    mitigation: |
+      - Implement fairness metrics across all protected attributes
+      - Conduct bias audits on model outputs quarterly
+      - Use stratified data sampling to ensure balanced representation
+      - Apply fairness constraints during model training
+      - Document demographic parity and equalized odds metrics
+    evidence_link: "docs/compliance/NIST_AI_RMF_MEASURE.md"
+    residual_risk: "Medium"
+    review_cadence: "Monthly"
+    owner: "ML Engineering Lead"
+    related_controls:
+      - "GOVERN-001"
+      - "MEASURE-003"
+      - "MEASURE-004"
+
+  - risk_id: "RIS-002"
+    risk_statement: "Training data contains underrepresented subgroups, leading to poor model performance and perpetuating healthcare disparities"
+    nist_function: "Map"
+    severity: "High"
+    likelihood: "High"
+    mitigation: |
+      - Conduct demographic analysis of training data
+      - Identify underrepresented populations systematically
+      - Augment dataset through federated learning from partner institutions
+      - Document data composition and stratification
+      - Set minimum threshold for representation per demographic group
+    evidence_link: "docs/compliance/NIST_AI_RMF_MAP.md"
+    residual_risk: "Medium"
+    review_cadence: "Quarterly"
+    owner: "Data Governance Officer"
+    related_controls:
+      - "MAP-001"
+      - "MAP-002"
+      - "MAP-003"
+
+  - risk_id: "RIS-003"
+    risk_statement: "Model recommendations show systematic variation in treatment suggestions based on patient demographics unrelated to clinical need"
+    nist_function: "Manage"
+    severity: "Critical"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement fairness monitoring in production pipelines
+      - Set up automated alerts for demographic parity violations
+      - Establish escalation procedures for fairness incidents
+      - Require clinical review of recommendations for edge cases
+      - Implement human-in-the-loop oversight for high-risk recommendations
+    evidence_link: "services/worker/src/compliance/fairness_monitor.py"
+    residual_risk: "Medium"
+    review_cadence: "Weekly"
+    owner: "Clinical Operations Manager"
+    related_controls:
+      - "MANAGE-001"
+      - "MANAGE-002"
+      - "MANAGE-007"
+
+  # =====================================================================
+  # DATA QUALITY AND PROVENANCE RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-004"
+    risk_statement: "Data quality degradation leads to inaccurate model training and unreliable predictions in clinical use"
+    nist_function: "Map"
+    severity: "Critical"
+    likelihood: "High"
+    mitigation: |
+      - Implement comprehensive data quality framework
+      - Monitor data completeness, accuracy, consistency, timeliness
+      - Establish data validation rules at ingestion points
+      - Create data quality dashboards with real-time monitoring
+      - Document all data transformations and lineage
+    evidence_link: "docs/data-quality/DQ_FRAMEWORK.md"
+    residual_risk: "Medium"
+    review_cadence: "Daily"
+    owner: "Data Quality Lead"
+    related_controls:
+      - "MAP-005"
+      - "MEASURE-001"
+      - "MEASURE-002"
+
+  - risk_id: "RIS-005"
+    risk_statement: "Unknown or untraced data lineage introduces undocumented dependencies and makes root cause analysis of model failures difficult"
+    nist_function: "Govern"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement end-to-end data lineage tracking
+      - Document all data sources, transformations, and dependencies
+      - Use automated data catalog with metadata tracking
+      - Create standardized naming conventions for datasets
+      - Establish data governance policies for change management
+    evidence_link: "config/data-lineage-registry.yaml"
+    residual_risk: "Medium"
+    review_cadence: "Quarterly"
+    owner: "Data Governance Officer"
+    related_controls:
+      - "GOVERN-002"
+      - "GOVERN-003"
+      - "MAP-004"
+
+  - risk_id: "RIS-006"
+    risk_statement: "Data distribution shifts between training and production environment cause model drift and performance degradation"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "High"
+    mitigation: |
+      - Implement statistical drift detection algorithms
+      - Monitor key data distributions daily
+      - Set up automated alerts for significant shifts
+      - Establish model retraining trigger thresholds
+      - Document dataset shift incidents and responses
+    evidence_link: "services/worker/src/compliance/drift_detector.py"
+    residual_risk: "Medium"
+    review_cadence: "Daily"
+    owner: "ML Operations Manager"
+    related_controls:
+      - "MANAGE-003"
+      - "MANAGE-005"
+      - "MEASURE-006"
+
+  # =====================================================================
+  # PHI EXPOSURE AND DATA SECURITY RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-007"
+    risk_statement: "Protected Health Information (PHI) exposure through unencrypted storage, transmission, or improper access controls"
+    nist_function: "Govern"
+    severity: "Critical"
+    likelihood: "Medium"
+    mitigation: |
+      - Enforce encryption at rest (AES-256) and in transit (TLS 1.3)
+      - Implement HIPAA-compliant access controls with RBAC
+      - Enable audit logging for all PHI access
+      - Conduct regular security penetration testing
+      - Implement data anonymization for non-production environments
+      - Use techniques like differential privacy for analytics
+    evidence_link: "docs/compliance/HIPAA_ATTESTATION.md"
+    residual_risk: "Low"
+    review_cadence: "Monthly"
+    owner: "Chief Information Security Officer"
+    related_controls:
+      - "GOVERN-001"
+      - "GOVERN-005"
+      - "GOVERN-006"
+
+  - risk_id: "RIS-008"
+    risk_statement: "Unauthorized access to models enables adversarial attacks or extraction of training data through model inversion"
+    nist_function: "Govern"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement API authentication and rate limiting
+      - Monitor for unusual access patterns and anomalies
+      - Restrict model access to authorized services only
+      - Use differential privacy techniques to protect training data
+      - Implement model output perturbation to prevent extraction attacks
+      - Conduct adversarial robustness testing
+    evidence_link: "services/worker/src/compliance/security_audit.py"
+    residual_risk: "Medium"
+    review_cadence: "Quarterly"
+    owner: "Security Engineering Lead"
+    related_controls:
+      - "GOVERN-005"
+      - "GOVERN-007"
+      - "MANAGE-004"
+
+  - risk_id: "RIS-009"
+    risk_statement: "Third-party data breach or supply chain compromise exposes PHI stored in external systems"
+    nist_function: "Govern"
+    severity: "Critical"
+    likelihood: "Low"
+    mitigation: |
+      - Require security assessments for all third-party vendors
+      - Establish data processing agreements (DPAs) with HIPAA obligations
+      - Implement vendor risk assessment framework
+      - Require encryption of data at third-party storage
+      - Regular audit and monitoring of third-party systems
+      - Maintain incident response plans for vendor breaches
+    evidence_link: "docs/compliance/vendor-management.md"
+    residual_risk: "Low"
+    review_cadence: "Annually"
+    owner: "Chief Information Security Officer"
+    related_controls:
+      - "GOVERN-001"
+      - "GOVERN-004"
+      - "MANAGE-006"
+
+  # =====================================================================
+  # MODEL DRIFT AND PERFORMANCE DEGRADATION RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-010"
+    risk_statement: "Model performance degrades over time due to concept drift, making recommendations less accurate and potentially harmful"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "High"
+    mitigation: |
+      - Implement continuous model performance monitoring
+      - Set up automated performance degradation alerts
+      - Establish model retraining schedule (monthly or event-driven)
+      - Monitor key model metrics: accuracy, AUC-ROC, precision, recall
+      - Maintain model versioning with rollback capabilities
+      - Document performance baseline and acceptable degradation thresholds
+    evidence_link: "services/worker/src/compliance/model_monitor.py"
+    residual_risk: "Medium"
+    review_cadence: "Weekly"
+    owner: "ML Operations Manager"
+    related_controls:
+      - "MEASURE-006"
+      - "MANAGE-003"
+      - "MANAGE-005"
+
+  - risk_id: "RIS-011"
+    risk_statement: "Model behavior changes unexpectedly in production without detection, causing unreliable predictions"
+    nist_function: "Measure"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement comprehensive model monitoring and telemetry
+      - Monitor prediction distribution and output patterns
+      - Set up automated anomaly detection for model outputs
+      - Create model behavior documentation and expected ranges
+      - Establish shadow mode testing before production rollout
+      - Implement gradual rollout (canary deployment) for model updates
+    evidence_link: "services/worker/src/compliance/behavior_monitor.py"
+    residual_risk: "Low"
+    review_cadence: "Weekly"
+    owner: "ML Engineering Lead"
+    related_controls:
+      - "MEASURE-005"
+      - "MEASURE-006"
+      - "MANAGE-002"
+
+  - risk_id: "RIS-012"
+    risk_statement: "Accumulated model updates introduce subtle bugs or performance regressions that go undetected"
+    nist_function: "Manage"
+    severity: "Medium"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement comprehensive test suite for model updates
+      - Use regression testing to detect performance changes
+      - Maintain benchmarks and baseline models for comparison
+      - Require A/B testing before full production rollout
+      - Document all model changes and their rationale
+      - Implement continuous integration/continuous deployment with gating
+    evidence_link: "tests/model_regression_tests.py"
+    residual_risk: "Low"
+    review_cadence: "Per Release"
+    owner: "QA Engineering Lead"
+    related_controls:
+      - "MANAGE-002"
+      - "MANAGE-007"
+      - "MEASURE-007"
+
+  # =====================================================================
+  # DEPLOYMENT FAILURE AND OPERATIONAL RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-013"
+    risk_statement: "Model deployment fails or rolls back unexpectedly, causing service interruption and disrupting clinical workflows"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement robust deployment pipeline with validation gates
+      - Use blue-green or canary deployment strategies
+      - Maintain immediate rollback procedures
+      - Establish deployment health checks and monitoring
+      - Test deployment procedures regularly (disaster recovery drills)
+      - Document runbooks for deployment failures
+    evidence_link: "deploy/deployment_procedures.md"
+    residual_risk: "Medium"
+    review_cadence: "Per Release"
+    owner: "DevOps Lead"
+    related_controls:
+      - "MANAGE-001"
+      - "MANAGE-008"
+      - "MEASURE-008"
+
+  - risk_id: "RIS-014"
+    risk_statement: "Inadequate compute resources or infrastructure failures cause model inference failures and response timeouts"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement auto-scaling based on demand
+      - Maintain redundant infrastructure components
+      - Set up infrastructure monitoring and alerting
+      - Establish latency SLOs and monitor compliance
+      - Load test models under peak demand conditions
+      - Maintain disaster recovery and business continuity plans
+    evidence_link: "k8s/researchflow-mlops-stack.yaml"
+    residual_risk: "Medium"
+    review_cadence: "Monthly"
+    owner: "Infrastructure Lead"
+    related_controls:
+      - "MANAGE-001"
+      - "MANAGE-006"
+      - "MEASURE-008"
+
+  - risk_id: "RIS-015"
+    risk_statement: "Model inference latency increases due to scale or inefficient code, causing clinical workflow disruptions"
+    nist_function: "Measure"
+    severity: "Medium"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement model performance profiling and optimization
+      - Set up inference latency monitoring and SLOs
+      - Use model compression techniques (quantization, pruning)
+      - Implement caching strategies for common predictions
+      - Regular performance optimization reviews
+      - Load testing to identify bottlenecks
+    evidence_link: "docs/performance-optimization.md"
+    residual_risk: "Low"
+    review_cadence: "Monthly"
+    owner: "ML Operations Manager"
+    related_controls:
+      - "MEASURE-005"
+      - "MEASURE-008"
+      - "MANAGE-003"
+
+  # =====================================================================
+  # COMPLIANCE AND REGULATORY RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-016"
+    risk_statement: "System fails to meet HIPAA requirements, creating liability and potential loss of operational authority"
+    nist_function: "Govern"
+    severity: "Critical"
+    likelihood: "Low"
+    mitigation: |
+      - Maintain comprehensive HIPAA attestation and audit trail
+      - Conduct regular HIPAA compliance assessments
+      - Implement mandatory security training for all staff
+      - Maintain business associate agreements (BAAs) with partners
+      - Implement incident response procedures for HIPAA breaches
+      - Document security controls and their effectiveness
+    evidence_link: "docs/compliance/HIPAA_ATTESTATION.md"
+    residual_risk: "Low"
+    review_cadence: "Annually"
+    owner: "Chief Compliance Officer"
+    related_controls:
+      - "GOVERN-001"
+      - "GOVERN-004"
+      - "GOVERN-006"
+
+  - risk_id: "RIS-017"
+    risk_statement: "Model decisions are not explainable or interpretable, violating requirements for clinical decision support transparency"
+    nist_function: "Map"
+    severity: "High"
+    likelihood: "High"
+    mitigation: |
+      - Use interpretable models or post-hoc explanation techniques
+      - Implement SHAP or LIME for feature importance explanation
+      - Generate explanations for all model predictions
+      - Require clinical validation of top feature importance
+      - Document model assumptions and limitations
+      - Provide explanations to end users in clinical interface
+    evidence_link: "services/worker/src/compliance/explainability.py"
+    residual_risk: "Medium"
+    review_cadence: "Quarterly"
+    owner: "Clinical AI Specialist"
+    related_controls:
+      - "MAP-006"
+      - "MAP-007"
+      - "MEASURE-004"
+
+  - risk_id: "RIS-018"
+    risk_statement: "Insufficient documentation of AI system design, training, and decisions creates regulatory and liability gaps"
+    nist_function: "Govern"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Maintain comprehensive AI system documentation
+      - Document model design, training data, and validation results
+      - Create decision trees and use cases documentation
+      - Maintain versioned model cards with limitations
+      - Regular documentation reviews and updates
+      - Implement documentation management system
+    evidence_link: "docs/ai-system-documentation/model-cards.md"
+    residual_risk: "Low"
+    review_cadence: "Quarterly"
+    owner: "Documentation Lead"
+    related_controls:
+      - "GOVERN-003"
+      - "GOVERN-008"
+      - "MAP-008"
+
+  - risk_id: "RIS-019"
+    risk_statement: "Inadequate clinical validation leads to use of unvalidated models in clinical practice"
+    nist_function: "Measure"
+    severity: "Critical"
+    likelihood: "Medium"
+    mitigation: |
+      - Require prospective clinical validation before deployment
+      - Conduct appropriate clinical studies (RCT, observational)
+      - Implement risk stratification for different populations
+      - Maintain validation evidence and regulatory submissions
+      - Conduct post-deployment surveillance
+      - Establish clinical advisory board for model oversight
+    evidence_link: "docs/clinical-validation/validation-protocols.md"
+    residual_risk: "Low"
+    review_cadence: "Per Model"
+    owner: "Chief Medical Officer"
+    related_controls:
+      - "MEASURE-001"
+      - "MEASURE-002"
+      - "MEASURE-003"
+
+  # =====================================================================
+  # ADDITIONAL EMERGING RISKS
+  # =====================================================================
+
+  - risk_id: "RIS-020"
+    risk_statement: "Adversarial attacks or prompt injections compromise model integrity or cause unintended behavior"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Implement input validation and sanitization
+      - Test models for robustness against adversarial examples
+      - Monitor for unusual input patterns
+      - Implement rate limiting and usage controls
+      - Use ensemble methods to improve robustness
+      - Regular adversarial testing and security assessments
+    evidence_link: "services/worker/src/compliance/adversarial_testing.py"
+    residual_risk: "Medium"
+    review_cadence: "Monthly"
+    owner: "Security Engineering Lead"
+    related_controls:
+      - "MANAGE-004"
+      - "GOVERN-007"
+      - "MEASURE-003"
+
+  - risk_id: "RIS-021"
+    risk_statement: "Insufficient user training or awareness leads to misuse or inappropriate reliance on model recommendations"
+    nist_function: "Govern"
+    severity: "Medium"
+    likelihood: "High"
+    mitigation: |
+      - Implement comprehensive user training program
+      - Provide clear documentation on model capabilities and limitations
+      - Include disclaimers in clinical user interface
+      - Conduct regular refresher training
+      - Monitor for misuse patterns and provide feedback
+      - Establish clinical governance and oversight committees
+    evidence_link: "docs/user-training/training-curriculum.md"
+    residual_risk: "Medium"
+    review_cadence: "Annually"
+    owner: "Clinical Operations Manager"
+    related_controls:
+      - "GOVERN-008"
+      - "MANAGE-007"
+      - "MAP-008"
+
+  - risk_id: "RIS-022"
+    risk_statement: "Model reliance or automation bias leads clinicians to override appropriate judgment or blindly follow model recommendations"
+    nist_function: "Manage"
+    severity: "High"
+    likelihood: "Medium"
+    mitigation: |
+      - Design UI to promote appropriate reliance, not blind trust
+      - Provide confidence intervals and uncertainty quantification
+      - Require explicit clinical review for critical recommendations
+      - Implement random audits of clinician decision patterns
+      - Maintain human-in-the-loop for high-risk decisions
+      - Track clinician override rates and conduct analysis
+    evidence_link: "services/worker/src/compliance/reliance_monitor.py"
+    residual_risk: "Medium"
+    review_cadence: "Monthly"
+    owner: "Clinical AI Specialist"
+    related_controls:
+      - "MANAGE-007"
+      - "MEASURE-005"
+      - "MEASURE-009"

@@ -1,0 +1,125 @@
+name: Load Tests
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # weekly: Mondays 03:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: load-test-pages
+  cancel-in-progress: false
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Artillery
+        run: npm i -g artillery@latest
+
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg ca-certificates
+          sudo gpg -k
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Create report directory
+        run: mkdir -p load-test-report
+
+      - name: Run k6 load test
+        env:
+          BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
+          WS_URL: ${{ secrets.LOAD_TEST_WS_URL }}
+          AUTH_TOKEN: ${{ secrets.LOAD_TEST_AUTH_TOKEN }}
+          WORKFLOW_CREATE_PATH: ${{ vars.LOAD_TEST_WORKFLOW_CREATE_PATH }}
+          STAGE_EXEC_PATH: ${{ vars.LOAD_TEST_STAGE_EXEC_PATH }}
+          WS_PATH: ${{ vars.LOAD_TEST_WS_PATH }}
+          WORKFLOW_ID: ${{ vars.LOAD_TEST_WORKFLOW_ID }}
+          STAGE_ID: ${{ vars.LOAD_TEST_STAGE_ID }}
+        run: |
+          k6 run --summary-export=load-test-report/k6-summary.json tests/load/k6-config.js | tee load-test-report/k6-output.txt
+
+      - name: Run Artillery load test
+        env:
+          BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
+          AUTH_TOKEN: ${{ secrets.LOAD_TEST_AUTH_TOKEN }}
+          WORKFLOW_CREATE_PATH: ${{ vars.LOAD_TEST_WORKFLOW_CREATE_PATH }}
+          STAGE_EXEC_PATH: ${{ vars.LOAD_TEST_STAGE_EXEC_PATH }}
+          WS_URL: ${{ secrets.LOAD_TEST_WS_URL }}
+          WS_PATH: ${{ vars.LOAD_TEST_WS_PATH }}
+          WORKFLOW_ID: ${{ vars.LOAD_TEST_WORKFLOW_ID }}
+          STAGE_ID: ${{ vars.LOAD_TEST_STAGE_ID }}
+        run: |
+          artillery run tests/load/artillery.yml -o load-test-report/artillery-report.json
+          artillery report load-test-report/artillery-report.json -o load-test-report/artillery-report.html
+
+      - name: Build index.html
+        run: |
+          cat > load-test-report/index.html << 'EOF'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>ResearchFlow Load Test Results</title>
+              <style>
+                body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; padding: 24px; }
+                code { background: #f4f4f5; padding: 2px 6px; border-radius: 6px; }
+                .grid { display: grid; gap: 12px; }
+              </style>
+            </head>
+            <body>
+              <h1>ResearchFlow Load Test Results</h1>
+              <div class="grid">
+                <div><a href="./artillery-report.html">Artillery HTML report</a></div>
+                <div><a href="./k6-output.txt">k6 console output</a></div>
+                <div><a href="./k6-summary.json">k6 summary JSON</a></div>
+                <div><a href="./artillery-report.json">Artillery JSON</a></div>
+              </div>
+              <p>Configure secrets/vars in this repo:</p>
+              <ul>
+                <li><code>LOAD_TEST_BASE_URL</code> (secret)</li>
+                <li><code>LOAD_TEST_WS_URL</code> (secret, optional)</li>
+                <li><code>LOAD_TEST_AUTH_TOKEN</code> (secret, optional)</li>
+                <li><code>LOAD_TEST_WORKFLOW_CREATE_PATH</code> (var, optional)</li>
+                <li><code>LOAD_TEST_STAGE_EXEC_PATH</code> (var, optional)</li>
+                <li><code>LOAD_TEST_WS_PATH</code> (var, optional)</li>
+                <li><code>LOAD_TEST_WORKFLOW_ID</code> (var, optional)</li>
+                <li><code>LOAD_TEST_STAGE_ID</code> (var, optional)</li>
+              </ul>
+            </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: load-test-report
+
+  deploy:
+    needs: load-test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

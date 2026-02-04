@@ -1,0 +1,11 @@
+sample_id,disease_status,age,sex,biomarker_level,biomarker_b,disease_severity
+BIO-0001,Disease,65,Female,24.6,18.2,7.1
+BIO-0002,Control,58,Male,8.3,11.4,
+BIO-0003,Disease,72,Male,31.2,22.8,8.9
+BIO-0004,Control,45,Female,6.1,9.8,
+BIO-0005,Disease,59,Female,28.9,19.6,6.8
+BIO-0006,Control,52,Male,7.4,12.1,
+BIO-0007,Disease,68,Male,35.7,25.3,9.2
+BIO-0008,Control,41,Female,5.8,10.2,
+BIO-0009,Disease,63,Female,26.4,17.9,7.4
+BIO-0010,Control,49,Male,8.9,13.5,

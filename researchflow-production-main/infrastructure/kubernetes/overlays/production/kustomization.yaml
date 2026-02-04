@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: researchflow-production
+
+resources:
+  - ../../base
+  - db-backup-cronjob.yaml
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: orchestrator
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+    target:
+      kind: Deployment
+      name: worker
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: web
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+    target:
+      kind: HorizontalPodAutoscaler
+      name: worker-hpa
+
+configMapGenerator:
+  - name: researchflow-config
+    behavior: merge
+    literals:
+      # Mode configuration (ROS_MODE takes precedence; set for emergency override)
+      # - ROS_MODE=STANDBY  # Uncomment during emergencies
+      - GOVERNANCE_MODE=LIVE
+      - LOG_LEVEL=warn
+      # Production safety settings
+      - NO_NETWORK=false
+      - MOCK_ONLY=false
+      - ALLOW_UPLOADS=true
+      - STRICT_PHI_ON_UPLOAD=true
+
+images:
+  - name: researchflow/orchestrator
+    newTag: v1.0.0
+  - name: researchflow/worker
+    newTag: v1.0.0
+  - name: researchflow/web
+    newTag: v1.0.0

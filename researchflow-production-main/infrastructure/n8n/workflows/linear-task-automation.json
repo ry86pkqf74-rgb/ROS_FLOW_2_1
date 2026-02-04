@@ -1,0 +1,324 @@
+{
+  "name": "Linear Task Automation for ROS",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linear-task-automation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "linear-task-automation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"action\"]}}",
+              "operation": "equals",
+              "value2": "create"
+            },
+            {
+              "value1": "={{$json[\"type\"]}}",
+              "operation": "equals",
+              "value2": "Issue"
+            }
+          ]
+        }
+      },
+      "name": "Filter Issue Creation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if issue has AI agent label\nconst labels = $input.item.json.data.labels || [];\nconst aiAgentLabel = labels.find(l => l.name && l.name.startsWith('ai-agent:'));\n\nif (aiAgentLabel) {\n  const agentName = aiAgentLabel.name.split(':')[1];\n  return [\n    {\n      json: {\n        ...$ input.item.json.data,\n        aiAgent: agentName,\n        shouldTriggerAgent: true\n      }\n    }\n  ];\n}\n\nreturn [\n  {\n    json: {\n      ...$input.item.json.data,\n      shouldTriggerAgent: false\n    }\n  }\n];"
+      },
+      "name": "Extract AI Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json[\"shouldTriggerAgent\"]}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Has AI Agent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ORCHESTRATOR_URL}}/api/agents/trigger",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.ROS_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "agentName",
+              "value": "={{$json[\"aiAgent\"]}}"
+            },
+            {
+              "name": "taskId",
+              "value": "={{$json[\"id\"]}}"
+            },
+            {
+              "name": "taskTitle",
+              "value": "={{$json[\"title\"]}}"
+            },
+            {
+              "name": "taskDescription",
+              "value": "={{$json[\"description\"]}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$json[\"priority\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Trigger AI Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "databaseId": "={{$env.NOTION_TASKS_DB_ID}}",
+        "title": "[{{$json[\"identifier\"]}}] {{$json[\"title\"]}}",
+        "properties": {
+          "properties": [
+            {
+              "key": "Status",
+              "status": "queued"
+            },
+            {
+              "key": "Agent",
+              "select": "={{$json[\"aiAgent\"]}}"
+            },
+            {
+              "key": "Priority",
+              "select": "={{$json[\"priority\"] === 1 ? 'low' : $json[\"priority\"] === 2 ? 'medium' : $json[\"priority\"] === 3 ? 'high' : 'critical'}}"
+            },
+            {
+              "key": "Linear URL",
+              "url": "={{$json[\"url\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "Sync to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1350, 200],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_DEV_CHANNEL}}",
+        "text": "🤖 AI Agent {{$json[\"aiAgent\"]}} triggered for Linear issue",
+        "attachments": [
+          {
+            "color": "#6B46C1",
+            "title": "{{$json[\"identifier\"]}}: {{$json[\"title\"]}}",
+            "title_link": "={{$json[\"url\"]}}",
+            "fields": [
+              {
+                "title": "Agent",
+                "value": "={{$json[\"aiAgent\"]}}",
+                "short": true
+              },
+              {
+                "title": "Priority",
+                "value": "={{$json[\"priority\"]}}",
+                "short": true
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1570, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "2",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "databaseId": "={{$env.NOTION_TASKS_DB_ID}}",
+        "title": "[{{$json[\"identifier\"]}}] {{$json[\"title\"]}}",
+        "properties": {
+          "properties": [
+            {
+              "key": "Status",
+              "status": "queued"
+            },
+            {
+              "key": "Agent",
+              "select": "manual"
+            },
+            {
+              "key": "Linear URL",
+              "url": "={{$json[\"url\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "Sync to Notion (Manual)",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1130, 400],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Linear task processed\" } }}"
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1790, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter Issue Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Issue Creation": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Has AI Agent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has AI Agent?": {
+      "main": [
+        [
+          {
+            "node": "Trigger AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sync to Notion (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Sync to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync to Notion": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync to Notion (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "linear-task-automation"
+}

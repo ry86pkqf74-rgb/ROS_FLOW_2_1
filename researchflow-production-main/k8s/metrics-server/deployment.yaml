@@ -1,0 +1,97 @@
+# ============================================
+# ResearchFlow - Metrics Server Deployment
+# ============================================
+# Phase 6.1: Kubernetes Metrics Collection
+# Linear Issue: ROS-102
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    app: metrics-server
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: researchflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: metrics-server
+        app.kubernetes.io/name: metrics-server
+    spec:
+      serviceAccountName: metrics-server
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: metrics-server
+          image: registry.k8s.io/metrics-server/metrics-server:v0.6.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - --cert-dir=/tmp
+            - --secure-port=4443
+            - --kubelet-insecure-tls
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+            - --kubelet-use-node-status-port
+            - --metric-resolution=15s
+          ports:
+            - name: https
+              containerPort: 4443
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 200m
+              memory: 400Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule

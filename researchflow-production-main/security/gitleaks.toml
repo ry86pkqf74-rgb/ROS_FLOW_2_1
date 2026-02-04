@@ -1,0 +1,80 @@
+# Gitleaks configuration for ResearchFlow
+# - Custom rules for API keys/tokens
+# - Allowlist for test fixtures
+# - Used by: pre-commit hook + GitHub Actions workflow
+
+title = "researchflow gitleaks config"
+
+[extend]
+# Start from the stock ruleset shipped with gitleaks.
+useDefault = true
+
+[allowlist]
+description = "Allow benign secrets in fixtures, snapshots, and example envs"
+paths = [
+  '''(?i)^tests?/fixtures?/''',
+  '''(?i)^tests?/data/''',
+  '''(?i)^tests?/__snapshots__/''',
+  '''(?i)^.*\.snap$''',
+  '''(?i)^.*\.golden\..*$''',
+  '''(?i)^.*\.example$''',
+  '''(?i)^\.env\.example$''',
+  '''(?i)^\.env\..*\.example$''',
+]
+
+# Allow common dummy tokens in docs
+regexes = [
+  '''(?i)example(_|-)?(api)?(_|-)?key''',
+  '''(?i)dummy(_|-)?token''',
+  '''(?i)not(_|-)?a(_|-)?real(_|-)?secret''',
+]
+
+[[rules]]
+id = "rf-api-key-generic"
+description = "Generic API key assignment patterns"
+regex = '''(?i)(api[_-]?key|apikey|x-api-key)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{20,}['\"]?'''
+entropy = 3.5
+keywords = ["api_key", "apikey", "x-api-key"]
+
+[[rules]]
+id = "rf-bearer-token"
+description = "Bearer token in headers"
+regex = '''(?i)authorization\s*[:=]\s*['\"]?bearer\s+[A-Za-z0-9\-\._~\+/]+=*['\"]?'''
+entropy = 3.0
+keywords = ["authorization", "bearer"]
+
+[[rules]]
+id = "rf-jwt"
+description = "JWT token"
+regex = '''(?i)eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}'''
+entropy = 3.0
+keywords = ["jwt", "eyJ"]
+
+[[rules]]
+id = "rf-github-pat"
+description = "GitHub token (classic + fine-grained)"
+regex = '''(?i)\b(ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b'''
+entropy = 3.0
+keywords = ["ghp_", "github_pat_"]
+
+[[rules]]
+id = "rf-slack-token"
+description = "Slack token"
+regex = '''(?i)\b(xox[baprs]-[0-9A-Za-z-]{10,})\b'''
+entropy = 2.5
+keywords = ["xoxb-", "xoxp-", "xoxa-", "xoxr-", "xoxs-"]
+
+[[rules]]
+id = "rf-openai-key"
+description = "OpenAI API key"
+regex = '''\bsk-[A-Za-z0-9]{20,}\b'''
+entropy = 3.0
+keywords = ["sk-"]
+
+# Pre-commit integration note (documentation-only)
+# Add to .pre-commit-config.yaml:
+# - repo: https://github.com/gitleaks/gitleaks
+#   rev: v8.18.4
+#   hooks:
+#     - id: gitleaks
+#       args: ["--config=security/gitleaks.toml"]

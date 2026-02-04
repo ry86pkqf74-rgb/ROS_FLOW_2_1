@@ -1,0 +1,323 @@
+metadata:
+  version: "1.0"
+  standard: "TRIPOD+AI"
+  description: "Transparent Reporting of Evaluations with Nonrandomized Designs (TREND) and Artificial Intelligence (AI) extension"
+  phase: "Phase 11 - ResearchFlow Transparency"
+  total_items: 27
+  created: "2026-01-30"
+  purpose: "Comprehensive checklist for transparent reporting of prediction models with AI-specific extensions"
+
+sections:
+  - name: "Title and Abstract"
+    description: "Identifying the study and key information"
+    items:
+      - id: "title_identification"
+        number: 1
+        text: "Identify the study as developing and/or validating a multivariable prediction model, the target population, and the outcome to be predicted"
+        section: "Title"
+        ai_extension: false
+        status: "pending"
+        location: "Title page"
+        notes: ""
+
+      - id: "abstract_structured"
+        number: 2
+        text: "Provide a structured abstract including, as applicable: background, objectives, methods, results, and conclusions"
+        section: "Abstract"
+        ai_extension: false
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+      - id: "abstract_background"
+        number: 3
+        text: "In the abstract, clearly state the primary objective which is the development or validation of a prediction model, the target population, and the outcome"
+        section: "Abstract"
+        ai_extension: false
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+      - id: "abstract_methods"
+        number: 4
+        text: "In the abstract, describe the study design and the setting, including the number of participants"
+        section: "Abstract"
+        ai_extension: false
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+      - id: "abstract_sample_size"
+        number: 5
+        text: "In the abstract, describe the outcomes, predictors, model development, validation, evaluation, and the primary results including the performance of the prediction model"
+        section: "Abstract"
+        ai_extension: false
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+      - id: "abstract_conclusions"
+        number: 6
+        text: "In the abstract, provide conclusions and the potential clinical utility of the model"
+        section: "Abstract"
+        ai_extension: false
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+      - id: "abstract_ai_specific"
+        number: "6a"
+        text: "In the abstract, if applicable, mention use of AI/machine learning approaches and provide clear interpretation of model outputs"
+        section: "Abstract"
+        ai_extension: true
+        status: "pending"
+        location: "Abstract"
+        notes: ""
+
+  - name: "Introduction"
+    description: "Background and rationale"
+    items:
+      - id: "introduction_rationale"
+        number: 7
+        text: "Explain the medical context and rationale for developing or validating the multivariable prediction model including whether it is a new model or an existing model is being validated"
+        section: "Introduction"
+        ai_extension: false
+        status: "pending"
+        location: "Introduction"
+        notes: ""
+
+      - id: "introduction_objectives"
+        number: 8
+        text: "Specify the objectives with reference to the intended use and clinical role of the prediction model"
+        section: "Introduction"
+        ai_extension: false
+        status: "pending"
+        location: "Introduction"
+        notes: ""
+
+  - name: "Methods"
+    description: "Study design and data collection"
+    items:
+      - id: "methods_study_design"
+        number: 9
+        text: "Specify the study design and the setting, including the start and stop dates of the study"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods"
+        notes: ""
+
+      - id: "methods_participants"
+        number: 10
+        text: "Specify key study dates defining the dates of participant recruitment and follow-up"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Study Population"
+        notes: ""
+
+      - id: "methods_eligibility"
+        number: 11
+        text: "Specify the eligibility criteria for participants and how participants were identified and recruited"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Study Population"
+        notes: ""
+
+      - id: "methods_sample_size"
+        number: 12
+        text: "Explain how the study size was arrived at"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Sample Size"
+        notes: ""
+
+      - id: "methods_outcome_definition"
+        number: 13
+        text: "Describe the outcome that is predicted by the prediction model and state the method and timing of outcome measurement"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Outcomes"
+        notes: ""
+
+      - id: "methods_predictors"
+        number: 14
+        text: "Describe all predictors used in developing or validating the prediction model, including the method and timing of measurements"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Predictors"
+        notes: ""
+
+      - id: "methods_missing_data"
+        number: 15
+        text: "Describe how missing data were handled (e.g. complete-case analysis, imputation)"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Data Handling"
+        notes: ""
+
+      - id: "methods_model_development"
+        number: 16
+        text: "Provide details of the modelling approach, including the type of model, the approach to model selection (e.g. purposeful selection based on clinical knowledge), details of any variable selection that was undertaken, and the method for specifying the functional form of predictors"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Model Development"
+        notes: ""
+
+      - id: "methods_model_development_ai"
+        number: "16a"
+        text: "If applicable, describe the AI/machine learning algorithm used, model architecture, hyperparameter selection, and any automated feature engineering"
+        section: "Methods"
+        ai_extension: true
+        status: "pending"
+        location: "Methods - Model Development"
+        notes: ""
+
+      - id: "methods_validation_strategy"
+        number: 17
+        text: "Specify the procedure for internal validation, such as sample-splitting or cross-validation, and describe the rationale"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Validation"
+        notes: ""
+
+      - id: "methods_external_validation"
+        number: 18
+        text: "For models validated on separate data, specify the participants in the validation sample and specify whether the validation cohort was from a distinct population"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - External Validation"
+        notes: ""
+
+      - id: "methods_performance_measures"
+        number: 19
+        text: "Describe the performance measures, along with their 95% CIs that were used to evaluate the prediction model"
+        section: "Methods"
+        ai_extension: false
+        status: "pending"
+        location: "Methods - Performance Assessment"
+        notes: ""
+
+      - id: "methods_performance_measures_ai"
+        number: "19a"
+        text: "If applicable, include assessment of model fairness, bias across subgroups, and interpretability/explainability metrics"
+        section: "Methods"
+        ai_extension: true
+        status: "pending"
+        location: "Methods - Performance Assessment"
+        notes: ""
+
+  - name: "Results"
+    description: "Study population and model performance"
+    items:
+      - id: "results_participants"
+        number: 20
+        text: "Describe the flow of participants through the study, including the number eligible, excluded, and included in the analyses as well as reasons for exclusion and loss to follow-up"
+        section: "Results"
+        ai_extension: false
+        status: "pending"
+        location: "Results - Study Population"
+        notes: ""
+
+      - id: "results_characteristics"
+        number: 21
+        text: "Describe the characteristics and treatment of participants including demographic data, initial treatment, and relevant clinical features"
+        section: "Results"
+        ai_extension: false
+        status: "pending"
+        location: "Results - Patient Characteristics"
+        notes: ""
+
+      - id: "results_model_performance"
+        number: 22
+        text: "Present the results of the prediction model, including the unadjusted and adjusted performance of the final model with its 95% CIs"
+        section: "Results"
+        ai_extension: false
+        status: "pending"
+        location: "Results - Model Performance"
+        notes: ""
+
+      - id: "results_model_performance_ai"
+        number: "22a"
+        text: "Present performance metrics stratified by relevant subgroups, feature importance/coefficients, and any analysis of model decisions or predictions"
+        section: "Results"
+        ai_extension: true
+        status: "pending"
+        location: "Results - Model Performance"
+        notes: ""
+
+      - id: "results_validation_performance"
+        number: 23
+        text: "If the model is validated on a separate sample, describe the performance achieved in the validation sample, which may be different from the performance in the development sample"
+        section: "Results"
+        ai_extension: false
+        status: "pending"
+        location: "Results - Validation Performance"
+        notes: ""
+
+  - name: "Discussion"
+    description: "Interpretation and implications"
+    items:
+      - id: "discussion_interpretation"
+        number: 24
+        text: "Discuss the performance of the prediction model in the context of previous models"
+        section: "Discussion"
+        ai_extension: false
+        status: "pending"
+        location: "Discussion"
+        notes: ""
+
+      - id: "discussion_limitations"
+        number: 25
+        text: "Discuss the potential clinical use of the prediction model and discuss the potential impact that use of the prediction model may have on patient care and outcomes"
+        section: "Discussion"
+        ai_extension: false
+        status: "pending"
+        location: "Discussion"
+        notes: ""
+
+      - id: "discussion_implications"
+        number: 26
+        text: "Provide information about the generalisability of the model, including discussion of potential for model updating and recalibration"
+        section: "Discussion"
+        ai_extension: false
+        status: "pending"
+        location: "Discussion"
+        notes: ""
+
+      - id: "discussion_ai_specific"
+        number: "26a"
+        text: "Discuss limitations related to AI/ML approaches, including potential for bias, overfitting, interpretability challenges, and need for ongoing monitoring and validation"
+        section: "Discussion"
+        ai_extension: true
+        status: "pending"
+        location: "Discussion"
+        notes: ""
+
+  - name: "Other Information"
+    description: "Supplementary information"
+    items:
+      - id: "other_funding"
+        number: 27
+        text: "Describe the funding sources and the role of the funding sources in the design and conduct of the study"
+        section: "Other"
+        ai_extension: false
+        status: "pending"
+        location: "Funding and Acknowledgments"
+        notes: ""
+
+tracking:
+  total_items: 27
+  base_items: 23
+  ai_extension_items: 4
+  items_completed: 0
+  last_updated: "2026-01-30"
+  completion_percentage: 0.0

@@ -1,0 +1,125 @@
+# Prometheus Configuration - Staging Environment
+# Stage 1 Protocol Design Agent Monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load alerting rules
+rule_files:
+  # - "alert_rules.yml"
+
+# Scraping configuration
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  # ResearchFlow Orchestrator (Node.js)
+  - job_name: 'researchflow-orchestrator'
+    static_configs:
+      - targets: ['orchestrator:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    params:
+      format: ['prometheus']
+
+  # ResearchFlow Worker (Python FastAPI)  
+  - job_name: 'researchflow-worker'
+    static_configs:
+      - targets: ['worker:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Stage 1 Protocol Design Agent Metrics
+  - job_name: 'stage-1-agent'
+    static_configs:
+      - targets: ['worker:8000']
+    metrics_path: '/api/stages/1/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    params:
+      collect[]:
+        - 'postgres'
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Docker container metrics
+  - job_name: 'docker-containers'
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+    relabel_configs:
+      # Only monitor ResearchFlow containers
+      - source_labels: [__meta_docker_container_name]
+        regex: 'researchflow.*'
+        action: keep
+      - source_labels: [__meta_docker_container_name]
+        target_label: container_name
+      - source_labels: [__meta_docker_container_id]
+        target_label: container_id
+
+  # Ollama LLM Metrics
+  - job_name: 'ollama-llm'
+    static_configs:
+      - targets: ['ollama:11434']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Custom Stage 1 Performance Metrics
+  - job_name: 'stage1-performance'
+    static_configs:
+      - targets: ['worker:8000']
+    metrics_path: '/api/metrics/stage1'
+    scrape_interval: 15s
+    honor_labels: true
+
+# Recording rules for Stage 1 metrics
+recording_rules:
+  - name: stage1_performance
+    rules:
+      - record: stage1:pico_extraction_duration_seconds
+        expr: histogram_quantile(0.95, rate(stage1_pico_extraction_duration_seconds_bucket[5m]))
+      
+      - record: stage1:protocol_generation_duration_seconds  
+        expr: histogram_quantile(0.95, rate(stage1_protocol_generation_duration_seconds_bucket[5m]))
+      
+      - record: stage1:quality_score_avg
+        expr: avg_over_time(stage1_quality_score[5m])
+      
+      - record: stage1:success_rate
+        expr: rate(stage1_executions_total{status="completed"}[5m]) / rate(stage1_executions_total[5m])
+
+# Global settings
+global:
+  # How frequently to scrape targets by default
+  scrape_interval: 15s
+  
+  # How frequently to evaluate rules
+  evaluation_interval: 15s
+  
+  # External labels for federation/remote write
+  external_labels:
+    monitor: 'researchflow-staging'
+    environment: 'staging'
+    datacenter: 'local'

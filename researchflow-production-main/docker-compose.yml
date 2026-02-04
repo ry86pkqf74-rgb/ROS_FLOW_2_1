@@ -1,0 +1,581 @@
+# ============================================
+# ResearchFlow - Development Docker Compose
+# ============================================
+# Usage: docker-compose up -d
+#
+# This configuration is optimized for local development with:
+# - Hot-reload via volume mounts
+# - Service health dependencies
+# - Shared data volumes
+#
+# Phase 4: worker, orchestrator, redis, postgres used by E2E/CI.
+# For production, use: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  # ===================
+  # Database Migrations (runs once before other services)
+  # ===================
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      - PGHOST=postgres
+      - PGUSER=${POSTGRES_USER:-ros}
+      - PGPASSWORD=${POSTGRES_PASSWORD:-ros}
+      - PGDATABASE=${POSTGRES_DB:-ros}
+    volumes:
+      - ./migrations:/migrations:ro
+    networks:
+      - backend  # Internal network only
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      sh -c '
+        echo "=== Running database migrations ===" &&
+        for f in /migrations/*.sql; do
+          echo "Applying migration: $$f" &&
+          psql -f "$$f" || echo "Warning: Migration $$f may have already been applied"
+        done &&
+        echo "=== Migrations complete ==="
+      '
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Ollama - Local LLM (Qwen) with GPU
+  # ===================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: researchflow-ollama
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_KEEP_ALIVE=5m
+      - OLLAMA_DEBUG=false
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-8}
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+      - ollama-cache:/tmp/ollama-cache
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 12G
+        reservations:
+          cpus: '2'
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===================
+  # Orchestrator - Node.js API
+  # ===================
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379
+      - WORKER_CALLBACK_URL=http://worker:8000
+      - WORKER_URL=http://worker:8000
+      - ROS_API_URL=http://worker:8000
+      - WORKER_WS_URL=${WORKER_WS_URL:-ws://worker:8000}
+      - OLLAMA_URL=http://ollama:11434
+      - UPLOADS_PATH=/data/uploads
+      - GOVERNANCE_MODE=LIVE
+      - AUTH_ALLOW_STATELESS_JWT=${AUTH_ALLOW_STATELESS_JWT:-true}
+      - ALLOW_MOCK_AUTH=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - MERCURY_API_KEY=${MERCURY_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+      - INCEPTIONLABS_API_KEY=${INCEPTIONLABS_API_KEY}
+      - CODEX_API_KEY=${CODEX_API_KEY}
+      # AI Router integrations
+      - AI_INTEGRATIONS_OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_INTEGRATIONS_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AI_INTEGRATIONS_XAI_API_KEY=${XAI_API_KEY}
+      - AI_INTEGRATIONS_MERCURY_API_KEY=${MERCURY_API_KEY}
+      # Local AI Model (Qwen3-Coder via Ollama)
+      - LOCAL_MODEL_ENABLED=${LOCAL_MODEL_ENABLED:-true}
+      - LOCAL_MODEL_ENDPOINT=${LOCAL_MODEL_ENDPOINT:-http://ollama:11434}
+      - LOCAL_MODEL_NAME=${LOCAL_MODEL_NAME:-ai/qwen3-coder:latest}
+      - LOCAL_MODEL_PREFER_FOR_CODE=${LOCAL_MODEL_PREFER_FOR_CODE:-true}
+      - LOCAL_MODEL_HEALTH_CHECK_MS=${LOCAL_MODEL_HEALTH_CHECK_MS:-30000}
+      - LOCAL_MODEL_TIMEOUT_MS=${LOCAL_MODEL_TIMEOUT_MS:-120000}
+      # Sourcegraph code intelligence
+      - SOURCEGRAPH_API_KEY=${SOURCEGRAPH_API_KEY}
+      - SRC_ACCESS_TOKEN=${SOURCEGRAPH_API_KEY}
+      # Notion integration
+      - NOTION_API_KEY=${NOTION_API_KEY}
+      # Figma integration
+      - FIGMA_API_KEY=${FIGMA_API_KEY}
+      # NLM/NCBI for MeSH term enrichment
+      - NCBI_API_KEY=${NCBI_API_KEY}
+      # Literature Integration
+      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
+      - LITERATURE_CACHE_TTL=${LITERATURE_CACHE_TTL:-3600}
+      # PHI Governance
+      - PHI_SCAN_ENABLED=${PHI_SCAN_ENABLED:-true}
+      - PHI_FAIL_CLOSED=${PHI_FAIL_CLOSED:-true}
+      # Insights Stream (Transparency)
+      - INSIGHTS_STREAM_NAME=${INSIGHTS_STREAM_NAME:-ros:insights}
+      - INSIGHTS_CONSUMER_GROUP=${INSIGHTS_CONSUMER_GROUP:-insights-workers}
+      - INSIGHTS_MAX_LEN=${INSIGHTS_MAX_LEN:-100000}
+      # Chat Agents
+      - CHAT_AGENT_MODEL=${CHAT_AGENT_MODEL:-gpt-4}
+      - CHAT_AGENT_PROVIDER=${CHAT_AGENT_PROVIDER:-openai}
+      - CHAT_AGENT_ENABLED=${CHAT_AGENT_ENABLED:-true}
+      # Dashboard features (from commit 2b65a72)
+      - DASHBOARD_ENABLED=${DASHBOARD_ENABLED:-true}
+      - DASHBOARD_CALENDAR_INTEGRATION=${DASHBOARD_CALENDAR_INTEGRATION:-true}
+      - DASHBOARD_REFRESH_INTERVAL=${DASHBOARD_REFRESH_INTERVAL:-5000}
+      # Analytics (Phase F)
+      - ANALYTICS_IP_SALT=${ANALYTICS_IP_SALT:-dev-salt-change-in-production}
+      # Webhooks
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - ZOOM_WEBHOOK_SECRET_TOKEN=${ZOOM_WEBHOOK_SECRET_TOKEN}
+      - ZOOM_VERIFICATION_TOKEN=${ZOOM_VERIFICATION_TOKEN}
+      # Guideline Engine Proxy
+      - GUIDELINE_ENGINE_URL=http://guideline-engine:8001
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - shared-data:/data
+      - ./services/orchestrator:/app
+      - /app/node_modules
+      - ./packages:/app/packages
+    networks:
+      - frontend  # Public API access
+      - backend   # Internal service communication
+    extra_hosts:
+      # Enable access to host's Ollama instance from container
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===================
+  # Worker - Python FastAPI
+  # ===================
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+      target: development
+    # SECURITY: Worker is internal service - no public port exposure
+    expose:
+      - "8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379
+      # Support both naming conventions for backwards compatibility
+      - ARTIFACT_PATH=/data/artifacts
+      - ARTIFACTS_PATH=/data/artifacts
+      - LOG_PATH=/data/logs
+      - GOVERNANCE_MODE=LIVE
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - MERCURY_API_KEY=${MERCURY_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+      - INCEPTIONLABS_API_KEY=${INCEPTIONLABS_API_KEY}
+      - CODEX_API_KEY=${CODEX_API_KEY}
+      # Sourcegraph code intelligence
+      - SOURCEGRAPH_API_KEY=${SOURCEGRAPH_API_KEY}
+      - SRC_ACCESS_TOKEN=${SOURCEGRAPH_API_KEY}
+      # LLM Extraction System
+      - AI_ROUTER_URL=http://orchestrator:3001/api/ai/extraction/generate
+      - ORCHESTRATOR_URL=http://orchestrator:3001
+      - EXTRACTION_TIMEOUT_SECONDS=60
+      - ENRICHMENT_TIMEOUT_SECONDS=30
+      # PHI Governance
+      - PHI_SCAN_ENABLED=${PHI_SCAN_ENABLED:-true}
+      - PHI_FAIL_CLOSED=${PHI_FAIL_CLOSED:-true}
+      # Conference Preparation (Stage 20)
+      - CONFERENCE_CACHE_TTL=${CONFERENCE_CACHE_TTL:-86400}
+      - ENABLE_WEB_SEARCH=${ENABLE_WEB_SEARCH:-false}
+      # Version Control (Phase 5.5)
+      - PROJECTS_PATH=/data/projects
+      # CSV parsing strict mode (from commit d22b229)
+      - DATA_PARSE_STRICT=${DATA_PARSE_STRICT:-true}
+      # Chat agent configuration (from commit 15faea0)
+      - CHAT_AGENT_MODEL=${CHAT_AGENT_MODEL:-gpt-4}
+      - CHAT_AGENT_ENABLED=${CHAT_AGENT_ENABLED:-true}
+      # RAG / Chroma (use docker-compose.chromadb.yml for chromadb service)
+      - CHROMA_HOST=${CHROMA_HOST:-chromadb}
+      - CHROMA_PORT=${CHROMA_PORT:-8000}
+      - EMBEDDINGS_PROVIDER=${EMBEDDINGS_PROVIDER:-mock}
+      # Local LLM (Ollama)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - shared-data:/data
+      - projects-data:/data/projects
+      - ./services/worker:/app
+    networks:
+      - backend  # Internal network only
+    restart: unless-stopped
+    stop_grace_period: 60s  # Longer grace period for job processing
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ===================
+  # Guideline Engine - Python FastAPI (Clinical Scoring/Staging)
+  # ===================
+  guideline-engine:
+    build:
+      context: ./packages/guideline-engine
+      dockerfile: Dockerfile
+    # SECURITY: Guideline engine is internal service - no public port exposure
+    expose:
+      - "8001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
+      - AI_ROUTER_URL=http://orchestrator:3001/api/ai
+      - LOG_LEVEL=INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+    networks:
+      - backend  # Internal network only
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Web - React Frontend (Nginx)
+  # ===================
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+      target: production
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+        - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:1234}
+        - VITE_COLLAB_URL=${VITE_COLLAB_URL:-ws://localhost:1234}
+        - VITE_AGENT_WS_URL=${VITE_AGENT_WS_URL:-ws://localhost:3001/api/agents/ws}
+        - NEXT_PUBLIC_ENABLE_CHAT_AGENTS=${NEXT_PUBLIC_ENABLE_CHAT_AGENTS:-true}
+    ports:
+      - "5173:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-}
+    depends_on:
+      orchestrator:
+        condition: service_started
+    networks:
+      - frontend  # Public access for web UI
+    restart: unless-stopped
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ===================
+  # Collab - Real-time Collaboration Server
+  # ===================
+  collab:
+    build:
+      context: .
+      dockerfile: services/collab/Dockerfile
+      target: development
+    ports:
+      - "1234:1234"
+      - "1235:1235"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - NODE_ENV=development
+      - PORT=1234
+      - HEALTH_PORT=1235
+      - HOST=0.0.0.0
+      - APP_MODE=DEMO
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
+      - JWT_SECRET=${JWT_SECRET:-development-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/collab:/app
+      - /app/node_modules
+      - ./packages:/app/packages
+    networks:
+      - frontend  # Public WebSocket access
+      - backend   # Internal DB/Redis access
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:1235/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ===================
+  # PostgreSQL Database (with pgvector for AI embeddings)
+  # ===================
+  postgres:
+    image: pgvector/pgvector:pg16
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ros}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ros}
+      POSTGRES_DB: ${POSTGRES_DB:-ros}
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend  # Internal network only - NEVER expose publicly
+    restart: unless-stopped
+    stop_grace_period: 60s  # Allow time for connections to drain
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ===================
+  # Redis Cache
+  # ===================
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis-dev-password}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # SECURITY: Redis internal only - no public exposure
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-redis-dev-password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+
+  # ===================
+  # Vector Database for RAG (Phase 2)
+  # ===================
+  vector-db:
+    profiles: ["vector"]  # Optional - faiss-cpu lacks ARM64 wheels for Apple Silicon
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./data/faiss_index:/app/index
+      - ./packages/vector-store:/app/vector-store:ro
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - INDEX_PATH=/app/index
+    networks:
+      - backend  # Internal network only
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command: >
+      sh -c "pip install faiss-cpu sentence-transformers openai &&
+             echo Vector DB service ready &&
+             tail -f /dev/null"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import faiss; print(faiss.__version__)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: 2
+          memory: 4G
+        reservations:
+          cpus: 0.5
+          memory: 1G
+
+volumes:
+  shared-data:
+    driver: local
+  projects-data:
+    driver: local
+    # Persistent storage for Git-based version control (Phase 5.5)
+    # Contains project repositories for statistical analysis and manuscripts
+  postgres-data:
+    driver: local
+  faiss-index:
+    driver: local
+  redis-data:
+    driver: local
+  ollama-models:
+    driver: local
+  ollama-cache:
+    driver: local
+
+networks:
+  frontend:
+    driver: bridge
+    # Public-facing network for web, orchestrator API
+  backend:
+    driver: bridge
+    internal: true
+    # SECURITY: Internal network - no external access
+    # Postgres, Redis, Worker, Guideline-engine, Vector-db only

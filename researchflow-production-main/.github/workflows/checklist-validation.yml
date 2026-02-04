@@ -1,0 +1,280 @@
+name: Reporting Checklist Validation
+
+# Validates TRIPOD+AI and CONSORT-AI reporting checklists
+# Part of Phase 11 Transparency & Compliance build.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docs/reporting/**'
+      - 'docs/artifacts/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/reporting/**'
+      - 'docs/artifacts/**'
+  workflow_dispatch:
+    inputs:
+      checklist_type:
+        description: 'Checklist to validate'
+        required: true
+        type: choice
+        options:
+          - 'TRIPOD_AI'
+          - 'CONSORT_AI'
+          - 'BOTH'
+
+concurrency:
+  group: checklist-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PRODUCTION_REPO: 'ry86pkqf74-rgb/researchflow-production'
+
+jobs:
+  # ============================================================================
+  # TRIPOD+AI Checklist Validation
+  # 27 items required for transparent prediction model reporting
+  # ============================================================================
+  tripod-ai-validation:
+    name: TRIPOD+AI Checklist
+    runs-on: ubuntu-latest
+    if: |
+      github.repository == 'ry86pkqf74-rgb/researchflow-production' &&
+      (github.event.inputs.checklist_type != 'CONSORT_AI' || github.event.inputs.checklist_type == '')
+    outputs:
+      completion: ${{ steps.validate.outputs.completion }}
+      missing_items: ${{ steps.validate.outputs.missing }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Validate TRIPOD+AI checklist
+        id: validate
+        run: |
+          # TRIPOD+AI Required Items (27 items per execution plan)
+          REQUIRED_ITEMS=(
+            "title"
+            "abstract_background"
+            "abstract_objectives"
+            "abstract_participants"
+            "abstract_predictors"
+            "abstract_outcome"
+            "abstract_results"
+            "abstract_conclusions"
+            "introduction_background"
+            "introduction_objectives"
+            "methods_source_of_data"
+            "methods_participants"
+            "methods_outcome"
+            "methods_predictors"
+            "methods_sample_size"
+            "methods_missing_data"
+            "methods_model_development"
+            "methods_model_specification"
+            "methods_ai_methodology"
+            "methods_performance_measures"
+            "results_participants"
+            "results_model_development"
+            "results_model_performance"
+            "results_model_updating"
+            "discussion_limitations"
+            "discussion_interpretation"
+            "discussion_implications"
+          )
+
+          CHECKLIST_FILE="docs/reporting/tripod_ai_checklist.json"
+          COMPLETED=0
+          TOTAL=${#REQUIRED_ITEMS[@]}
+          MISSING_ITEMS=()
+
+          if [ -f "$CHECKLIST_FILE" ]; then
+            for item in "${REQUIRED_ITEMS[@]}"; do
+              # Check if item exists and has content
+              STATUS=$(jq -r ".items.\"$item\".status // \"missing\"" "$CHECKLIST_FILE" 2>/dev/null || echo "missing")
+              if [ "$STATUS" = "complete" ] || [ "$STATUS" = "not_applicable" ]; then
+                COMPLETED=$((COMPLETED + 1))
+              else
+                MISSING_ITEMS+=("$item")
+              fi
+            done
+          else
+            echo "::warning::TRIPOD+AI checklist file not found at $CHECKLIST_FILE"
+            MISSING_ITEMS=("${REQUIRED_ITEMS[@]}")
+          fi
+
+          COMPLETION=$((COMPLETED * 100 / TOTAL))
+          echo "completion=$COMPLETION" >> $GITHUB_OUTPUT
+          echo "missing=${MISSING_ITEMS[*]}" >> $GITHUB_OUTPUT
+
+          echo "=== TRIPOD+AI Validation ==="
+          echo "Completed: $COMPLETED/$TOTAL ($COMPLETION%)"
+
+          if [ ${#MISSING_ITEMS[@]} -gt 0 ]; then
+            echo ""
+            echo "Missing/incomplete items:"
+            for item in "${MISSING_ITEMS[@]}"; do
+              echo "  - $item"
+            done
+          fi
+
+          # Create report
+          cat > tripod_ai_report.json << EOF
+          {
+            "checklist": "TRIPOD+AI",
+            "version": "2024",
+            "validated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "completion_percentage": $COMPLETION,
+            "completed_items": $COMPLETED,
+            "total_items": $TOTAL,
+            "missing_items": $(echo "${MISSING_ITEMS[@]}" | jq -R -s 'split(" ") | map(select(. != ""))')
+          }
+          EOF
+
+      - name: Upload TRIPOD+AI report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tripod-ai-report
+          path: tripod_ai_report.json
+          retention-days: 90
+
+  # ============================================================================
+  # CONSORT-AI Checklist Validation
+  # Extension for RCTs involving AI interventions
+  # ============================================================================
+  consort-ai-validation:
+    name: CONSORT-AI Checklist
+    runs-on: ubuntu-latest
+    if: |
+      github.repository == 'ry86pkqf74-rgb/researchflow-production' &&
+      (github.event.inputs.checklist_type != 'TRIPOD_AI' || github.event.inputs.checklist_type == '')
+    outputs:
+      completion: ${{ steps.validate.outputs.completion }}
+      missing_items: ${{ steps.validate.outputs.missing }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate CONSORT-AI checklist
+        id: validate
+        run: |
+          # CONSORT-AI Extension Items
+          REQUIRED_ITEMS=(
+            "title_ai_intervention"
+            "abstract_ai_description"
+            "introduction_ai_background"
+            "methods_ai_intervention"
+            "methods_ai_input_data"
+            "methods_ai_output_handling"
+            "methods_human_ai_interaction"
+            "methods_ai_performance_errors"
+            "results_ai_performance"
+            "results_ai_failures"
+            "discussion_ai_generalizability"
+            "other_ai_version_access"
+          )
+
+          CHECKLIST_FILE="docs/reporting/consort_ai_checklist.json"
+          COMPLETED=0
+          TOTAL=${#REQUIRED_ITEMS[@]}
+          MISSING_ITEMS=()
+
+          if [ -f "$CHECKLIST_FILE" ]; then
+            for item in "${REQUIRED_ITEMS[@]}"; do
+              STATUS=$(jq -r ".items.\"$item\".status // \"missing\"" "$CHECKLIST_FILE" 2>/dev/null || echo "missing")
+              if [ "$STATUS" = "complete" ] || [ "$STATUS" = "not_applicable" ]; then
+                COMPLETED=$((COMPLETED + 1))
+              else
+                MISSING_ITEMS+=("$item")
+              fi
+            done
+          else
+            echo "::warning::CONSORT-AI checklist file not found at $CHECKLIST_FILE"
+            MISSING_ITEMS=("${REQUIRED_ITEMS[@]}")
+          fi
+
+          COMPLETION=$((COMPLETED * 100 / TOTAL))
+          echo "completion=$COMPLETION" >> $GITHUB_OUTPUT
+          echo "missing=${MISSING_ITEMS[*]}" >> $GITHUB_OUTPUT
+
+          echo "=== CONSORT-AI Validation ==="
+          echo "Completed: $COMPLETED/$TOTAL ($COMPLETION%)"
+
+          cat > consort_ai_report.json << EOF
+          {
+            "checklist": "CONSORT-AI",
+            "version": "2020",
+            "validated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "completion_percentage": $COMPLETION,
+            "completed_items": $COMPLETED,
+            "total_items": $TOTAL,
+            "missing_items": $(echo "${MISSING_ITEMS[@]}" | jq -R -s 'split(" ") | map(select(. != ""))')
+          }
+          EOF
+
+      - name: Upload CONSORT-AI report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consort-ai-report
+          path: consort_ai_report.json
+          retention-days: 90
+
+  # ============================================================================
+  # Summary and Gate
+  # ============================================================================
+  checklist-summary:
+    name: Checklist Summary
+    runs-on: ubuntu-latest
+    needs: [tripod-ai-validation, consort-ai-validation]
+    if: always() && github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - name: Generate summary
+        run: |
+          echo "=== Reporting Checklist Summary ==="
+          echo ""
+          echo "TRIPOD+AI Completion: ${{ needs.tripod-ai-validation.outputs.completion }}%"
+          echo "CONSORT-AI Completion: ${{ needs.consort-ai-validation.outputs.completion }}%"
+          echo ""
+
+          TRIPOD=${{ needs.tripod-ai-validation.outputs.completion || 0 }}
+          CONSORT=${{ needs.consort-ai-validation.outputs.completion || 0 }}
+
+          if [ "$TRIPOD" -ge 100 ] && [ "$CONSORT" -ge 100 ]; then
+            echo "✅ All checklists complete"
+          else
+            echo "⚠️ Checklists incomplete - review required before publication"
+          fi
+
+      - name: Post to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tripod = '${{ needs.tripod-ai-validation.outputs.completion }}' || '0';
+            const consort = '${{ needs.consort-ai-validation.outputs.completion }}' || '0';
+
+            const tripodMissing = '${{ needs.tripod-ai-validation.outputs.missing_items }}'.split(' ').filter(x => x);
+            const consortMissing = '${{ needs.consort-ai-validation.outputs.missing_items }}'.split(' ').filter(x => x);
+
+            const body = `## 📋 Reporting Checklist Validation
+
+            | Checklist | Completion | Status |
+            |-----------|------------|--------|
+            | TRIPOD+AI | ${tripod}% | ${tripod >= 100 ? '✅' : '⚠️'} |
+            | CONSORT-AI | ${consort}% | ${consort >= 100 ? '✅' : '⚠️'} |
+
+            ${tripodMissing.length > 0 ? `\n**TRIPOD+AI Missing Items:**\n${tripodMissing.map(i => '- ' + i).join('\n')}` : ''}
+            ${consortMissing.length > 0 ? `\n**CONSORT-AI Missing Items:**\n${consortMissing.map(i => '- ' + i).join('\n')}` : ''}
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

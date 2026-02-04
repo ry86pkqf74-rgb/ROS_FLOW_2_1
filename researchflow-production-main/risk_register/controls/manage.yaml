@@ -1,0 +1,405 @@
+---
+# NIST AI RMF - Manage Function Controls
+# Implements processes and procedures to manage and remediate risks
+# Phase 2 Implementation
+# Reference: https://www.nist.gov/itl/ai-risk-management-framework
+
+controls:
+  # =====================================================================
+  # INCIDENT MANAGEMENT AND RESPONSE
+  # =====================================================================
+
+  - control_id: "MANAGE-001"
+    control_name: "Incident Response and Management"
+    objective: "Establish procedures to respond to and manage AI-related incidents"
+    description: |
+      Implement incident management framework including:
+      - Incident definition and classification
+      - Detection and reporting procedures
+      - Initial assessment and triage
+      - Response procedures and timelines
+      - Escalation and communication procedures
+      - Root cause analysis processes
+      - Corrective action implementation
+      - Follow-up and lessons learned
+      - Documentation and tracking
+    implementation_steps:
+      - Define incident severity levels and classifications
+      - Establish incident reporting procedures
+      - Create incident response runbooks
+      - Implement incident tracking system
+      - Establish escalation procedures
+      - Create root cause analysis templates
+      - Develop corrective action tracking
+      - Conduct post-incident reviews
+      - Document lessons learned
+    maturity_levels:
+      - Level 1: Ad-hoc incident response, limited documentation
+      - Level 2: Formal procedures, documented incidents, basic analysis
+      - Level 3: Automated detection, structured analysis, proactive prevention
+      - Level 4: Predictive incident management, autonomous response
+    success_metrics:
+      - All incidents logged within 1 hour of detection
+      - Critical incidents resolved within 4 hours
+      - Root cause analysis completed for all major incidents
+      - Corrective actions implemented within 30 days
+      - Post-incident reviews conducted for all incidents
+    responsible_role: "Incident Response Manager"
+    related_risks:
+      - RIS-010
+      - RIS-013
+      - RIS-014
+
+  - control_id: "MANAGE-002"
+    control_name: "Model Performance Management"
+    objective: "Manage model performance throughout lifecycle"
+    description: |
+      Establish performance management procedures including:
+      - Performance baseline establishment
+      - Continuous performance tracking
+      - Performance degradation detection
+      - Root cause analysis for performance issues
+      - Retraining procedures and triggers
+      - Model versioning and rollback
+      - Comparative effectiveness testing
+      - Performance improvement initiatives
+    implementation_steps:
+      - Establish performance baselines for all metrics
+      - Implement continuous monitoring dashboards
+      - Set up degradation alerts and thresholds
+      - Create root cause analysis procedures
+      - Document retraining procedures and triggers
+      - Implement model versioning system
+      - Test model updates before deployment
+      - Track performance improvements
+    maturity_levels:
+      - Level 1: Manual performance management, limited tracking
+      - Level 2: Automated monitoring, documented procedures, periodic reviews
+      - Level 3: Continuous management, predictive triggers, automated responses
+      - Level 4: Autonomous performance optimization
+    success_metrics:
+      - Performance monitored continuously
+      - Degradation detected before user impact
+      - Retraining completed within SLA
+      - Performance improvement achieved per plan
+    responsible_role: "ML Operations Manager"
+    related_risks:
+      - RIS-010
+      - RIS-011
+      - RIS-012
+
+  - control_id: "MANAGE-003"
+    control_name: "Model Retraining and Updates"
+    objective: "Manage model retraining, updates, and lifecycle"
+    description: |
+      Implement model update management including:
+      - Retraining triggers and schedule
+      - New data integration procedures
+      - Model update procedures
+      - Testing and validation before deployment
+      - Staged rollout procedures
+      - Monitoring during updates
+      - Rollback procedures if needed
+      - Version control and documentation
+    implementation_steps:
+      - Define retraining triggers (performance, drift, schedule)
+      - Establish retraining procedures and timelines
+      - Create new data integration workflows
+      - Implement pre-deployment validation
+      - Establish staged rollout procedures
+      - Create monitoring during updates
+      - Document rollback procedures
+      - Maintain model version history
+    maturity_levels:
+      - Level 1: Ad-hoc retraining, manual processes
+      - Level 2: Scheduled retraining, automated triggers, documented procedures
+      - Level 3: Continuous retraining, automated updates, staged deployment
+      - Level 4: Autonomous retraining, predictive updates
+    success_metrics:
+      - Retraining completed per schedule
+      - New models validated before deployment
+      - Staged rollout completed without critical issues
+      - Rollback capability maintained
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-006
+      - RIS-010
+      - RIS-012
+
+  - control_id: "MANAGE-004"
+    control_name: "Security Incident and Attack Response"
+    objective: "Detect and respond to security threats and attacks"
+    description: |
+      Establish security response procedures including:
+      - Attack detection and identification
+      - Immediate response procedures
+      - System isolation and containment
+      - Forensics and investigation
+      - Recovery and restoration
+      - Communication and disclosure procedures
+      - Regulatory reporting if required
+      - Lessons learned and improvements
+    implementation_steps:
+      - Implement intrusion detection systems
+      - Create security incident runbooks
+      - Establish containment procedures
+      - Develop forensic investigation procedures
+      - Plan recovery procedures
+      - Document breach notification procedures
+      - Create communication templates
+      - Establish post-incident improvement process
+    maturity_levels:
+      - Level 1: Limited security response, basic procedures
+      - Level 2: Documented procedures, incident tracking, investigation
+      - Level 3: Automated detection, rapid response, forensics
+      - Level 4: Predictive security, autonomous response
+    success_metrics:
+      - Security incidents detected within 1 hour
+      - Critical incidents contained within 4 hours
+      - Investigation completed within 7 days
+      - Zero successful attacks on production systems
+    responsible_role: "Chief Information Security Officer"
+    related_risks:
+      - RIS-008
+      - RIS-009
+      - RIS-020
+
+  # =====================================================================
+  # CHANGE AND CONFIGURATION MANAGEMENT
+  # =====================================================================
+
+  - control_id: "MANAGE-005"
+    control_name: "Configuration and Change Management"
+    objective: "Control changes to AI systems and maintain configuration integrity"
+    description: |
+      Implement change management framework including:
+      - Change request procedures
+      - Impact assessment processes
+      - Approval and authorization
+      - Change documentation and tracking
+      - Testing and validation procedures
+      - Deployment procedures
+      - Monitoring during changes
+      - Rollback procedures
+      - Configuration version control
+    implementation_steps:
+      - Create change request process
+      - Establish impact assessment templates
+      - Define approval authorities based on risk
+      - Implement change tracking system
+      - Create testing procedures for changes
+      - Document deployment procedures
+      - Set up monitoring for deployed changes
+      - Develop rollback procedures
+      - Maintain configuration history
+    maturity_levels:
+      - Level 1: Manual change processes, limited tracking
+      - Level 2: Documented procedures, change tracking, approval workflow
+      - Level 3: Automated impact assessment, gated deployment, continuous monitoring
+      - Level 4: Autonomous change management, predictive impacts
+    success_metrics:
+      - 100% of changes follow formal process
+      - Impact assessments completed before approval
+      - Testing completed per checklist before deployment
+      - Change-related incidents < 1%
+    responsible_role: "Change Management Lead"
+    related_risks:
+      - RIS-006
+      - RIS-010
+      - RIS-012
+
+  - control_id: "MANAGE-006"
+    control_name: "Deployment and Operational Management"
+    objective: "Manage deployment and operational aspects of AI systems"
+    description: |
+      Establish deployment and operations procedures including:
+      - Deployment planning and procedures
+      - Pre-deployment validation
+      - Staged rollout strategies
+      - Operational runbooks
+      - Service level agreements (SLAs)
+      - Capacity planning
+      - Disaster recovery procedures
+      - Business continuity planning
+    implementation_steps:
+      - Create deployment procedures and checklists
+      - Implement pre-deployment validation
+      - Establish canary and staged rollout procedures
+      - Document operational runbooks
+      - Define SLOs and SLAs
+      - Implement capacity planning procedures
+      - Develop disaster recovery plans
+      - Test business continuity procedures
+    maturity_levels:
+      - Level 1: Manual deployment, limited procedures
+      - Level 2: Documented deployment, pre-deployment validation, operational procedures
+      - Level 3: Automated deployment, staged rollout, continuous monitoring
+      - Level 4: Autonomous deployment, predictive capacity management
+    success_metrics:
+      - Deployments follow formal procedures 100%
+      - Uptime > 99.9%
+      - Recovery time objective (RTO) met for all incidents
+      - Capacity sufficient for forecasted demand
+    responsible_role: "DevOps Lead"
+    related_risks:
+      - RIS-013
+      - RIS-014
+      - RIS-015
+
+  # =====================================================================
+  # RISK MITIGATION AND REMEDIATION
+  # =====================================================================
+
+  - control_id: "MANAGE-007"
+    control_name: "Risk Remediation and Mitigation"
+    objective: "Implement and track risk mitigations"
+    description: |
+      Establish remediation framework including:
+      - Risk prioritization based on severity
+      - Mitigation strategy selection
+      - Implementation planning and tracking
+      - Effectiveness monitoring
+      - Residual risk assessment
+      - Stakeholder communication
+      - Documentation and reporting
+    implementation_steps:
+      - Prioritize risks based on severity and likelihood
+      - Select mitigation strategies per risk
+      - Create implementation roadmap
+      - Assign owners and resources
+      - Track completion milestones
+      - Monitor mitigation effectiveness
+      - Assess residual risk after mitigation
+      - Document completion and evidence
+    maturity_levels:
+      - Level 1: Ad-hoc remediation, limited tracking
+      - Level 2: Systematic remediation, documented procedures, progress tracking
+      - Level 3: Integrated remediation management, effectiveness monitoring, automation
+      - Level 4: Autonomous remediation, predictive prioritization
+    success_metrics:
+      - All high-risk items have documented mitigations
+      - Mitigation implementation > 95% complete
+      - Residual risk acceptable per policy
+      - Stakeholder agreement on remediation status
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-001
+      - RIS-003
+      - RIS-007
+
+  - control_id: "MANAGE-008"
+    control_name: "Model Discontinuation and Lifecycle Closure"
+    objective: "Manage end-of-life and discontinuation of AI models"
+    description: |
+      Implement model discontinuation procedures including:
+      - Discontinuation decision criteria
+      - Transition planning
+      - Data retention and archiving
+      - Knowledge capture and documentation
+      - User communication procedures
+      - System decommissioning
+      - Regulatory compliance
+      - Lessons learned documentation
+    implementation_steps:
+      - Define discontinuation criteria
+      - Create transition plans for model end-of-life
+      - Plan data archiving and retention
+      - Document model knowledge and history
+      - Create user communication plans
+      - Develop decommissioning procedures
+      - Ensure regulatory compliance
+      - Conduct post-model review
+    maturity_levels:
+      - Level 1: Ad-hoc discontinuation, limited planning
+      - Level 2: Documented procedures, transition planning, data archiving
+      - Level 3: Integrated lifecycle management, automated archiving, knowledge capture
+      - Level 4: Autonomous lifecycle management
+    success_metrics:
+      - Discontinued models archived per policy
+      - Zero data loss during discontinuation
+      - Users transitioned smoothly to alternatives
+      - Lessons learned documented
+    responsible_role: "ML Operations Manager"
+    related_risks:
+      - RIS-013
+      - RIS-018
+      - RIS-012
+
+  # =====================================================================
+  # GOVERNANCE AND OVERSIGHT
+  # =====================================================================
+
+  - control_id: "MANAGE-009"
+    control_name: "Audit and Compliance Verification"
+    objective: "Verify compliance with policies and standards"
+    description: |
+      Implement audit and verification framework including:
+      - Regular internal audits
+      - External audit coordination
+      - Compliance verification procedures
+      - Finding documentation and tracking
+      - Remediation verification
+      - Audit reporting and communication
+      - Audit schedule and planning
+    implementation_steps:
+      - Create audit program schedule
+      - Develop audit procedures and checklists
+      - Conduct internal audits per schedule
+      - Coordinate external audits
+      - Document findings and evidence
+      - Track remediation completion
+      - Report results to management
+      - Incorporate feedback for improvement
+    maturity_levels:
+      - Level 1: Ad-hoc audits, limited documentation
+      - Level 2: Regular audits, documented findings, remediation tracking
+      - Level 3: Continuous auditing, automated verification, analytics
+      - Level 4: Predictive auditing, autonomous verification
+    success_metrics:
+      - Audits completed per schedule
+      - Audit pass rate > 95%
+      - Finding remediation within SLA
+      - Zero repeat findings
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-016
+      - RIS-018
+      - RIS-017
+
+  - control_id: "MANAGE-010"
+    control_name: "Stakeholder Communication and Reporting"
+    objective: "Communicate AI system status to stakeholders"
+    description: |
+      Establish communication and reporting framework including:
+      - Stakeholder identification and analysis
+      - Regular reporting procedures
+      - Incident communication procedures
+      - Performance reporting
+      - Risk status reporting
+      - Board-level reporting
+      - External communication
+      - Feedback mechanisms
+    implementation_steps:
+      - Identify all stakeholders and information needs
+      - Create reporting templates and dashboards
+      - Establish reporting cadence
+      - Develop incident communication procedures
+      - Create performance reports
+      - Develop board-level summaries
+      - Plan external communications
+      - Implement feedback collection
+    maturity_levels:
+      - Level 1: Limited stakeholder communication, ad-hoc reporting
+      - Level 2: Regular reports, documented procedures, multiple channels
+      - Level 3: Integrated dashboards, automated reporting, multi-channel
+      - Level 4: Personalized communication, predictive reporting needs
+    success_metrics:
+      - Stakeholder communication completed per schedule
+      - Stakeholder satisfaction > 4/5
+      - Board reports completed per policy
+      - Communication response time < 24 hours
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-018
+      - RIS-021
+      - RIS-022

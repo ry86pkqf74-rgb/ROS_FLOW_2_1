@@ -1,0 +1,554 @@
+---
+# ResearchFlow AI Monitoring Configuration
+# Prometheus scrape configs, Grafana dashboards, and alerting rules
+# Version: Phase 9 - Production Ready
+
+# ============================================================================
+# PROMETHEUS CONFIGURATION
+# ============================================================================
+prometheus_config:
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+    external_labels:
+      environment: production
+      application: researchflow-ai
+      region: us-west-2
+
+  # Alertmanager configuration
+  alerting:
+    alertmanagers:
+      - static_configs:
+          - targets:
+              - localhost:9093
+
+  # Load alert rules
+  rule_files:
+    - '/etc/prometheus/alert-rules.yml'
+
+  # Scrape configurations for AI services
+  scrape_configs:
+    # ===== Ollama LLM Server =====
+    - job_name: 'ollama'
+      metrics_path: '/metrics'
+      scrape_interval: 10s
+      scrape_timeout: 5s
+      static_configs:
+        - targets: ['localhost:11434']
+          labels:
+            service: 'ollama'
+            ai_component: 'llm_inference'
+
+      # Metric relabeling for custom labels
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          regex: 'ollama_.*'
+          action: keep
+
+    # ===== Triton Inference Server =====
+    - job_name: 'triton'
+      metrics_path: '/metrics'
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      static_configs:
+        - targets: ['localhost:8002']
+          labels:
+            service: 'triton'
+            ai_component: 'model_inference'
+
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          regex: 'nv_gpu_utilization|nv_inference_.*'
+          action: keep
+
+    # ===== FAISS Vector Database =====
+    - job_name: 'faiss'
+      metrics_path: '/metrics'
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      static_configs:
+        - targets: ['localhost:5000']
+          labels:
+            service: 'faiss'
+            ai_component: 'vector_store'
+
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          regex: 'faiss_.*|vectordb_.*'
+          action: keep
+
+    # ===== Redis Cache =====
+    - job_name: 'redis'
+      metrics_path: '/metrics'
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      static_configs:
+        - targets: ['localhost:6379']
+          labels:
+            service: 'redis'
+            component: 'cache'
+
+    # ===== Docker Container Metrics =====
+    - job_name: 'docker'
+      static_configs:
+        - targets: ['localhost:9323']
+          labels:
+            service: 'docker'
+            component: 'container_runtime'
+
+    # ===== Node Exporter (System Metrics) =====
+    - job_name: 'node'
+      static_configs:
+        - targets: ['localhost:9100']
+          labels:
+            service: 'node'
+            component: 'system'
+
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          regex: 'node_memory_.*|node_cpu_.*|node_disk_.*|node_network_.*|node_systemd_unit_state'
+          action: keep
+
+    # ===== cAdvisor (Container Monitoring) =====
+    - job_name: 'cadvisor'
+      static_configs:
+        - targets: ['localhost:8080']
+          labels:
+            service: 'cadvisor'
+            component: 'container_monitoring'
+
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          regex: 'container_memory_.*|container_cpu_.*|container_network_.*'
+          action: keep
+
+# ============================================================================
+# ALERT RULES - AI PERFORMANCE AND RELIABILITY
+# ============================================================================
+alert_rules:
+  # Latency Alerts
+  - alert: HighInferenceLatency
+    expr: |
+      histogram_quantile(0.95, rate(ai_inference_duration_ms_bucket[5m])) > 5000
+    for: 2m
+    labels:
+      severity: warning
+      component: ai-inference
+    annotations:
+      summary: "High AI inference latency detected"
+      description: "P95 latency is {{ $value }}ms (threshold: 5000ms) on {{ $labels.service }}"
+
+  - alert: CriticalInferenceLatency
+    expr: |
+      histogram_quantile(0.99, rate(ai_inference_duration_ms_bucket[5m])) > 10000
+    for: 1m
+    labels:
+      severity: critical
+      component: ai-inference
+    annotations:
+      summary: "Critical AI inference latency"
+      description: "P99 latency is {{ $value }}ms on {{ $labels.service }}"
+
+  # Error Rate Alerts
+  - alert: HighAIErrorRate
+    expr: |
+      rate(ai_inference_errors_total[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: warning
+      component: ai-inference
+    annotations:
+      summary: "High AI inference error rate"
+      description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }}"
+
+  - alert: CriticalAIErrorRate
+    expr: |
+      rate(ai_inference_errors_total[5m]) > 0.10
+    for: 1m
+    labels:
+      severity: critical
+      component: ai-inference
+    annotations:
+      summary: "Critical AI inference error rate"
+      description: "Error rate reached {{ $value | humanizePercentage }} on {{ $labels.service }}"
+
+  # Ollama Service Alerts
+  - alert: OllamaServiceDown
+    expr: |
+      up{service="ollama"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      component: ollama
+    annotations:
+      summary: "Ollama service is down"
+      description: "Ollama has been unreachable for more than 1 minute"
+
+  - alert: OllamaMemoryPressure
+    expr: |
+      ollama_memory_usage_bytes / ollama_memory_total_bytes > 0.90
+    for: 5m
+    labels:
+      severity: warning
+      component: ollama
+    annotations:
+      summary: "Ollama memory pressure detected"
+      description: "Ollama memory usage is {{ $value | humanizePercentage }}"
+
+  - alert: OllamaGPUNotAvailable
+    expr: |
+      ollama_gpu_available == 0
+    for: 2m
+    labels:
+      severity: critical
+      component: ollama
+    annotations:
+      summary: "Ollama GPU unavailable"
+      description: "GPU is not available for Ollama inference"
+
+  # Triton Service Alerts
+  - alert: TritonServiceDown
+    expr: |
+      up{service="triton"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      component: triton
+    annotations:
+      summary: "Triton Inference Server is down"
+      description: "Triton has been unreachable for more than 1 minute"
+
+  - alert: TritonQueueDepth
+    expr: |
+      triton_inference_queue_depth > 100
+    for: 5m
+    labels:
+      severity: warning
+      component: triton
+    annotations:
+      summary: "Triton inference queue is backed up"
+      description: "Queue depth is {{ $value }} requests (threshold: 100)"
+
+  - alert: TritonGPUMemory
+    expr: |
+      nv_gpu_memory_used_mb / nv_gpu_memory_total_mb > 0.95
+    for: 2m
+    labels:
+      severity: critical
+      component: triton
+    annotations:
+      summary: "Triton GPU memory exhausted"
+      description: "GPU memory usage is {{ $value | humanizePercentage }}"
+
+  # FAISS Vector Database Alerts
+  - alert: FAISSServiceDown
+    expr: |
+      up{service="faiss"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      component: faiss
+    annotations:
+      summary: "FAISS Vector Database is down"
+      description: "FAISS has been unreachable for more than 1 minute"
+
+  - alert: FAISSIndexCorruption
+    expr: |
+      faiss_index_corruption_detected == 1
+    for: 1m
+    labels:
+      severity: critical
+      component: faiss
+    annotations:
+      summary: "FAISS index corruption detected"
+      description: "Index integrity check failed on {{ $labels.index_name }}"
+
+  - alert: FAISSSearchLatency
+    expr: |
+      histogram_quantile(0.99, rate(faiss_search_duration_ms_bucket[5m])) > 1000
+    for: 5m
+    labels:
+      severity: warning
+      component: faiss
+    annotations:
+      summary: "FAISS search latency high"
+      description: "P99 search latency is {{ $value }}ms (threshold: 1000ms)"
+
+  - alert: FAISSDiskSpace
+    expr: |
+      faiss_disk_usage_bytes / faiss_disk_capacity_bytes > 0.85
+    for: 10m
+    labels:
+      severity: warning
+      component: faiss
+    annotations:
+      summary: "FAISS disk space running low"
+      description: "Disk usage is {{ $value | humanizePercentage }}"
+
+  # Redis Cache Alerts
+  - alert: RedisMemoryUsage
+    expr: |
+      redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+    for: 5m
+    labels:
+      severity: warning
+      component: redis
+    annotations:
+      summary: "Redis memory usage high"
+      description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+  - alert: RedisConnectionCount
+    expr: |
+      redis_connected_clients > 10000
+    for: 5m
+    labels:
+      severity: warning
+      component: redis
+    annotations:
+      summary: "High Redis connection count"
+      description: "Connected clients: {{ $value }} (threshold: 10000)"
+
+  # Cost Monitoring Alerts
+  - alert: HighGPUUtilization
+    expr: |
+      avg(rate(nvidia_smi_gpu_core_utilization[5m])) > 0.95
+    for: 10m
+    labels:
+      severity: warning
+      cost_impact: high
+    annotations:
+      summary: "High GPU utilization - potential cost increase"
+      description: "GPU utilization is {{ $value | humanizePercentage }}"
+
+  - alert: ExcessiveModelLoading
+    expr: |
+      rate(ollama_model_loads_total[5m]) > 10
+    for: 5m
+    labels:
+      severity: warning
+      cost_impact: medium
+    annotations:
+      summary: "Excessive model loading detected"
+      description: "Model load rate is {{ $value }}/sec (threshold: 10/sec)"
+
+  # General Infrastructure Alerts
+  - alert: HighMemoryUsage
+    expr: |
+      (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+    for: 5m
+    labels:
+      severity: warning
+      component: infrastructure
+    annotations:
+      summary: "High memory usage on host"
+      description: "Memory usage is {{ $value | humanizePercentage }}"
+
+  - alert: DiskSpaceRunningOut
+    expr: |
+      (1 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes)) > 0.85
+    for: 10m
+    labels:
+      severity: warning
+      component: infrastructure
+    annotations:
+      summary: "Disk space running low"
+      description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.device }}"
+
+  - alert: HighNetworkTraffic
+    expr: |
+      rate(node_network_receive_bytes_total[5m]) > 1000000000
+    for: 5m
+    labels:
+      severity: info
+      component: infrastructure
+    annotations:
+      summary: "High network traffic detected"
+      description: "Network receive rate is {{ $value | humanize }}bps"
+
+# ============================================================================
+# GRAFANA DASHBOARD DEFINITIONS
+# ============================================================================
+grafana_dashboards:
+  ai_overview:
+    title: "ResearchFlow AI Overview"
+    description: "High-level view of all AI services and performance metrics"
+    tags: [ai, overview, production]
+    panels:
+      - title: "Service Status"
+        type: stat
+        metrics:
+          - expr: 'up{ai_component=~"llm_inference|model_inference|vector_store"}'
+          - colors: ['red', 'green']
+
+      - title: "Request Rate (5min)"
+        type: graph
+        metrics:
+          - expr: 'rate(ai_inference_requests_total[5m])'
+          - legend: '{{ service }}'
+
+      - title: "Error Rate (5min)"
+        type: graph
+        metrics:
+          - expr: 'rate(ai_inference_errors_total[5m])'
+          - legend: '{{ service }}'
+
+      - title: "P95 Latency"
+        type: graph
+        metrics:
+          - expr: 'histogram_quantile(0.95, rate(ai_inference_duration_ms_bucket[5m]))'
+          - legend: '{{ service }}'
+
+      - title: "Active Inferences"
+        type: stat
+        metrics:
+          - expr: 'ai_inference_active'
+
+  ollama_detail:
+    title: "Ollama LLM Performance"
+    description: "Detailed metrics for Ollama LLM inference engine"
+    tags: [ollama, inference, detailed]
+    panels:
+      - title: "Model Memory Usage"
+        type: gauge
+        metrics:
+          - expr: 'ollama_memory_usage_bytes / 1024 / 1024 / 1024'
+          - unit: GB
+
+      - title: "Token Generation Rate"
+        type: graph
+        metrics:
+          - expr: 'rate(ollama_tokens_generated_total[5m])'
+          - legend: 'tokens/sec'
+
+      - title: "Model Load Time (P99)"
+        type: graph
+        metrics:
+          - expr: 'histogram_quantile(0.99, rate(ollama_model_load_duration_ms_bucket[5m]))'
+          - legend: '{{ model_name }}'
+
+      - title: "GPU Utilization"
+        type: gauge
+        metrics:
+          - expr: 'ollama_gpu_utilization'
+          - unit: percent
+
+      - title: "Inference Queue Depth"
+        type: graph
+        metrics:
+          - expr: 'ollama_inference_queue_depth'
+
+  triton_detail:
+    title: "Triton Inference Server Metrics"
+    description: "Detailed metrics for Triton high-performance inference"
+    tags: [triton, inference, detailed]
+    panels:
+      - title: "Model Load Status"
+        type: table
+        metrics:
+          - expr: 'triton_model_load_state'
+
+      - title: "Inference Latency Distribution"
+        type: heatmap
+        metrics:
+          - expr: 'rate(triton_inference_request_duration_ms_bucket[5m])'
+
+      - title: "GPU Memory Usage"
+        type: gauge
+        metrics:
+          - expr: 'nv_gpu_memory_used_mb / nv_gpu_memory_total_mb * 100'
+          - unit: percent
+
+      - title: "Batch Size Distribution"
+        type: histogram
+        metrics:
+          - expr: 'triton_inference_batch_size'
+
+  faiss_detail:
+    title: "FAISS Vector Database Performance"
+    description: "Vector search, indexing, and storage metrics"
+    tags: [faiss, vector, database]
+    panels:
+      - title: "Search Operations/sec"
+        type: graph
+        metrics:
+          - expr: 'rate(faiss_search_operations_total[5m])'
+          - legend: '{{ index_name }}'
+
+      - title: "Search Latency (P95)"
+        type: graph
+        metrics:
+          - expr: 'histogram_quantile(0.95, rate(faiss_search_duration_ms_bucket[5m]))'
+          - legend: '{{ index_name }}'
+
+      - title: "Index Size"
+        type: stat
+        metrics:
+          - expr: 'faiss_index_size_bytes / 1024 / 1024 / 1024'
+          - unit: GB
+
+      - title: "Disk Space Usage"
+        type: gauge
+        metrics:
+          - expr: 'faiss_disk_usage_bytes / faiss_disk_capacity_bytes * 100'
+          - unit: percent
+
+      - title: "Vector Insertion Rate"
+        type: graph
+        metrics:
+          - expr: 'rate(faiss_vectors_inserted_total[5m])'
+          - legend: '{{ index_name }}'
+
+  cost_analysis:
+    title: "AI Cost Analysis"
+    description: "GPU hours, inference costs, and resource utilization"
+    tags: [cost, monitoring, business]
+    panels:
+      - title: "GPU Hours (24h)"
+        type: stat
+        metrics:
+          - expr: 'sum(rate(nvidia_smi_gpu_core_utilization[24h])) * 24'
+
+      - title: "Inference Cost ($)"
+        type: stat
+        metrics:
+          - expr: 'sum(rate(ai_inference_requests_total[24h])) * 0.0001'
+
+      - title: "Cost Trend (7d)"
+        type: graph
+        metrics:
+          - expr: 'sum(rate(ai_inference_cost_usd[7d])) by (service)'
+
+      - title: "Resource Efficiency"
+        type: gauge
+        metrics:
+          - expr: 'sum(ai_inference_requests_successful_total) / sum(ai_inference_requests_total) * 100'
+          - unit: percent
+
+  infrastructure:
+    title: "Infrastructure Health"
+    description: "System resources, network, and disk usage"
+    tags: [infrastructure, system, health]
+    panels:
+      - title: "Memory Usage"
+        type: gauge
+        metrics:
+          - expr: '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100'
+          - unit: percent
+
+      - title: "CPU Usage (5min avg)"
+        type: gauge
+        metrics:
+          - expr: 'sum(rate(node_cpu_seconds_total[5m])) * 100'
+          - unit: percent
+
+      - title: "Disk I/O"
+        type: graph
+        metrics:
+          - expr: 'rate(node_disk_read_bytes_total[5m]) + rate(node_disk_write_bytes_total[5m])'
+          - legend: 'read/write'
+
+      - title: "Network Traffic"
+        type: graph
+        metrics:
+          - expr: 'rate(node_network_receive_bytes_total[5m])'
+          - legend: '{{ device }}'

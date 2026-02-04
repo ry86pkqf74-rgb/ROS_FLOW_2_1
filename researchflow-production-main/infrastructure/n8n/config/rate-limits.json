@@ -1,0 +1,43 @@
+{
+  "$schema": "https://researchflow.io/schemas/n8n-rate-limits.json",
+  "version": "1.0.0",
+  "description": "Rate limiting configuration for n8n workflows to prevent execution budget exhaustion",
+  "global": {
+    "maxExecutionsPerMinute": 10,
+    "maxExecutionsPerHour": 100,
+    "maxExecutionsPerDay": 500,
+    "monthlyBudget": 10000,
+    "warningThreshold": 0.7,
+    "criticalThreshold": 0.9
+  },
+  "workflows": {
+    "linear-task-automation": {
+      "maxPerMinute": 5,
+      "maxPerHour": 50,
+      "maxPerDay": 200,
+      "priority": "high",
+      "retryPolicy": {
+        "maxRetries": 3,
+        "backoffMultiplier": 2,
+        "initialDelaySeconds": 30
+      }
+    },
+    "multi-agent-orchestrator": {
+      "maxPerMinute": 1,
+      "maxPerHour": 10,
+      "maxPerDay": 50,
+      "priority": "critical",
+      "retryPolicy": {
+        "maxRetries": 2,
+        "backoffMultiplier": 3,
+        "initialDelaySeconds": 60
+      }
+    }
+  },
+  "circuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 5,
+    "resetTimeoutSeconds": 300,
+    "halfOpenMaxRequests": 3
+  }
+}

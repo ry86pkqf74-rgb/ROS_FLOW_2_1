@@ -1,0 +1,151 @@
+# Prometheus Alert Rules for ResearchFlow Visualization System
+
+groups:
+  - name: visualization.alerts
+    rules:
+      # High Error Rate Alert
+      - alert: VisualizationHighErrorRate
+        expr: rate(viz_errors_total[5m]) / rate(viz_charts_generated_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "High error rate in visualization service"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      # Long Generation Time Alert
+      - alert: VisualizationSlowGeneration
+        expr: histogram_quantile(0.95, rate(viz_generation_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "Slow chart generation detected"
+          description: "95th percentile generation time is {{ $value }}s"
+
+      # Queue Depth Alert
+      - alert: VisualizationQueueDepthHigh
+        expr: viz_queue_depth > 50
+        for: 5m
+        labels:
+          severity: critical
+          service: visualization
+        annotations:
+          summary: "Visualization queue depth is high"
+          description: "Queue depth is {{ $value }} jobs"
+
+      # Cache Hit Rate Alert
+      - alert: VisualizationLowCacheHitRate
+        expr: rate(viz_cache_operations_total{operation="hit"}[10m]) / rate(viz_cache_operations_total[10m]) < 0.3
+        for: 10m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+
+      # Memory Usage Alert
+      - alert: VisualizationHighMemoryUsage
+        expr: viz_system_resources{resource_type="heap_used"} / viz_system_resources{resource_type="heap_total"} > 0.85
+        for: 5m
+        labels:
+          severity: critical
+          service: visualization
+        annotations:
+          summary: "High memory usage in visualization service"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Worker Connection Alert
+      - alert: VisualizationWorkerDown
+        expr: up{job="researchflow-worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: visualization
+        annotations:
+          summary: "Visualization worker is down"
+          description: "Worker service is not responding"
+
+      # Database Connection Alert
+      - alert: VisualizationDatabaseSlow
+        expr: histogram_quantile(0.95, rate(viz_database_operation_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "Database operations are slow"
+          description: "95th percentile DB operation time is {{ $value }}s"
+
+      # Too Many Concurrent Jobs
+      - alert: VisualizationTooManyJobs
+        expr: viz_active_jobs > 15
+        for: 2m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "Too many concurrent visualization jobs"
+          description: "{{ $value }} jobs are currently active"
+
+      # Chart Generation Rate Alert
+      - alert: VisualizationLowThroughput
+        expr: rate(viz_charts_generated_total[10m]) < 0.1
+        for: 15m
+        labels:
+          severity: info
+          service: visualization
+        annotations:
+          summary: "Low chart generation throughput"
+          description: "Only {{ $value }} charts generated per second in the last 10 minutes"
+
+  - name: visualization.cache
+    rules:
+      # Cache Error Rate
+      - alert: VisualizationCacheErrors
+        expr: rate(viz_cache_operations_total{result="error"}[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          service: visualization-cache
+        annotations:
+          summary: "High cache error rate"
+          description: "Cache error rate is {{ $value }} operations per second"
+
+      # Cache Memory Usage
+      - alert: VisualizationCacheMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: visualization-cache
+        annotations:
+          summary: "Cache memory usage is high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+  - name: visualization.quality
+    rules:
+      # Image Size Alert
+      - alert: VisualizationLargeImageSize
+        expr: histogram_quantile(0.95, rate(viz_response_size_bytes_bucket[10m])) > 5242880  # 5MB
+        for: 10m
+        labels:
+          severity: info
+          service: visualization
+        annotations:
+          summary: "Generated images are large"
+          description: "95th percentile image size is {{ $value | humanizeBytes }}"
+
+      # Timeout Rate Alert
+      - alert: VisualizationHighTimeoutRate
+        expr: rate(viz_charts_generated_total{status="timeout"}[10m]) / rate(viz_charts_generated_total[10m]) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+          service: visualization
+        annotations:
+          summary: "High timeout rate in chart generation"
+          description: "{{ $value | humanizePercentage }} of charts are timing out"

@@ -1,0 +1,627 @@
+name: SBOM Generation & Supply Chain
+
+# Software Bill of Materials generation for supply chain transparency
+# Track D - Security & Supply Chain Hardening (ROS-113)
+# Includes CycloneDX SBOM generation, Grype vulnerability scanning,
+# severity thresholds, and security badge generation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'services/worker/requirements.txt'
+      - 'services/worker/pyproject.toml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'services/worker/requirements.txt'
+      - 'services/worker/pyproject.toml'
+  schedule:
+    # Weekly SBOM refresh
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  PRODUCTION_REPO: 'ry86pkqf74-rgb/researchflow-production'
+  # Severity thresholds for security gates
+  CRITICAL_THRESHOLD: 0
+  HIGH_THRESHOLD: 5
+
+jobs:
+  # ============================================================================
+  # Node.js SBOM Generation with CycloneDX
+  # ============================================================================
+  nodejs-sbom:
+    name: Node.js SBOM
+    runs-on: ubuntu-latest
+    if: github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate CycloneDX SBOM (JSON and XML)
+        run: |
+          npx @cyclonedx/cyclonedx-npm --output-format JSON --output-file nodejs-sbom.json
+          npx @cyclonedx/cyclonedx-npm --output-format XML --output-file nodejs-sbom.xml
+          echo "SBOM generation completed for Node.js"
+
+      - name: Generate dependency tree
+        run: |
+          npm ls --all --json > nodejs-dependencies.json 2>/dev/null || true
+          echo "Dependency tree generated"
+
+      - name: Analyze SBOM metadata
+        run: |
+          echo "=== Node.js SBOM Analysis ==="
+          TOTAL_DEPS=$(jq '.components | length' nodejs-sbom.json 2>/dev/null || echo "0")
+          METADATA=$(jq '.metadata' nodejs-sbom.json 2>/dev/null || echo "{}")
+
+          echo "Total components: $TOTAL_DEPS"
+          echo "Metadata: $METADATA"
+
+          # Count by license
+          echo ""
+          echo "License distribution:"
+          jq -r '.components[].licenses[]?.license.id // "Unknown"' nodejs-sbom.json 2>/dev/null | sort | uniq -c | sort -rn | head -10
+
+          # Check for concerning licenses (GPL/AGPL)
+          echo ""
+          echo "Checking for GPL/AGPL licenses..."
+          GPL_COUNT=$(jq -r '.components[].licenses[]?.license.id // ""' nodejs-sbom.json 2>/dev/null | grep -i -E '(gpl|agpl)' | wc -l || echo "0")
+          if [ "$GPL_COUNT" -gt 0 ]; then
+            echo "::warning::Found $GPL_COUNT GPL-family licensed packages. Review for license compatibility."
+          else
+            echo "No GPL-family licenses detected"
+          fi
+
+      - name: Upload Node.js SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nodejs-sbom
+          path: |
+            nodejs-sbom.json
+            nodejs-sbom.xml
+            nodejs-dependencies.json
+          retention-days: 90
+          compression-level: 6
+
+  # ============================================================================
+  # Python SBOM Generation with CycloneDX
+  # ============================================================================
+  python-sbom:
+    name: Python SBOM
+    runs-on: ubuntu-latest
+    if: github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install SBOM and license generation tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install cyclonedx-bom pip-licenses
+
+      - name: Install project dependencies
+        run: |
+          pip install -r services/worker/requirements.txt
+
+      - name: Generate CycloneDX SBOM (JSON and XML)
+        run: |
+          cyclonedx-py requirements services/worker/requirements.txt -o python-sbom.json --format json
+          cyclonedx-py requirements services/worker/requirements.txt -o python-sbom.xml --format xml
+          echo "SBOM generation completed for Python"
+
+      - name: Generate license reports
+        run: |
+          pip-licenses --format=json --output-file=python-licenses.json
+          pip-licenses --format=markdown --output-file=python-licenses.md
+          echo "License reports generated"
+
+      - name: Analyze SBOM metadata
+        run: |
+          echo "=== Python SBOM Analysis ==="
+          TOTAL_DEPS=$(jq '.components | length' python-sbom.json 2>/dev/null || echo "0")
+          echo "Total components: $TOTAL_DEPS"
+
+          echo ""
+          echo "License distribution:"
+          jq -r '.[].License' python-licenses.json 2>/dev/null | sort | uniq -c | sort -rn | head -10
+
+          # Check for deprecated packages
+          echo ""
+          echo "Checking for known deprecated packages..."
+          jq -r '.components[].name' python-sbom.json 2>/dev/null | while read pkg; do
+            case "$pkg" in
+              *imp*) echo "::warning::Deprecated module found: $pkg" ;;
+              *pkg_resources*) echo "::warning::Deprecated module found: $pkg" ;;
+            esac
+          done
+
+      - name: Upload Python SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-sbom
+          path: |
+            python-sbom.json
+            python-sbom.xml
+            python-licenses.json
+            python-licenses.md
+          retention-days: 90
+          compression-level: 6
+
+  # ============================================================================
+  # Container SBOM Generation using Syft
+  # ============================================================================
+  container-sbom:
+    name: Container SBOM
+    runs-on: ubuntu-latest
+    if: github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Syft (SBOM generation tool)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft --version
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        run: |
+          if [ -f "Dockerfile" ]; then
+            docker build -t researchflow:scan . --progress=plain
+            echo "Docker image built for scanning"
+          else
+            echo "No root Dockerfile found, checking for service Dockerfiles"
+          fi
+
+      - name: Generate container SBOM with Syft
+        continue-on-error: true
+        run: |
+          if docker image inspect researchflow:scan &>/dev/null; then
+            # Generate CycloneDX format
+            syft researchflow:scan -o cyclonedx-json > container-sbom.json 2>/dev/null || echo '{"components": []}' > container-sbom.json
+            # Generate SPDX format
+            syft researchflow:scan -o spdx-json > container-sbom-spdx.json 2>/dev/null || echo '{"spdxVersion":"SPDX-2.3","dataLicense":"CC0-1.0","DOCUMENT":"","creationInfo":{}}' > container-sbom-spdx.json
+            echo "Container SBOM generated successfully"
+          else
+            echo "No Docker image available for scanning"
+            echo '{"components": []}' > container-sbom.json
+            echo '{"spdxVersion":"SPDX-2.3"}' > container-sbom-spdx.json
+          fi
+
+      - name: Upload Container SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-sbom
+          path: |
+            container-sbom.json
+            container-sbom-spdx.json
+          retention-days: 90
+          compression-level: 6
+          if-no-files-found: ignore
+
+  # ============================================================================
+  # Vulnerability Scanning with Grype
+  # ============================================================================
+  vulnerability-scan:
+    name: Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: [nodejs-sbom, python-sbom]
+    if: github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    outputs:
+      critical_count: ${{ steps.summary.outputs.critical_count }}
+      high_count: ${{ steps.summary.outputs.high_count }}
+      vulnerability_status: ${{ steps.summary.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-sbom'
+          merge-multiple: true
+
+      - name: Install Grype (vulnerability scanner)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype --version
+
+      - name: Scan Node.js dependencies with Grype
+        continue-on-error: true
+        run: |
+          echo "=== Scanning Node.js SBOM for vulnerabilities ==="
+          grype sbom:nodejs-sbom.json -o json > nodejs-vulnerabilities.json 2>/dev/null || echo '{"matches": []}' > nodejs-vulnerabilities.json
+          
+          CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' nodejs-vulnerabilities.json)
+          HIGH=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' nodejs-vulnerabilities.json)
+          MEDIUM=$(jq '[.matches[] | select(.vulnerability.severity == "Medium")] | length' nodejs-vulnerabilities.json)
+          LOW=$(jq '[.matches[] | select(.vulnerability.severity == "Low")] | length' nodejs-vulnerabilities.json)
+          
+          echo "Node.js Vulnerabilities:"
+          echo "  Critical: $CRITICAL"
+          echo "  High: $HIGH"
+          echo "  Medium: $MEDIUM"
+          echo "  Low: $LOW"
+          
+          # Store for later use
+          echo "NODE_CRITICAL=$CRITICAL" >> $GITHUB_ENV
+          echo "NODE_HIGH=$HIGH" >> $GITHUB_ENV
+          
+          if [ "$CRITICAL" -gt "${{ env.CRITICAL_THRESHOLD }}" ]; then
+            echo "::error::Critical vulnerabilities exceed threshold ($CRITICAL > ${{ env.CRITICAL_THRESHOLD }})"
+            exit 1
+          fi
+
+      - name: Scan Python dependencies with Grype
+        continue-on-error: true
+        run: |
+          echo "=== Scanning Python SBOM for vulnerabilities ==="
+          grype sbom:python-sbom.json -o json > python-vulnerabilities.json 2>/dev/null || echo '{"matches": []}' > python-vulnerabilities.json
+          
+          CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' python-vulnerabilities.json)
+          HIGH=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' python-vulnerabilities.json)
+          MEDIUM=$(jq '[.matches[] | select(.vulnerability.severity == "Medium")] | length' python-vulnerabilities.json)
+          LOW=$(jq '[.matches[] | select(.vulnerability.severity == "Low")] | length' python-vulnerabilities.json)
+          
+          echo "Python Vulnerabilities:"
+          echo "  Critical: $CRITICAL"
+          echo "  High: $HIGH"
+          echo "  Medium: $MEDIUM"
+          echo "  Low: $LOW"
+          
+          # Store for later use
+          echo "PYTHON_CRITICAL=$CRITICAL" >> $GITHUB_ENV
+          echo "PYTHON_HIGH=$HIGH" >> $GITHUB_ENV
+          
+          if [ "$CRITICAL" -gt "${{ env.CRITICAL_THRESHOLD }}" ]; then
+            echo "::error::Critical vulnerabilities exceed threshold ($CRITICAL > ${{ env.CRITICAL_THRESHOLD }})"
+            exit 1
+          fi
+
+      - name: Generate vulnerability summary
+        id: summary
+        continue-on-error: true
+        run: |
+          TOTAL_CRITICAL=$((${NODE_CRITICAL:-0} + ${PYTHON_CRITICAL:-0}))
+          TOTAL_HIGH=$((${NODE_HIGH:-0} + ${PYTHON_HIGH:-0}))
+          
+          echo "critical_count=$TOTAL_CRITICAL" >> $GITHUB_OUTPUT
+          echo "high_count=$TOTAL_HIGH" >> $GITHUB_OUTPUT
+          
+          if [ "$TOTAL_CRITICAL" -gt "${{ env.CRITICAL_THRESHOLD }}" ]; then
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+          elif [ "$TOTAL_HIGH" -gt "${{ env.HIGH_THRESHOLD }}" ]; then
+            echo "status=WARNING" >> $GITHUB_OUTPUT
+          else
+            echo "status=PASSED" >> $GITHUB_OUTPUT
+          fi
+          
+          echo ""
+          echo "Total Vulnerabilities Summary:"
+          echo "  Critical: $TOTAL_CRITICAL"
+          echo "  High: $TOTAL_HIGH"
+          echo "  Status: $(cat $GITHUB_OUTPUT | grep status= | cut -d'=' -f2)"
+
+      - name: Upload vulnerability reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerability-reports
+          path: |
+            nodejs-vulnerabilities.json
+            python-vulnerabilities.json
+          retention-days: 90
+          compression-level: 6
+
+  # ============================================================================
+  # Generate Security Badges
+  # ============================================================================
+  security-badges:
+    name: Generate Security Badges
+    runs-on: ubuntu-latest
+    needs: vulnerability-scan
+    if: always() && github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - name: Create security status badge
+        run: |
+          STATUS="${{ needs.vulnerability-scan.outputs.vulnerability_status }}"
+          CRITICAL="${{ needs.vulnerability-scan.outputs.critical_count }}"
+          HIGH="${{ needs.vulnerability-scan.outputs.high_count }}"
+          
+          # Determine badge color based on status
+          case "$STATUS" in
+            PASSED)
+              COLOR="brightgreen"
+              MESSAGE="security-passed"
+              ;;
+            WARNING)
+              COLOR="yellow"
+              MESSAGE="vulnerabilities-found"
+              ;;
+            FAILED)
+              COLOR="red"
+              MESSAGE="critical-vulnerabilities"
+              ;;
+            *)
+              COLOR="lightgrey"
+              MESSAGE="unknown"
+              ;;
+          esac
+          
+          echo "Badge Status: $STATUS"
+          echo "Color: $COLOR"
+          echo "Message: $MESSAGE"
+          
+          # Create badge file
+          cat > security-badge.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "Security",
+            "message": "$MESSAGE",
+            "color": "$COLOR",
+            "cacheSeconds": 3600,
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "critical_count": $CRITICAL,
+            "high_count": $HIGH
+          }
+          EOF
+          
+          cat security-badge.json
+
+      - name: Create vulnerability count badge
+        run: |
+          CRITICAL="${{ needs.vulnerability-scan.outputs.critical_count }}"
+          HIGH="${{ needs.vulnerability-scan.outputs.high_count }}"
+          
+          cat > vulnerability-count-badge.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "Vulnerabilities",
+            "message": "Critical: $CRITICAL, High: $HIGH",
+            "color": "informational",
+            "cacheSeconds": 3600
+          }
+          EOF
+          
+          cat vulnerability-count-badge.json
+
+      - name: Upload security badges
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-badges
+          path: |
+            security-badge.json
+            vulnerability-count-badge.json
+          retention-days: 90
+
+  # ============================================================================
+  # Combined SBOM and Security Report
+  # ============================================================================
+  combined-report:
+    name: Combined SBOM & Security Report
+    runs-on: ubuntu-latest
+    needs: [nodejs-sbom, python-sbom, vulnerability-scan, security-badges]
+    if: always() && github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate comprehensive report
+        run: |
+          echo "=== ResearchFlow SBOM & Security Report ==="
+          echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Git SHA: ${{ github.sha }}"
+          echo "Git Branch: ${{ github.ref }}"
+          echo ""
+
+          # Parse component counts
+          NODE_DEPS=$(jq '.components | length' nodejs-sbom/nodejs-sbom.json 2>/dev/null || echo "0")
+          PYTHON_DEPS=$(jq '.components | length' python-sbom/python-sbom.json 2>/dev/null || echo "0")
+          TOTAL_DEPS=$((NODE_DEPS + PYTHON_DEPS))
+
+          echo "Component Summary:"
+          echo "  Node.js packages: $NODE_DEPS"
+          echo "  Python packages: $PYTHON_DEPS"
+          echo "  Total components: $TOTAL_DEPS"
+          echo ""
+
+          # Vulnerability summary
+          NODE_VULNS=$(jq '.matches | length' vulnerability-reports/nodejs-vulnerabilities.json 2>/dev/null || echo "0")
+          PYTHON_VULNS=$(jq '.matches | length' vulnerability-reports/python-vulnerabilities.json 2>/dev/null || echo "0")
+          TOTAL_VULNS=$((NODE_VULNS + PYTHON_VULNS))
+
+          echo "Vulnerability Summary:"
+          echo "  Node.js vulnerabilities: $NODE_VULNS"
+          echo "  Python vulnerabilities: $PYTHON_VULNS"
+          echo "  Total vulnerabilities: $TOTAL_VULNS"
+          echo ""
+
+          # Critical and High severity breakdown
+          NODE_CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' vulnerability-reports/nodejs-vulnerabilities.json 2>/dev/null || echo "0")
+          NODE_HIGH=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' vulnerability-reports/nodejs-vulnerabilities.json 2>/dev/null || echo "0")
+          PYTHON_CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' vulnerability-reports/python-vulnerabilities.json 2>/dev/null || echo "0")
+          PYTHON_HIGH=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' vulnerability-reports/python-vulnerabilities.json 2>/dev/null || echo "0")
+
+          TOTAL_CRITICAL=$((NODE_CRITICAL + PYTHON_CRITICAL))
+          TOTAL_HIGH=$((NODE_HIGH + PYTHON_HIGH))
+
+          echo "Severity Breakdown:"
+          echo "  Critical: $TOTAL_CRITICAL (Node.js: $NODE_CRITICAL, Python: $PYTHON_CRITICAL)"
+          echo "  High: $TOTAL_HIGH (Node.js: $NODE_HIGH, Python: $PYTHON_HIGH)"
+          echo ""
+
+          # Create comprehensive metadata
+          cat > sbom-report.json << EOF
+          {
+            "metadata": {
+              "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "git_sha": "${{ github.sha }}",
+              "git_ref": "${{ github.ref }}",
+              "git_repository": "${{ github.repository }}"
+            },
+            "components": {
+              "nodejs": {
+                "total": $NODE_DEPS,
+                "vulnerabilities": $NODE_VULNS,
+                "critical": $NODE_CRITICAL,
+                "high": $NODE_HIGH
+              },
+              "python": {
+                "total": $PYTHON_DEPS,
+                "vulnerabilities": $PYTHON_VULNS,
+                "critical": $PYTHON_CRITICAL,
+                "high": $PYTHON_HIGH
+              },
+              "total": {
+                "components": $TOTAL_DEPS,
+                "vulnerabilities": $TOTAL_VULNS,
+                "critical": $TOTAL_CRITICAL,
+                "high": $TOTAL_HIGH
+              }
+            },
+            "sbom_format": {
+              "primary": "CycloneDX",
+              "version": "1.5",
+              "also_generated": ["SPDX-2.3"]
+            },
+            "thresholds": {
+              "critical": "${{ env.CRITICAL_THRESHOLD }}",
+              "high": "${{ env.HIGH_THRESHOLD }}"
+            },
+            "security_status": "${{ needs.vulnerability-scan.outputs.vulnerability_status }}"
+          }
+          EOF
+
+          cat sbom-report.json
+
+      - name: Upload combined report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-combined-report
+          path: sbom-report.json
+          retention-days: 90
+
+      - name: Post summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let nodeCount = 0;
+            let pythonCount = 0;
+            let nodeCritical = 0;
+            let pythonCritical = 0;
+            let nodeHigh = 0;
+            let pythonHigh = 0;
+
+            try {
+              const nodeSbom = JSON.parse(fs.readFileSync('nodejs-sbom/nodejs-sbom.json', 'utf8'));
+              nodeCount = nodeSbom.components?.length || 0;
+              const nodeVulns = JSON.parse(fs.readFileSync('vulnerability-reports/nodejs-vulnerabilities.json', 'utf8'));
+              nodeCritical = (nodeVulns.matches || []).filter(m => m.vulnerability.severity === 'Critical').length;
+              nodeHigh = (nodeVulns.matches || []).filter(m => m.vulnerability.severity === 'High').length;
+            } catch (e) { console.log('Node.js data not available'); }
+
+            try {
+              const pythonSbom = JSON.parse(fs.readFileSync('python-sbom/python-sbom.json', 'utf8'));
+              pythonCount = pythonSbom.components?.length || 0;
+              const pythonVulns = JSON.parse(fs.readFileSync('vulnerability-reports/python-vulnerabilities.json', 'utf8'));
+              pythonCritical = (pythonVulns.matches || []).filter(m => m.vulnerability.severity === 'Critical').length;
+              pythonHigh = (pythonVulns.matches || []).filter(m => m.vulnerability.severity === 'High').length;
+            } catch (e) { console.log('Python data not available'); }
+
+            const totalCount = nodeCount + pythonCount;
+            const totalCritical = nodeCritical + pythonCritical;
+            const totalHigh = nodeHigh + pythonHigh;
+
+            let statusEmoji = '✅';
+            if (totalCritical > 0) statusEmoji = '🔴';
+            else if (totalHigh > 0) statusEmoji = '🟡';
+
+            const body = `## ${ statusEmoji } SBOM & Security Report
+
+            ### Component Summary
+            | Ecosystem | Components |
+            |-----------|------------|
+            | Node.js | ${nodeCount} |
+            | Python | ${pythonCount} |
+            | **Total** | **${totalCount}** |
+
+            ### Vulnerability Summary
+            | Severity | Count |
+            |----------|-------|
+            | Critical | ${totalCritical} |
+            | High | ${totalHigh} |
+
+            ### Details by Ecosystem
+            **Node.js:** ${nodeCritical} critical, ${nodeHigh} high  
+            **Python:** ${pythonCritical} critical, ${pythonHigh} high
+
+            ### SBOM Artifacts
+            - CycloneDX (JSON & XML) for Node.js and Python
+            - SPDX-2.3 format for container
+            - License reports and detailed vulnerability analysis
+            - Specification: CycloneDX 1.5
+
+            Artifacts available in workflow artifacts.
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+  # ============================================================================
+  # Fail Job if Critical Vulnerabilities Found
+  # ============================================================================
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: [vulnerability-scan]
+    if: always() && github.repository == 'ry86pkqf74-rgb/researchflow-production'
+    steps:
+      - name: Check security status
+        run: |
+          STATUS="${{ needs.vulnerability-scan.outputs.vulnerability_status }}"
+          CRITICAL="${{ needs.vulnerability-scan.outputs.critical_count }}"
+          HIGH="${{ needs.vulnerability-scan.outputs.high_count }}"
+          
+          echo "Security Status: $STATUS"
+          echo "Critical: $CRITICAL"
+          echo "High: $HIGH"
+          
+          if [ "$STATUS" = "FAILED" ]; then
+            echo "::error::Security gate failed: Critical vulnerabilities detected"
+            exit 1
+          elif [ "$STATUS" = "WARNING" ]; then
+            echo "::warning::Security gate warning: High vulnerabilities detected ($HIGH > ${{ env.HIGH_THRESHOLD }})"
+          else
+            echo "Security gate passed"
+          fi

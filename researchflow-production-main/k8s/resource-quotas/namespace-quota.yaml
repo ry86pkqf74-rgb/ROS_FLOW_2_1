@@ -1,0 +1,58 @@
+# ============================================
+# ResearchFlow - Namespace Resource Quota
+# ============================================
+# Phase 6.1: Resource Management
+# Linear Issue: ROS-102
+# ============================================
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: researchflow-quota
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: resource-management
+spec:
+  hard:
+    # CPU Quotas
+    requests.cpu: "4"
+    limits.cpu: "8"
+
+    # Memory Quotas
+    requests.memory: 8Gi
+    limits.memory: 16Gi
+
+    # Storage Quotas
+    requests.storage: 100Gi
+    persistentvolumeclaims: "10"
+
+    # Object Count Quotas
+    pods: "20"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+    replicationcontrollers: "5"
+
+    # GPU Resources (if NVIDIA GPU operator is installed)
+    requests.nvidia.com/gpu: "2"
+    limits.nvidia.com/gpu: "2"
+---
+# Quota for development/staging workloads
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: researchflow-dev-quota
+  namespace: researchflow-dev
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: resource-management
+    environment: development
+spec:
+  hard:
+    requests.cpu: "2"
+    limits.cpu: "4"
+    requests.memory: 4Gi
+    limits.memory: 8Gi
+    pods: "10"
+    services: "5"
+    persistentvolumeclaims: "5"

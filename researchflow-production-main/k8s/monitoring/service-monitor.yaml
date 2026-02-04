@@ -1,0 +1,138 @@
+# ============================================
+# ResearchFlow - Service Monitor for Prometheus
+# ============================================
+# Phase 6.1: Kubernetes Monitoring
+# Linear Issue: ROS-102
+# Requires: Prometheus Operator CRDs
+# ============================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: researchflow-api
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: orchestrator
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "go_.*"
+          action: drop
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+---
+# Service Monitor for Worker service
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: researchflow-worker
+  namespace: researchflow
+  labels:
+    app: researchflow-worker
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: worker
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# Service Monitor for Guideline Engine
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: guideline-engine
+  namespace: researchflow
+  labels:
+    app: guideline-engine
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: guideline-engine
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# Service Monitor for PostgreSQL
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-exporter
+  namespace: researchflow
+  labels:
+    app: postgres
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+---
+# Service Monitor for Redis
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-exporter
+  namespace: researchflow
+  labels:
+    app: redis
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: redis-exporter
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

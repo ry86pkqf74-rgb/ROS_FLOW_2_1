@@ -1,0 +1,204 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información"
+  },
+  "nav": {
+    "home": "Inicio",
+    "pipeline": "Pipeline",
+    "quality": "Calidad",
+    "governance": "Gobernanza",
+    "search": "Buscar",
+    "community": "Comunidad",
+    "settings": "Configuración"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "signUp": "Registrarse",
+    "welcome": "Bienvenido",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "rememberMe": "Recordarme"
+  },
+  "pipeline": {
+    "title": "Pipeline de Investigación",
+    "description": "Gestiona tus proyectos de investigación y artefactos",
+    "newProject": "Nuevo Proyecto",
+    "allProjects": "Todos los Proyectos",
+    "myProjects": "Mis Proyectos",
+    "archived": "Archivados",
+    "status": {
+      "draft": "Borrador",
+      "inProgress": "En Progreso",
+      "review": "En Revisión",
+      "published": "Publicado",
+      "archived": "Archivado"
+    }
+  },
+  "artifacts": {
+    "title": "Artefactos",
+    "upload": "Subir Artefacto",
+    "download": "Descargar",
+    "types": {
+      "dataset": "Conjunto de Datos",
+      "manuscript": "Manuscrito",
+      "analysis": "Análisis",
+      "figure": "Figura",
+      "supplementary": "Suplementario"
+    }
+  },
+  "organizations": {
+    "title": "Organizaciones",
+    "create": "Crear Organización",
+    "settings": "Configuración de Organización",
+    "members": "Miembros",
+    "invites": "Invitaciones",
+    "billing": "Facturación",
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "member": "Miembro",
+      "viewer": "Visualizador"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Bienvenido a ResearchFlow",
+      "description": "Comienza con tu flujo de trabajo de investigación"
+    },
+    "organization": {
+      "title": "Crear Organización",
+      "description": "Configura el espacio de trabajo de tu equipo"
+    },
+    "invite": {
+      "title": "Invitar Miembros del Equipo",
+      "description": "Colabora con tu equipo"
+    },
+    "project": {
+      "title": "Crear Primer Proyecto",
+      "description": "Inicia tu primer proyecto de investigación"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "appearance": "Apariencia",
+    "notifications": "Notificaciones",
+    "account": "Cuenta",
+    "privacy": "Privacidad",
+    "theme": {
+      "title": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    },
+    "language": {
+      "title": "Idioma",
+      "description": "Selecciona tu idioma preferido"
+    }
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Buscar artefactos, manuscritos o investigaciones...",
+    "noResults": "No se encontraron resultados",
+    "filters": {
+      "all": "Todos los Tipos",
+      "manuscripts": "Manuscritos",
+      "artifacts": "Artefactos"
+    }
+  },
+  "community": {
+    "title": "Comunidad",
+    "comingSoon": "Comunidad Próximamente",
+    "description": "El foro de la comunidad se está configurando. ¡Vuelve pronto!"
+  },
+  "quality": {
+    "title": "Panel de Calidad",
+    "score": "Puntuación de Calidad",
+    "metrics": "Métricas de Calidad",
+    "issues": "Problemas Encontrados",
+    "passed": "Verificaciones Aprobadas"
+  },
+  "errors": {
+    "notFound": "Página no encontrada",
+    "unauthorized": "Acceso no autorizado",
+    "forbidden": "Acceso prohibido",
+    "serverError": "Error del servidor",
+    "networkError": "Error de red",
+    "tryAgain": "Intentar de Nuevo"
+  },
+  "workflow": {
+    "title": "Flujo de Trabajo",
+    "stages": {
+      "1": { "name": "Generación de Hipótesis", "description": "Genera y refina hipótesis de investigación con asistencia de IA" },
+      "2": { "name": "Revisión de Literatura", "description": "Busca y resume literatura relevante" },
+      "3": { "name": "Diseño Experimental", "description": "Diseña experimentos con parámetros validados por esquema" },
+      "4": { "name": "Recolección de Datos", "description": "Recolecta y gestiona datos de investigación con manifiestos" },
+      "5": { "name": "Preprocesamiento de Datos", "description": "Limpia, valida y escanea datos para PHI" },
+      "6": { "name": "Análisis", "description": "Ejecuta análisis computacional con seguimiento de progreso" },
+      "7": { "name": "Modelado Estadístico", "description": "Construye y valida modelos estadísticos" },
+      "8": { "name": "Visualización", "description": "Crea figuras y visualizaciones de datos" },
+      "9": { "name": "Interpretación", "description": "Colabora en la interpretación de resultados" },
+      "10": { "name": "Validación", "description": "Revisa y valida hallazgos" },
+      "11": { "name": "Iteración", "description": "Refina el análisis con opciones de enrutamiento de IA" },
+      "12": { "name": "Documentación", "description": "Genera informes y documentación" },
+      "13": { "name": "Revisión Interna", "description": "Simula retroalimentación de revisión por pares" },
+      "14": { "name": "Revisión Ética", "description": "Verifica cumplimiento y estándares éticos" },
+      "15": { "name": "Empaquetado de Artefactos", "description": "Empaqueta artefactos para compartir" },
+      "16": { "name": "Entrega de Colaboración", "description": "Comparte con colaboradores y revisores" },
+      "17": { "name": "Archivado", "description": "Archiva proyecto con registro de auditoría" },
+      "18": { "name": "Evaluación de Impacto", "description": "Rastrea métricas de impacto de investigación" },
+      "19": { "name": "Diseminación", "description": "Prepara para publicación y compartir" },
+      "20": { "name": "Preparación de Conferencia", "description": "Genera materiales para conferencias" }
+    }
+  },
+  "dialogs": {
+    "confirm": {
+      "title": "Confirmar Acción",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "deleteTitle": "Confirmación de Eliminación",
+      "deleteDescription": "Esta acción no se puede deshacer. ¿Estás seguro de que deseas continuar?",
+      "phiTitle": "Solicitud de Acceso a PHI",
+      "phiDescription": "Estás solicitando acceso a datos que pueden contener Información de Salud Protegida (PHI). Esta acción será registrada.",
+      "exportTitle": "Confirmación de Exportación",
+      "exportDescription": "Estás a punto de exportar datos. Por favor asegúrate de que toda la PHI haya sido correctamente redactada.",
+      "typeToConfirm": "Escribe \"{{text}}\" para confirmar"
+    }
+  },
+  "shortcuts": {
+    "title": "Atajos de Teclado",
+    "navigation": "Navegación",
+    "editing": "Edición",
+    "actions": "Acciones",
+    "general": "General"
+  },
+  "breadcrumbs": {
+    "home": "Inicio"
+  },
+  "governance": {
+    "demoMode": "Modo Demo",
+    "liveMode": "Modo Live",
+    "demoRestriction": "Esta acción está restringida en modo Demo",
+    "phiRequired": "Se requiere escaneo de PHI antes de continuar"
+  }
+}

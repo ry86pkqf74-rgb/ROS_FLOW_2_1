@@ -1,0 +1,187 @@
+# =============================================================================
+# ResearchFlow - Vertical Pod Autoscaler (VPA) Configuration
+# =============================================================================
+# Automatically adjusts CPU and memory requests/limits based on actual usage.
+# Requires VPA to be installed in the cluster.
+#
+# Linear Issues: ROS-74, ROS-75, ROS-76
+# =============================================================================
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: orchestrator-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orchestrator
+  updatePolicy:
+    # Auto mode updates pods automatically
+    # Use "Off" for recommendations only, "Initial" for initial sizing only
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: orchestrator
+        # Minimum resources (don't scale below this)
+        minAllowed:
+          cpu: "250m"
+          memory: "512Mi"
+        # Maximum resources (don't scale above this)
+        maxAllowed:
+          cpu: "4"
+          memory: "8Gi"
+        # Control which resources VPA manages
+        controlledResources: ["cpu", "memory"]
+        # Control how VPA updates resources
+        controlledValues: RequestsAndLimits
+
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: worker-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: worker
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: worker
+        minAllowed:
+          cpu: "500m"
+          memory: "1Gi"
+        maxAllowed:
+          cpu: "8"
+          memory: "16Gi"
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: web-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: web
+        minAllowed:
+          cpu: "100m"
+          memory: "256Mi"
+        maxAllowed:
+          cpu: "2"
+          memory: "4Gi"
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+
+---
+# GPU-enabled VPA for Ollama (if using GPU nodes)
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ollama-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ollama
+  updatePolicy:
+    # Use "Off" for GPU workloads to get recommendations without auto-update
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: ollama
+        minAllowed:
+          cpu: "2"
+          memory: "8Gi"
+        maxAllowed:
+          cpu: "16"
+          memory: "64Gi"
+        # Only manage CPU and memory, not GPU
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsOnly
+
+---
+# VPA for ChromaDB vector store
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: chromadb-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: chromadb
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: chromadb
+  updatePolicy:
+    # Use Initial for stateful workloads to avoid disruption
+    updateMode: "Initial"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: chromadb
+        minAllowed:
+          cpu: "500m"
+          memory: "2Gi"
+        maxAllowed:
+          cpu: "4"
+          memory: "16Gi"
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits
+
+---
+# VPA for Redis
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: redis-vpa
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: redis
+  updatePolicy:
+    updateMode: "Initial"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: redis
+        minAllowed:
+          cpu: "100m"
+          memory: "256Mi"
+        maxAllowed:
+          cpu: "2"
+          memory: "8Gi"
+        controlledResources: ["cpu", "memory"]
+        controlledValues: RequestsAndLimits

@@ -1,0 +1,6 @@
+patient_id,age,gender,treatment,outcome,follow_up_days
+SYN001,55,M,mediterranean,0,365
+SYN002,62,F,control,1,280
+SYN003,48,M,mediterranean,0,365
+SYN004,71,F,mediterranean,0,365
+SYN005,58,M,control,0,365

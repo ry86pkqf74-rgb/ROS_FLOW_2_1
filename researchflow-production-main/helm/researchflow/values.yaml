@@ -1,0 +1,28 @@
+# ResearchFlow Helm default values
+replicaCount: 2
+image:
+  repository: researchflow
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50
+config:
+  nodeEnv: production
+  logLevel: warn
+  governanceMode: LIVE
+  phiScanEnabled: "true"
+  phiFailClosed: "true"

@@ -1,0 +1,124 @@
+# =============================================================================
+# Load Test on Release (peak-load)
+# =============================================================================
+# Runs peak-load k6 test on release tags (v*) and stores results as artifacts.
+
+name: Load Test (Release)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: load-test-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  peak-load:
+    name: Peak load (50 VUs, 10 min)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.repository == 'ry86pkqf74-rgb/researchflow-production'
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ros
+          POSTGRES_PASSWORD: ros
+          POSTGRES_DB: ros
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install K6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates gnupg
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+          k6 version
+
+      - name: Install Node dependencies
+        run: npm ci
+        env:
+          CI: true
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          echo "" >> .env
+          echo "GOVERNANCE_MODE=DEMO" >> .env
+          echo "JWT_SECRET=ci-test-secret-minimum-32-characters-required" >> .env
+          echo "AUTH_ALLOW_STATELESS_JWT=true" >> .env
+          echo "DATABASE_URL=postgresql://ros:ros@localhost:5432/ros" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+
+      - name: Build and start services
+        run: |
+          docker compose build --no-cache orchestrator worker web
+          docker compose up -d postgres redis
+          sleep 10
+          docker compose up -d orchestrator worker web
+          sleep 45
+
+      - name: Wait for services to be healthy
+        run: |
+          timeout 120 bash -c 'until curl -sf http://localhost:3001/health; do sleep 3; done'
+          timeout 120 bash -c 'until curl -sf http://localhost:8000/health; do sleep 3; done'
+
+      - name: Create k6 reports directory
+        run: mkdir -p tests/perf/k6/reports
+
+      - name: Run peak-load k6 test
+        run: |
+          k6 run tests/perf/k6/scenarios/workflow-load.js \
+            --config tests/perf/k6/config/peak-load.json \
+            --summary-export=tests/perf/k6/reports/k6-summary.json \
+            --out json=tests/perf/k6/reports/k6-results.json
+        env:
+          BASE_URL: http://localhost:3001
+          CI: true
+
+      - name: Upload load test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-release-reports
+          path: tests/perf/k6/reports/
+          retention-days: 30
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v || true

@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.npm/
+.pnpm-store/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD (not needed in container)
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+CHANGELOG*
+LICENSE*
+
+# Environment (HIPAA - never include)
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PHI/Sensitive (HIPAA compliance)
+# Note: services/web/src/components/phi/ contains UI components, not PHI data
+**/patient-data/
+**/*.phi.*
+**/audit-logs/
+# Exclude actual PHI data directories (but not React component directories)
+data/phi/
+uploads/phi/
+
+# Large files
+*.zip
+*.tar.gz
+*.sql

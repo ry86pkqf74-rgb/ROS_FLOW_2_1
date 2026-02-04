@@ -1,0 +1,49 @@
+# Prometheus Configuration for ResearchFlow Visualization System
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "visualization_alerts.yml"
+
+scrape_configs:
+  # ResearchFlow Orchestrator Metrics
+  - job_name: 'researchflow-orchestrator'
+    static_configs:
+      - targets: ['orchestrator:3001']
+    metrics_path: '/api/visualization/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # ResearchFlow Worker Metrics  
+  - job_name: 'researchflow-worker'
+    static_configs:
+      - targets: ['worker:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis Metrics (if redis_exporter is available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    
+  # PostgreSQL Metrics (if postgres_exporter is available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  # System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093

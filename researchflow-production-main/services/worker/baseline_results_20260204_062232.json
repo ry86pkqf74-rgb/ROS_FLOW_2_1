@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-02-04T06:22:32.273418",
+  "system_info": {
+    "platform": "macOS-26.2-arm64-arm-64bit",
+    "python_version": "3.9.6",
+    "cpu_cores": 10,
+    "memory_total_gb": 32.0,
+    "memory_available_gb": 8.85,
+    "memory_percent": 72.3,
+    "disk_total_gb": 1858.19,
+    "disk_free_gb": 1337.56
+  },
+  "performance_metrics": {
+    "memory_test": {
+      "work_time": 0.0017590522766113281,
+      "memory_growth_mb": 2.78125,
+      "operations_per_second": 5684879.37110328
+    }
+  },
+  "component_tests": {
+    "analytics": {
+      "success": false,
+      "error": "'EnhancedMonitor' object has no attribute 'get_performance_insights'"
+    },
+    "sample_processing": {
+      "success": true,
+      "processing_time": 1.4066696166992188e-05,
+      "sample_size": 10,
+      "data_structure_valid": true
+    }
+  }
+}

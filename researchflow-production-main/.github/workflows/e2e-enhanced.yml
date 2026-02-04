@@ -1,0 +1,44 @@
+name: Enhanced E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e-statistical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd services/worker
+          pip install -r requirements.txt
+      - name: Run statistical pipeline tests
+        run: |
+          cd services/worker
+          pytest tests/integration/test_statistical_pipeline.py -v
+
+  e2e-collaboration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup services
+        run: docker-compose -f docker-compose.test.yml up -d
+      - name: Test WebSocket collaboration
+        run: |
+          cd services/orchestrator
+          npm run test:websocket
+      - name: Test visualization
+        run: |
+          cd services/web
+          npx playwright test visualization.spec.ts

@@ -1,0 +1,46 @@
+Continue SupplementaryMaterialAgent implementation - Phase 2: Core Agent.
+
+CONTEXT:
+- Phase 1 complete: Type definitions in supplementary_types.py (committed to main)
+- Repository uses LangGraphBaseAgent pattern from services/worker/src/agents/base/
+- Follow existing patterns from manuscript/agent.py
+- State management via AgentState (from base/state.py)
+- All LLM calls through self.call_llm() for PHI compliance
+
+TASK:
+Create services/worker/agents/writing/supplementary_material_agent.py
+
+REQUIREMENTS:
+1. Inherit from LangGraphBaseAgent
+2. Handle stage 16 (after Results Refinement)
+3. Implement 8 core nodes:
+   - identify_supplementary_content (determine main vs supplement)
+   - organize_supplementary_tables (S1, S2 numbering)
+   - organize_supplementary_figures (S1, S2 numbering)
+   - compile_extended_methods (detailed protocols)
+   - generate_data_statement (data availability)
+   - create_appendices (forms, checklists)
+   - package_materials (manifest generation)
+   - quality_gate (validation)
+
+4. Build LangGraph with parallel processing for tables/figures/methods
+5. Implement get_quality_criteria() method
+6. Add custom _evaluate_criterion() for supplementary-specific checks
+7. Use async/await patterns consistently
+8. Include comprehensive docstrings
+9. Follow type hints throughout
+
+REFERENCE FILES:
+- services/worker/agents/writing/supplementary_types.py (already created)
+- services/worker/src/agents/base/langgraph_base.py (base class)
+- services/worker/src/agents/manuscript/agent.py (pattern reference)
+
+CONSIDERATIONS:
+- Journal-specific formatting (NEJM, JAMA, PLOS, etc.)
+- File size limits and validation
+- Cross-reference checking
+- STROBE/CONSORT checklist integration
+- Automated numbering (S1, S2, etc.)
+- Manifest generation with file descriptions
+
+Start with the core agent class structure and first 3 nodes, then we'll iterate.

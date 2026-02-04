@@ -1,0 +1,208 @@
+# =============================================================================
+# ResearchFlow - TLS Certificate Management via cert-manager
+# =============================================================================
+# Prerequisites:
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+#
+# Usage:
+#   kubectl apply -f cert-manager.yaml
+# =============================================================================
+
+---
+# ClusterIssuer for Let's Encrypt Production
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Production Let's Encrypt server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ${LETSENCRYPT_EMAIL:-admin@researchflow.io}
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+        selector:
+          dnsZones:
+            - "researchflow.io"
+            - "*.researchflow.io"
+
+---
+# ClusterIssuer for Let's Encrypt Staging (testing)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    # Staging Let's Encrypt server (for testing)
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: ${LETSENCRYPT_EMAIL:-admin@researchflow.io}
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# Certificate for main domain
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: researchflow-tls
+  namespace: researchflow
+spec:
+  secretName: researchflow-tls-secret
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: researchflow.io
+  dnsNames:
+    - researchflow.io
+    - www.researchflow.io
+    - api.researchflow.io
+    - app.researchflow.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h    # 90 days
+  renewBefore: 360h  # Renew 15 days before expiry
+
+---
+# Certificate for internal services (self-signed for internal mTLS)
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: researchflow
+spec:
+  selfSigned: {}
+
+---
+# Internal CA Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: researchflow-internal-ca
+  namespace: researchflow
+spec:
+  isCA: true
+  commonName: researchflow-internal-ca
+  secretName: researchflow-internal-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+
+---
+# Internal CA Issuer for service-to-service TLS
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: researchflow-internal-ca-issuer
+  namespace: researchflow
+spec:
+  ca:
+    secretName: researchflow-internal-ca-secret
+
+---
+# Internal certificate for orchestrator service
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: orchestrator-internal-tls
+  namespace: researchflow
+spec:
+  secretName: orchestrator-internal-tls-secret
+  issuerRef:
+    name: researchflow-internal-ca-issuer
+    kind: Issuer
+  commonName: orchestrator.researchflow.svc.cluster.local
+  dnsNames:
+    - orchestrator
+    - orchestrator.researchflow
+    - orchestrator.researchflow.svc
+    - orchestrator.researchflow.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 8760h   # 1 year
+  renewBefore: 720h # Renew 30 days before expiry
+
+---
+# Internal certificate for worker service
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: worker-internal-tls
+  namespace: researchflow
+spec:
+  secretName: worker-internal-tls-secret
+  issuerRef:
+    name: researchflow-internal-ca-issuer
+    kind: Issuer
+  commonName: worker.researchflow.svc.cluster.local
+  dnsNames:
+    - worker
+    - worker.researchflow
+    - worker.researchflow.svc
+    - worker.researchflow.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 8760h
+  renewBefore: 720h
+
+---
+# Internal certificate for postgres
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: postgres-internal-tls
+  namespace: researchflow
+spec:
+  secretName: postgres-internal-tls-secret
+  issuerRef:
+    name: researchflow-internal-ca-issuer
+    kind: Issuer
+  commonName: postgres.researchflow.svc.cluster.local
+  dnsNames:
+    - postgres
+    - postgres.researchflow
+    - postgres.researchflow.svc
+    - postgres.researchflow.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 8760h
+  renewBefore: 720h
+
+---
+# Internal certificate for redis
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redis-internal-tls
+  namespace: researchflow
+spec:
+  secretName: redis-internal-tls-secret
+  issuerRef:
+    name: researchflow-internal-ca-issuer
+    kind: Issuer
+  commonName: redis.researchflow.svc.cluster.local
+  dnsNames:
+    - redis
+    - redis.researchflow
+    - redis.researchflow.svc
+    - redis.researchflow.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 8760h
+  renewBefore: 720h

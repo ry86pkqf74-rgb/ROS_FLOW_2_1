@@ -1,0 +1,298 @@
+version: '3.9'
+
+services:
+  # Ollama - Open-source LLM serving with GPU acceleration
+  ollama:
+    image: ollama/ollama:latest
+    container_name: researchflow-ollama
+    restart: unless-stopped
+    stop_grace_period: 60s  # Allow time for model inference to complete
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_KEEP_ALIVE=5m
+      - OLLAMA_DEBUG=false
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-8}
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+      - ollama-cache:/tmp/ollama-cache
+    devices:
+      # GPU support (NVIDIA)
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 12G  # Reduced from 24G - sufficient for most LLM workloads
+        reservations:
+          cpus: '2'
+          memory: 8G   # Reduced from 16G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    labels:
+      component: "ai-inference"
+      monitored: "true"
+
+  # Triton Inference Server - High-performance inference
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.02-py3
+    container_name: researchflow-triton
+    restart: unless-stopped
+    stop_grace_period: 60s  # Allow time for inference requests to complete
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - TRITON_METRICS_PORT=8002
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+    ports:
+      - "8000:8000"  # HTTP
+      - "8001:8001"  # gRPC
+      - "8002:8002"  # Metrics
+    volumes:
+      - triton-models:/models
+      - triton-cache:/tmp/triton-cache
+    command: tritonserver --model-repository=/models --metrics-port=8002
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G  # Reduced from 32G - adjust based on model sizes
+        reservations:
+          cpus: '4'
+          memory: 8G   # Reduced from 20G
+          devices:
+            - driver: nvidia
+              count: 1  # Reduced from 2 - scale horizontally if needed
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    labels:
+      component: "ai-inference"
+      monitored: "true"
+      high-priority: "true"
+
+  # FAISS Vector Database - Semantic search and embeddings
+  faiss-server:
+    image: researchflow/faiss-server:1.0.0
+    build:
+      context: ./services/faiss-server
+      dockerfile: Dockerfile
+    container_name: researchflow-faiss
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - FAISS_INDEX_TYPE=${FAISS_INDEX_TYPE:-IVF,PQ}
+      - FAISS_CACHE_SIZE=${FAISS_CACHE_SIZE:-10GB}
+      - FAISS_NUM_WORKERS=${FAISS_NUM_WORKERS:-8}
+      - LOG_LEVEL=INFO
+    ports:
+      - "5000:5000"
+    volumes:
+      - faiss-indices:/data/indices
+      - faiss-cache:/tmp/faiss-cache
+      - ./config/faiss-config.json:/etc/faiss/config.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G   # Reduced from 32G - FAISS is memory-efficient
+        reservations:
+          cpus: '2'
+          memory: 4G   # Reduced from 20G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      - ollama
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    labels:
+      component: "vector-store"
+      monitored: "true"
+
+  # Redis Cache - Session and query caching
+  redis:
+    image: redis:7-alpine
+    container_name: researchflow-redis
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G   # Reduced from 8G - 2G maxmemory + overhead
+        reservations:
+          cpus: '1'
+          memory: 2G   # Reduced from 4G
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      component: "cache"
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: researchflow-prometheus
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "65534:65534"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G   # Reduced from 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G   # Reduced from 2G
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      component: "monitoring"
+
+  # Grafana - Visualization and dashboarding
+  grafana:
+    image: grafana/grafana:10-alpine
+    container_name: researchflow-grafana
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      # Authentication - REQUIRED
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:-change-me-in-production}
+      # Disable anonymous access
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
+      # Security hardening
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_STRICT_TRANSPORT_SECURITY=true
+      - GF_SECURITY_X_CONTENT_TYPE_OPTIONS=true
+      - GF_SECURITY_X_XSS_PROTECTION=true
+      # User management
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_USERS_AUTO_ASSIGN_ORG=true
+      # Plugins
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+      - GF_LOG_LEVEL=warn
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./deploy/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./deploy/grafana-datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G   # Reduced from 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M # Reduced from 1G
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      component: "monitoring"
+
+volumes:
+  ollama-models:
+    driver: local
+  ollama-cache:
+    driver: local
+  triton-models:
+    driver: local
+  triton-cache:
+    driver: local
+  faiss-indices:
+    driver: local
+  faiss-cache:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    name: researchflow-ai
+    driver: bridge

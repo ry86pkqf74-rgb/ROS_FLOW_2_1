@@ -1,0 +1,44 @@
+{
+  "$schema": "https://researchflow.io/schemas/n8n-budgets.json",
+  "version": "1.0.0",
+  "description": "Execution budget allocation for n8n workflows",
+  "plan": {
+    "tier": "Pro",
+    "monthlyLimit": 10000,
+    "resetDay": 1
+  },
+  "allocation": {
+    "core": {
+      "percentage": 40,
+      "workflows": ["linear-task-automation", "github-notion-sync"],
+      "description": "Core integration workflows"
+    },
+    "automation": {
+      "percentage": 30,
+      "workflows": ["multi-agent-orchestrator", "stage-completion"],
+      "description": "AI and workflow automation"
+    },
+    "notifications": {
+      "percentage": 20,
+      "workflows": ["deployment-notify"],
+      "description": "Notification workflows"
+    },
+    "reserve": {
+      "percentage": 10,
+      "workflows": [],
+      "description": "Emergency reserve for manual triggers"
+    }
+  },
+  "alerts": {
+    "email": {
+      "enabled": true,
+      "recipients": ["logan.glosser@gmail.com"],
+      "thresholds": [50, 70, 85, 95]
+    },
+    "slack": {
+      "enabled": true,
+      "channel": "#researchflow-alerts",
+      "thresholds": [70, 90]
+    }
+  }
+}

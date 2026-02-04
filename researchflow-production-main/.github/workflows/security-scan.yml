@@ -1,0 +1,389 @@
+# Daily security audit + dependency/secret scanning
+# SARIF output is uploaded to the GitHub Security tab.
+
+name: Security Scan (Daily)
+
+on:
+  schedule:
+    # Daily at 02:17 UTC (~9:17pm America/New_York during EST; fine for off-hours)
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'infrastructure/**'
+      - 'Dockerfile'
+      - 'docker/**'
+      - '**/Dockerfile'
+      - '**/requirements*.txt'
+      - '**/pyproject.toml'
+      - '**/poetry.lock'
+      - '**/Pipfile*'
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/pnpm-lock.yaml'
+      - '**/yarn.lock'
+      - '.github/workflows/**'
+      - 'security/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'infrastructure/**'
+      - 'Dockerfile'
+      - 'docker/**'
+      - '**/Dockerfile'
+      - '**/requirements*.txt'
+      - '**/pyproject.toml'
+      - '**/poetry.lock'
+      - '**/Pipfile*'
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/pnpm-lock.yaml'
+      - '**/yarn.lock'
+      - '.github/workflows/**'
+      - 'security/**'
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TRIVY_SEVERITY: 'HIGH,CRITICAL'
+  TRIVY_IGNORE_UNFIXED: 'true'
+
+jobs:
+  # Filesystem scan: secrets + OSS vulnerabilities in the repo (dependency/file scan)
+  trivy-fs:
+    name: Trivy filesystem + secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Trivy FS scan (vuln + secret)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          trivy-config: security/trivy.yaml
+          format: sarif
+          output: trivy-fs.sarif
+        env:
+          TRIVY_SEVERITY: ${{ env.TRIVY_SEVERITY }}
+          TRIVY_IGNORE_UNFIXED: ${{ env.TRIVY_IGNORE_UNFIXED }}
+
+      - name: Upload SARIF (Trivy FS)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Extract critical count (best-effort)
+        if: always()
+        id: trivy_fs_counts
+        run: |
+          python - <<'PY'
+          import json
+          p='trivy-fs.sarif'
+          try:
+            s=json.load(open(p,'r',encoding='utf-8'))
+          except Exception:
+            print('critical=0')
+            print('high=0')
+            raise SystemExit(0)
+          crit=0
+          high=0
+          for run in s.get('runs', []) or []:
+            for r in run.get('results', []) or []:
+              level=(r.get('level') or '').lower()
+              # SARIF levels: error/warning/note; Trivy typically maps CRITICAL to error.
+              if level == 'error':
+                crit += 1
+              elif level == 'warning':
+                high += 1
+          print(f'critical={crit}')
+          print(f'high={high}')
+          PY
+          >> "$GITHUB_OUTPUT"
+
+      - name: Slack notify (critical findings)
+        if: always() && steps.trivy_fs_counts.outputs.critical != '0'
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            *Security Scan (Trivy FS)*
+            Repo: ${{ github.repository }}
+            Ref: ${{ github.ref_name }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Critical findings: ${{ steps.trivy_fs_counts.outputs.critical }}
+            High findings: ${{ steps.trivy_fs_counts.outputs.high }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  # Container image scan (build local images, then scan)
+  trivy-image:
+    name: Trivy container image scan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - orchestrator
+          - worker
+          - web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (local)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          load: true
+          push: false
+          tags: local/${{ github.repository }}:${{ matrix.service }}-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: local/${{ github.repository }}:${{ matrix.service }}-${{ github.sha }}
+          trivy-config: security/trivy.yaml
+          format: sarif
+          output: trivy-image-${{ matrix.service }}.sarif
+        env:
+          TRIVY_SEVERITY: ${{ env.TRIVY_SEVERITY }}
+          TRIVY_IGNORE_UNFIXED: ${{ env.TRIVY_IGNORE_UNFIXED }}
+
+      - name: Upload SARIF (Trivy image)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image-${{ matrix.service }}.sarif
+          category: trivy-image-${{ matrix.service }}
+
+      - name: Extract critical count (best-effort)
+        if: always()
+        id: trivy_img_counts
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          p=os.environ.get('SARIF_PATH')
+          try:
+            s=json.load(open(p,'r',encoding='utf-8'))
+          except Exception:
+            print('critical=0')
+            print('high=0')
+            raise SystemExit(0)
+          crit=0
+          high=0
+          for run in s.get('runs', []) or []:
+            for r in run.get('results', []) or []:
+              level=(r.get('level') or '').lower()
+              if level == 'error':
+                crit += 1
+              elif level == 'warning':
+                high += 1
+          print(f'critical={crit}')
+          print(f'high={high}')
+          PY
+          >> "$GITHUB_OUTPUT"
+        env:
+          SARIF_PATH: trivy-image-${{ matrix.service }}.sarif
+
+      - name: Slack notify (critical findings)
+        if: always() && steps.trivy_img_counts.outputs.critical != '0'
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            *Security Scan (Trivy Image)*
+            Repo: ${{ github.repository }}
+            Service: ${{ matrix.service }}
+            Ref: ${{ github.ref_name }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Critical findings: ${{ steps.trivy_img_counts.outputs.critical }}
+            High findings: ${{ steps.trivy_img_counts.outputs.high }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  # Secret scan via gitleaks (produces SARIF)
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks (SARIF)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: security/gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+          GITLEAKS_ENABLE_SUMMARY: 'true'
+          GITLEAKS_REPORT_FORMAT: sarif
+          GITLEAKS_REPORT_PATH: gitleaks.sarif
+
+      - name: Upload SARIF (Gitleaks)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+      - name: Extract critical count (best-effort)
+        if: always()
+        id: gitleaks_counts
+        run: |
+          python - <<'PY'
+          import json
+          p='gitleaks.sarif'
+          try:
+            s=json.load(open(p,'r',encoding='utf-8'))
+          except Exception:
+            print('critical=0')
+            raise SystemExit(0)
+          # Gitleaks findings map to SARIF results; treat any result as critical.
+          crit=0
+          for run in s.get('runs', []) or []:
+            crit += len(run.get('results', []) or [])
+          print(f'critical={crit}')
+          PY
+          >> "$GITHUB_OUTPUT"
+
+      - name: Slack notify (critical findings)
+        if: always() && steps.gitleaks_counts.outputs.critical != '0'
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            *Security Scan (Gitleaks)*
+            Repo: ${{ github.repository }}
+            Ref: ${{ github.ref_name }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Secret findings: ${{ steps.gitleaks_counts.outputs.critical }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  # Custom ResearchFlow security audit
+  custom-audit:
+    name: ResearchFlow Custom Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          # NPM dependencies
+          npm ci
+          cd services/orchestrator && npm ci
+          cd ../web && npm ci
+          cd ../..
+          
+          # Python security tools
+          pip install pip-audit safety bandit
+          
+      - name: Run ResearchFlow Security Audit
+        run: |
+          echo "=== Running ResearchFlow Custom Security Audit ==="
+          bash scripts/security-audit.sh --full
+          
+      - name: Upload security audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: researchflow-security-audit
+          path: security-reports/
+          
+      - name: Check for critical security issues
+        run: |
+          if [ -f "security-reports/security-audit-$(date +%Y%m%d).json" ]; then
+            CRITICAL=$(jq '.audit_summary.critical' security-reports/security-audit-$(date +%Y%m%d).json)
+            HIGH=$(jq '.audit_summary.high' security-reports/security-audit-$(date +%Y%m%d).json)
+            echo "Critical issues: $CRITICAL"
+            echo "High issues: $HIGH"
+            
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ Critical security issues found!"
+              exit 1
+            elif [ "$HIGH" -gt 3 ]; then
+              echo "⚠️ Too many high severity issues found!"
+              exit 1
+            else
+              echo "✅ Security audit passed"
+            fi
+          else
+            echo "⚠️ Security audit report not found"
+          fi
+          
+      - name: Generate security summary
+        if: always()
+        run: |
+          echo "## 🔒 Security Audit Summary" > security-summary.md
+          echo "" >> security-summary.md
+          echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> security-summary.md
+          echo "**Branch:** ${{ github.ref_name }}" >> security-summary.md
+          echo "**Commit:** ${{ github.sha }}" >> security-summary.md
+          echo "" >> security-summary.md
+          
+          if [ -f "security-reports/security-audit-$(date +%Y%m%d).json" ]; then
+            echo "### Vulnerability Summary" >> security-summary.md
+            echo "" >> security-summary.md
+            CRITICAL=$(jq '.audit_summary.critical' security-reports/security-audit-$(date +%Y%m%d).json)
+            HIGH=$(jq '.audit_summary.high' security-reports/security-audit-$(date +%Y%m%d).json)
+            MEDIUM=$(jq '.audit_summary.medium' security-reports/security-audit-$(date +%Y%m%d).json)
+            LOW=$(jq '.audit_summary.low' security-reports/security-audit-$(date +%Y%m%d).json)
+            
+            echo "| Severity | Count |" >> security-summary.md
+            echo "|----------|-------|" >> security-summary.md
+            echo "| Critical | $CRITICAL |" >> security-summary.md
+            echo "| High | $HIGH |" >> security-summary.md
+            echo "| Medium | $MEDIUM |" >> security-summary.md
+            echo "| Low | $LOW |" >> security-summary.md
+            echo "" >> security-summary.md
+            
+            if [ "$CRITICAL" -eq 0 ] && [ "$HIGH" -le 3 ]; then
+              echo "✅ **Status:** PASSED" >> security-summary.md
+            else
+              echo "❌ **Status:** FAILED" >> security-summary.md
+            fi
+          else
+            echo "⚠️ Security audit report not generated" >> security-summary.md
+          fi
+          
+      - name: Upload security summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-summary
+          path: security-summary.md

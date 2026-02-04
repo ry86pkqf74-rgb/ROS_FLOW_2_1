@@ -1,0 +1,139 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "ResearchFlow Agents Overview",
+    "tags": ["researchflow", "agents", "production"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Agent Task Execution Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(researchflow_agents_agent_tasks_total[5m])",
+            "legendFormat": "{{agent_type}} - {{operation}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Agent Task Duration",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(researchflow_agents_agent_task_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(researchflow_agents_agent_task_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "API Call Success Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(researchflow_agents_api_calls_total{status=\"success\"}[5m]) / rate(researchflow_agents_api_calls_total[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "max": 100,
+            "min": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Error Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(researchflow_agents_error_tracking_errors_total[5m])",
+            "legendFormat": "{{error_type}} - {{component}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "errors/sec"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Circuit Breaker States",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "researchflow_agents_circuit_breaker_state",
+            "legendFormat": "{{circuit_name}} - {{state}}"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Rate Limiting",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(researchflow_agents_rate_limit_requests_total[5m])",
+            "legendFormat": "{{limiter_name}} - {{status}}"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Health Check Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "researchflow_agents_health_checks_total{status=\"healthy\"}",
+            "legendFormat": "Healthy Components"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Retry Attempts",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(researchflow_agents_retry_attempts_total[5m])",
+            "legendFormat": "{{operation}} - {{attempt_number}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

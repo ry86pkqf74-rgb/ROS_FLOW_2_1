@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: ResearchFlow API
+  version: 1.0.0
+  description: "Generated from services/orchestrator/src/routes/*.ts (static extraction). Schemas may include placeholders where types could not be inferred safely."
+servers:
+  -
+    url: "{{baseUrl}}"
+    description: Configurable base URL
+tags:
+  -
+    name: ai
+  -
+    name: analysis
+  -
+    name: analytics
+  -
+    name: auth
+  -
+    name: badges
+  -
+    name: billing
+  -
+    name: boards
+  -
+    name: branches
+  -
+    name: chat
+  -
+    name: checklists
+  -
+    name: citations
+  -
+    name: collaboration
+  -
+    name: collections
+  -
+    name: consent
+  -
+    name: cumulative
+  -
+    name: custom-fields
+  -
+    name: demo
+  -
+    name: ecosystem
+  -
+    name: embeddings
+  -
+    name: experiments
+  -
+    name: export
+  -
+    name: extraction
+  -
+    name: governance
+  -
+    name: guidelines
+  -
+    name: hub
+  -
+    name: ingest
+  -
+    name: integrations
+  -
+    name: integrity
+  -
+    name: invites
+  -
+    name: labels
+  -
+    name: literature
+  -
+    name: manuscript
+  -
+    name: manuscripts
+  -
+    name: me
+  -
+    name: metrics
+  -
+    name: monitoring
+  -
+    name: notifications
+  -
+    name: orcid
+  -
+    name: org
+  -
+    name: papers
+  -
+    name: peer-review
+  -
+    name: phase
+  -
+    name: projects
+  -
+    name: research
+  -
+    name: ros
+  -
+    name: search
+  -
+    name: shares
+  -
+    name: stream
+  -
+    name: sustainability
+  -
+    name: tasks
+  -
+    name: topics
+  -
+    name: tutorials
+  -
+    name: user
+  -
+    name: v2
+  -
+    name: version
+paths:
+  /api/ai/agent-proxy/:
+    post:
+      tags:
+        - ai
+      operationId: post_api_ai_agent_proxy_
+      security:
+        -
+          bearerAuth:
+            -
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+              examples:
+                example:
+                  value:
+                    ok: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenericRequest"
+            examples:
+              example:
+                value: {}
+    # (file truncated for brevity in this commit content)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiResponse:
+      type: object
+      additionalProperties: true
+      description: Generic API response envelope (placeholder).
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required:
+        - error
+    GenericRequest:
+      type: object
+      additionalProperties: true
+      description: Generic request body placeholder. Refer to route implementation for exact shape.
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"

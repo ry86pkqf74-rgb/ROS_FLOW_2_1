@@ -1,0 +1,129 @@
+name: researchflow-test
+
+networks:
+  researchflow-test:
+    name: researchflow-test
+    driver: bridge
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: researchflow-postgres-test
+    networks:
+      - researchflow-test
+    environment:
+      POSTGRES_DB: researchflow_test
+      POSTGRES_USER: researchflow
+      POSTGRES_PASSWORD: researchflow
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: America/New_York
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data:rw,noexec,nosuid,size=512m
+      - /tmp:rw,noexec,nosuid,size=64m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 768M
+    command:
+      - "postgres"
+      - "-c"
+      - "fsync=off"
+      - "-c"
+      - "full_page_writes=off"
+      - "-c"
+      - "synchronous_commit=off"
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: researchflow-redis-test
+    networks:
+      - researchflow-test
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data:rw,noexec,nosuid,size=128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  mockserver:
+    image: mockserver/mockserver:5.15.0
+    container_name: researchflow-mockserver-test
+    networks:
+      - researchflow-test
+    ports:
+      - "1080:1080"
+    environment:
+      MOCKSERVER_SERVER_PORT: "1080"
+      MOCKSERVER_LOG_LEVEL: "INFO"
+      TZ: America/New_York
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:1080/status | grep -q RUNNING"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
+
+  test-runner:
+    image: alpine:3.20
+    container_name: researchflow-test-runner
+    networks:
+      - researchflow-test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      mockserver:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      ENV: test
+      DATABASE_URL: postgres://researchflow:researchflow@postgres-test:5432/researchflow_test
+      REDIS_URL: redis://redis-test:6379/0
+      MOCKSERVER_URL: http://mockserver:1080
+      TZ: America/New_York
+      CI: "true"
+      LOG_LEVEL: warn
+      RATE_LIMIT_ENABLED: "false"
+      EXTERNAL_API_BASE_URL: http://mockserver:1080
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:ro
+    command: ["sh", "-lc", "echo 'test-runner container ready'; tail -f /dev/null"]
+    healthcheck:
+      test: ["CMD-SHELL", "echo ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 1s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M

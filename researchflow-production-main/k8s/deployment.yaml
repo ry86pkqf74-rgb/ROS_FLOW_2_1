@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: researchflow
+  namespace: researchflow
+  labels:
+    app: researchflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: researchflow
+  template:
+    metadata:
+      labels:
+        app: researchflow
+        app.kubernetes.io/name: researchflow
+        app.kubernetes.io/component: orchestrator
+    spec:
+      serviceAccountName: orchestrator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: researchflow
+        image: researchflow:latest
+        ports:
+        - containerPort: 5000
+          name: http
+          protocol: TCP
+        envFrom:
+          - secretRef:
+              name: researchflow-secrets
+          - configMapRef:
+              name: researchflow-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5

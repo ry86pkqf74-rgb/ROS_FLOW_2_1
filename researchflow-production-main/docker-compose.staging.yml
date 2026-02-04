@@ -1,0 +1,351 @@
+# ============================================
+# ResearchFlow - Staging Environment
+# ============================================
+# Usage: docker-compose -f docker-compose.staging.yml up -d
+#
+# Staging environment for Stage 1 Protocol Design Agent validation
+# Features:
+# - DEMO mode with real AI processing
+# - Feature flag testing (ENABLE_NEW_STAGE_1)
+# - PICO pipeline integration testing
+# - Performance monitoring
+# - Reduced resource allocation vs production
+# ============================================
+
+services:
+  # ===================
+  # Database Migrations
+  # ===================
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      - PGHOST=postgres
+      - PGUSER=${POSTGRES_USER:-researchflow}
+      - PGPASSWORD=${POSTGRES_PASSWORD:-staging123}
+      - PGDATABASE=${POSTGRES_DB:-researchflow_staging}
+    volumes:
+      - ./migrations:/migrations:ro
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      sh -c '
+        echo "=== Staging: Running database migrations ===" &&
+        for f in /migrations/*.sql; do
+          echo "Applying migration: $$f" &&
+          psql -f "$$f" || echo "Warning: Migration $$f may have already been applied"
+        done &&
+        echo "=== Staging migrations complete ==="
+      '
+
+  # ===================
+  # Ollama - Local LLM for Stage 1 Testing
+  # ===================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: researchflow-ollama-staging
+    restart: always
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_KEEP_ALIVE=10m
+      - OLLAMA_DEBUG=true  # Enable debugging for staging
+    ports:
+      - "11435:11434"  # Different port for staging
+    volumes:
+      - ollama-staging-models:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 6G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===================
+  # Orchestrator - Staging
+  # ===================
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+      target: development  # Use dev target for better debugging
+    ports:
+      - "3002:3001"  # Different port for staging
+    environment:
+      - NODE_ENV=staging
+      - PORT=3001
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-researchflow}:${POSTGRES_PASSWORD:-staging123}@postgres:5432/${POSTGRES_DB:-researchflow_staging}
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      # Security (relaxed for staging)
+      - JWT_SECRET=${JWT_SECRET:-staging_jwt_secret_123}
+      - SESSION_SECRET=${SESSION_SECRET:-staging_session_secret_456}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      # STAGING MODE - allows DEMO with real AI
+      - GOVERNANCE_MODE=DEMO
+      - PHI_SCAN_ENABLED=false  # Disabled for staging testing
+      - PHI_FAIL_CLOSED=false
+      # Worker connections
+      - WORKER_URL=http://worker:8000
+      - WORKER_WS_URL=ws://worker:8000
+      # Ollama for Stage 1 testing
+      - OLLAMA_URL=http://ollama:11434
+      - LOCAL_MODEL_ENABLED=true
+      - LOCAL_MODEL_ENDPOINT=http://ollama:11434
+      - LOCAL_MODEL_NAME=qwen2.5-coder:7b
+      # AI Providers for testing
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Feature Flags - CRITICAL FOR STAGE 1 TESTING
+      - FEATURE_ENABLE_NEW_STAGE_1=${ENABLE_NEW_STAGE_1:-true}
+      # Monitoring
+      - LOG_LEVEL=debug
+      - AUDIT_LOG_ENABLED=true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    volumes:
+      - staging-data:/data
+      - ./logs/staging/orchestrator:/app/logs
+    networks:
+      - frontend
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===================
+  # Worker - Staging with Stage 1 Agent
+  # ===================
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+      target: development  # Use dev target for debugging
+    ports:
+      - "8001:8000"  # Different port for staging
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-researchflow}:${POSTGRES_PASSWORD:-staging123}@postgres:5432/${POSTGRES_DB:-researchflow_staging}
+      - REDIS_URL=redis://redis:6379
+      - ARTIFACT_PATH=/data/artifacts
+      - LOG_PATH=/data/logs
+      - GOVERNANCE_MODE=DEMO  # Allows Stage 1 testing with AI
+      # Feature Flags - CRITICAL
+      - ENABLE_NEW_STAGE_1=${ENABLE_NEW_STAGE_1:-true}
+      # AI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5-coder:7b
+      # Orchestrator callbacks
+      - ORCHESTRATOR_URL=http://orchestrator:3001
+      - AI_ROUTER_URL=http://orchestrator:3001/api/ai/extraction/generate
+      # Debugging
+      - LOG_LEVEL=debug
+      - PYTHON_ENV=staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - staging-data:/data
+      - ./logs/staging/worker:/app/logs
+      - ./services/worker/src:/app/src:ro  # Live code reload for testing
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===================
+  # Web Frontend - Staging
+  # ===================
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+      target: development
+      args:
+        - VITE_API_BASE_URL=http://localhost:3002
+        - VITE_API_URL=http://localhost:3002/api
+        - VITE_WS_URL=ws://localhost:3002
+        - VITE_COLLAB_URL=ws://localhost:1235
+    ports:
+      - "3000:3000"  # Standard dev port
+    environment:
+      - NODE_ENV=staging
+      - VITE_STAGING=true
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    networks:
+      - frontend
+    restart: always
+    volumes:
+      - ./services/web/src:/app/src:ro  # Live reload for testing
+
+  # ===================
+  # Collab - Staging
+  # ===================
+  collab:
+    build:
+      context: .
+      dockerfile: services/collab/Dockerfile
+      target: development
+    ports:
+      - "1235:1234"  # Different port for staging
+    environment:
+      - NODE_ENV=staging
+      - PORT=1234
+      - APP_MODE=DEMO
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-researchflow}:${POSTGRES_PASSWORD:-staging123}@postgres:5432/${POSTGRES_DB:-researchflow_staging}
+      - JWT_SECRET=${JWT_SECRET:-staging_jwt_secret_123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: always
+
+  # ===================
+  # PostgreSQL - Staging
+  # ===================
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-researchflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-staging123}
+      POSTGRES_DB: ${POSTGRES_DB:-researchflow_staging}
+    ports:
+      - "5434:5432"  # Different port for staging
+    volumes:
+      - postgres-staging-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-researchflow} -d ${POSTGRES_DB:-researchflow_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  # ===================
+  # Redis - Staging
+  # ===================
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6381:6379"  # Different port for staging
+    volumes:
+      - redis-staging-data:/data
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===================
+  # Monitoring Stack
+  # ===================
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.staging.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-staging-data:/prometheus
+    networks:
+      - backend
+    restart: always
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-staging123}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-staging-data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - backend
+    restart: always
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  staging-data:
+    driver: local
+  postgres-staging-data:
+    driver: local
+  redis-staging-data:
+    driver: local
+  ollama-staging-models:
+    driver: local
+  prometheus-staging-data:
+    driver: local
+  grafana-staging-data:
+    driver: local
+
+# ===================
+# Networks
+# ===================
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: false  # Allow external access in staging for debugging

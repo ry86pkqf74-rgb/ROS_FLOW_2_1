@@ -1,0 +1,293 @@
+metadata:
+  version: "2020"
+  standard: "CONSORT-AI"
+  description: "CONSORT-AI Extension Checklist for Reporting RCTs involving AI Interventions"
+  full_name: "Consolidated Standards of Reporting Trials - Artificial Intelligence"
+  purpose: "Ensure transparent and complete reporting of randomized controlled trials with AI interventions"
+  last_updated: "2026-01-30"
+  build_phase: "Phase 11 - ResearchFlow Transparency"
+
+sections:
+  title_and_abstract:
+    name: "Title and Abstract"
+    items:
+      - id: title_ai_intervention
+        item_number: 1
+        text: "Specify in the title or abstract that the trial involves an AI intervention"
+        section: "Title and Abstract"
+        subsection: "Title"
+        status: "pending"
+        location: ""
+        notes: "AI intervention should be clearly identified in the manuscript title or abstract to facilitate discoverability"
+        guidance: "Clearly state the presence and type of AI technology used in the intervention"
+        examples:
+          - "Randomized controlled trial of a machine learning-based diagnostic tool for..."
+          - "AI-assisted intervention trial comparing..."
+
+      - id: abstract_ai_description
+        item_number: 2
+        text: "Provide a description of the AI intervention in the abstract"
+        section: "Title and Abstract"
+        subsection: "Abstract"
+        status: "pending"
+        location: ""
+        notes: "The abstract should include sufficient detail about the AI system to provide readers with a clear understanding"
+        guidance: "Include type of AI model, key features, and primary output/decision support function"
+        examples:
+          - "A neural network-based classifier trained on..."
+          - "An ensemble model combining multiple algorithms..."
+
+  introduction:
+    name: "Introduction"
+    items:
+      - id: introduction_ai_background
+        item_number: 3
+        text: "Describe the background and scientific rationale for using the AI intervention"
+        section: "Introduction"
+        subsection: "Rationale"
+        status: "pending"
+        location: ""
+        notes: "Explain why AI was chosen, what clinical/research problem it addresses, and relevant prior evidence"
+        guidance: "Discuss prior work with similar AI systems, their performance, and limitations that this trial addresses"
+        examples:
+          - "Previous studies demonstrated AI can improve diagnostic accuracy in..."
+          - "Current clinical workflows lack the precision needed, which AI potentially addresses..."
+
+  methods:
+    name: "Methods"
+    items:
+      - id: methods_ai_intervention
+        item_number: 4
+        text: "Provide a detailed description of the AI intervention including its architecture, input data requirements, and outputs"
+        section: "Methods"
+        subsection: "Intervention"
+        status: "pending"
+        location: ""
+        notes: "Include sufficient technical detail to allow replication and evaluation of the AI system"
+        guidance: |
+          Specify:
+          - Model architecture and type (e.g., deep neural network, random forest, SVM)
+          - Key hyperparameters and configuration
+          - Training dataset characteristics
+          - Calibration and validation approaches
+        examples:
+          - "A convolutional neural network with [X] layers trained on [dataset]..."
+          - "A gradient boosting ensemble with regularization parameters..."
+
+      - id: methods_ai_input_data
+        item_number: 5
+        text: "Describe the data used to train the AI intervention, including data source, patient population, data features, and data quality measures"
+        section: "Methods"
+        subsection: "AI Training Data"
+        status: "pending"
+        location: ""
+        notes: "Detailed description of training data ensures readers can assess potential bias and generalizability"
+        guidance: |
+          Include:
+          - Origin and representativeness of training data
+          - Demographic characteristics of training population
+          - Feature selection methodology
+          - Data preprocessing and cleaning procedures
+          - Handling of missing data
+        examples:
+          - "Training data comprised [N] patients from [X] institutions with [demographics]..."
+          - "Features included laboratory values, imaging data, and clinical assessments..."
+
+      - id: methods_ai_output_handling
+        item_number: 6
+        text: "Describe how the AI intervention's outputs were integrated into the clinical workflow and any human review processes"
+        section: "Methods"
+        subsection: "Implementation"
+        status: "pending"
+        location: ""
+        notes: "Explain the actual use of AI outputs in decision-making and any human oversight mechanisms"
+        guidance: |
+          Specify:
+          - How AI predictions/recommendations were presented
+          - Whether outputs included confidence scores or uncertainty estimates
+          - Human review/override procedures
+          - Training provided to clinical staff
+          - Protocols for addressing discordant human-AI assessments
+        examples:
+          - "AI recommendations were displayed alongside confidence intervals for clinician review..."
+          - "Clinicians retained full authority to override AI recommendations..."
+
+      - id: methods_human_ai_interaction
+        item_number: 7
+        text: "Describe the interaction between humans and the AI intervention (e.g., how clinicians received recommendations, opportunities for override, feedback mechanisms)"
+        section: "Methods"
+        subsection: "Human-AI Interaction"
+        status: "pending"
+        location: ""
+        notes: "Detail the collaborative aspects and decision-support nature of the AI system"
+        guidance: |
+          Document:
+          - User interface design
+          - Explanation or interpretability features provided
+          - Feedback loops to clinicians
+          - Mechanisms for clinicians to report system errors
+          - Training and support provided to users
+        examples:
+          - "The system provided visual explanations highlighting key features influencing predictions..."
+          - "Clinicians received real-time feedback about override frequency and outcomes..."
+
+      - id: methods_ai_performance_errors
+        item_number: 8
+        text: "Describe the methods for assessing and reporting AI system performance and errors, including validation metrics, failure modes, and strategies for detecting and mitigating errors"
+        section: "Methods"
+        subsection: "AI Validation and Error Management"
+        status: "pending"
+        location: ""
+        notes: "Rigorous assessment of AI performance is critical for safe and reliable implementation"
+        guidance: |
+          Include:
+          - Metrics used to evaluate AI performance (sensitivity, specificity, calibration, etc.)
+          - Cross-validation or test set methodology
+          - Analysis of performance across different patient subgroups
+          - Approaches to identify failure modes
+          - Error detection and mitigation strategies
+          - Drift detection for model performance over time
+        examples:
+          - "Performance was evaluated using [X] metrics on a held-out test set stratified by [characteristics]..."
+          - "Failure mode analysis identified [X] scenarios where the model underperformed..."
+
+  results:
+    name: "Results"
+    items:
+      - id: results_ai_performance
+        item_number: 9
+        text: "Report the AI intervention's performance metrics, including validation metrics and any changes in performance during the trial"
+        section: "Results"
+        subsection: "AI Performance"
+        status: "pending"
+        location: ""
+        notes: "Present comprehensive performance data to allow readers to evaluate the AI system's capabilities"
+        guidance: |
+          Report:
+          - Primary validation metrics with confidence intervals
+          - Performance across relevant subgroups (age, sex, disease severity, etc.)
+          - Calibration curves and discrimination plots
+          - Any observed performance drift during the trial
+          - Comparison to relevant standards or benchmarks
+        examples:
+          - "The model achieved [X]% sensitivity and [Y]% specificity with [CI] on the validation set..."
+          - "Performance was consistent across demographic subgroups with no significant interactions..."
+
+      - id: results_ai_failures
+        item_number: 10
+        text: "Report the frequency and nature of AI failures, false positives, false negatives, and any serious adverse events or patient harms potentially related to the AI system"
+        section: "Results"
+        subsection: "AI Failures and Adverse Events"
+        status: "pending"
+        location: ""
+        notes: "Comprehensive reporting of AI errors and safety issues is essential for clinical implementation"
+        guidance: |
+          Include:
+          - False positive and false negative rates with examples
+          - Any system crashes or technical failures
+          - Adverse events potentially related to AI recommendations
+          - Analysis of circumstances leading to AI failures
+          - Impact of failures on primary and secondary outcomes
+        examples:
+          - "There were [X] instances of false positives, most commonly in patients with [characteristic]..."
+          - "One serious adverse event occurred when the system failed to identify [clinical situation]..."
+
+  discussion:
+    name: "Discussion"
+    items:
+      - id: discussion_ai_generalizability
+        item_number: 11
+        text: "Discuss the generalizability and applicability of the AI intervention to other populations and settings, including limitations of the training data and potential for performance degradation"
+        section: "Discussion"
+        subsection: "Generalizability and Limitations"
+        status: "pending"
+        location: ""
+        notes: "Address the transferability of the AI system to real-world settings and populations"
+        guidance: |
+          Consider:
+          - Differences between trial population and intended target populations
+          - Differences in clinical setting and workflow
+          - Characteristics of training data that may limit generalizability
+          - Evidence of performance on independent external validation sets
+          - Potential need for model retraining or recalibration
+          - Known limitations and failure modes
+        examples:
+          - "The training data comprised primarily [demographic] patients, potentially limiting generalizability to..."
+          - "External validation on an independent population would strengthen confidence in transferability..."
+
+  other_information:
+    name: "Other Information"
+    items:
+      - id: other_ai_version_access
+        item_number: 12
+        text: "Provide information about the version of the AI intervention used, code/model accessibility, and any relevant regulatory or ethical approvals"
+        section: "Other Information"
+        subsection: "Availability and Regulatory Status"
+        status: "pending"
+        location: ""
+        notes: "Enable reproducibility and provide context about the AI system's status and accessibility"
+        guidance: |
+          Include:
+          - Specific version and date of AI model/code
+          - Where code and/or model weights are available (with appropriate anonymization/confidentiality protections)
+          - Open source status or licensing information
+          - Regulatory approvals obtained (e.g., FDA clearance, CE marking)
+          - Ethical review and informed consent procedures
+          - Funding sources and conflicts of interest
+          - Data availability and sharing arrangements
+        examples:
+          - "Model code is available at [repository] under [license] with trained weights available upon request..."
+          - "The intervention received FDA 510(k) clearance on [date] for [indication]..."
+
+checklist_summary:
+  total_items: 12
+  categories:
+    - name: "Title and Abstract"
+      count: 2
+      items: [1, 2]
+    - name: "Introduction"
+      count: 1
+      items: [3]
+    - name: "Methods"
+      count: 5
+      items: [4, 5, 6, 7, 8]
+    - name: "Results"
+      count: 2
+      items: [9, 10]
+    - name: "Discussion"
+      count: 1
+      items: [11]
+    - name: "Other Information"
+      count: 1
+      items: [12]
+
+usage_instructions:
+  overview: "Use this checklist to ensure comprehensive reporting of RCTs with AI interventions"
+  completion_workflow:
+    - step: 1
+      action: "Review each item systematically"
+    - step: 2
+      action: "Update status to 'completed' when item is addressed"
+    - step: 3
+      action: "Document location in manuscript where item is addressed"
+    - step: 4
+      action: "Add any relevant notes or explanations"
+    - step: 5
+      action: "For items marked 'pending', identify what information is missing"
+  status_values:
+    - value: "pending"
+      description: "Item has not been addressed"
+    - value: "completed"
+      description: "Item has been fully addressed in the manuscript"
+    - value: "partial"
+      description: "Item is partially addressed, requires additional detail"
+    - value: "not_applicable"
+      description: "Item is not applicable to this trial"
+
+references:
+  primary: "Liu X, et al. CONSORT-AI and SPIRIT-AI Standards for Clinical Trials Using AI. Nat Med. 2023"
+  guideline_url: "https://www.consort-statement.org/extensions/consort-ai"
+  related_standards:
+    - "SPIRIT-AI: Standard Protocol Items for Clinical Trials Using AI"
+    - "CONSORT Statement: Core reporting standards for RCTs"
+    - "TRIPOD+AI: Reporting standards for predictive models using AI"

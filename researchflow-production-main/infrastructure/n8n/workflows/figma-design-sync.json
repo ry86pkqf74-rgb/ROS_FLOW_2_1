@@ -1,0 +1,237 @@
+{
+  "name": "Figma Design Sync to ROS",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "figma-design-sync",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "figma-design-sync"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"event_type\"]}}",
+              "operation": "equals",
+              "value2": "FILE_UPDATE"
+            }
+          ]
+        }
+      },
+      "name": "Filter File Updates",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ORCHESTRATOR_URL}}/api/integrations/figma/process-update",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.ROS_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file_key",
+              "value": "={{$json[\"file_key\"]}}"
+            },
+            {
+              "name": "file_name",
+              "value": "={{$json[\"file_name\"]}}"
+            },
+            {
+              "name": "triggered_by",
+              "value": "={{$json[\"triggered_by\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Send to ROS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.FIGMA_API_URL}}/v1/files/{{$json[\"file_key\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Figma-Token",
+              "value": "={{$env.FIGMA_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get Figma File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "databaseId": "={{$env.NOTION_DESIGN_DB_ID}}",
+        "title": "Design Update: {{$json[\"file_name\"]}}",
+        "properties": {
+          "properties": [
+            {
+              "key": "File Key",
+              "textContent": "={{$json[\"file_key\"]}}"
+            },
+            {
+              "key": "Status",
+              "status": "In Progress"
+            },
+            {
+              "key": "Updated By",
+              "textContent": "={{$json[\"triggered_by\"][\"handle\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "Create Notion Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1130, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_DESIGN_CHANNEL}}",
+        "text": "🎨 Design updated: {{$json[\"file_name\"]}}",
+        "attachments": [
+          {
+            "color": "#2196F3",
+            "title": "View in Figma",
+            "title_link": "https://www.figma.com/file/{{$json[\"file_key\"]}}",
+            "fields": [
+              {
+                "title": "Updated By",
+                "value": "={{$json[\"triggered_by\"][\"handle\"]}}",
+                "short": true
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1350, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "2",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Design sync processed\" } }}"
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter File Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter File Updates": {
+      "main": [
+        [
+          {
+            "node": "Send to ROS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to ROS": {
+      "main": [
+        [
+          {
+            "node": "Get Figma File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Figma File": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion Page": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "figma-design-sync"
+}

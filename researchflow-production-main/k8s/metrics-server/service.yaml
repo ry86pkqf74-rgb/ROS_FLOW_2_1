@@ -1,0 +1,42 @@
+# ============================================
+# ResearchFlow - Metrics Server Service
+# ============================================
+# Phase 6.1: Kubernetes Metrics Collection
+# Linear Issue: ROS-102
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    app: metrics-server
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: researchflow
+spec:
+  type: ClusterIP
+  ports:
+    - name: https
+      port: 443
+      targetPort: 4443
+      protocol: TCP
+  selector:
+    app: metrics-server
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+  labels:
+    app: metrics-server
+    app.kubernetes.io/name: metrics-server
+spec:
+  service:
+    name: metrics-server
+    namespace: kube-system
+  group: metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100

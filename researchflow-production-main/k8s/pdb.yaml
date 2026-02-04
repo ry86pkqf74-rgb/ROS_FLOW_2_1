@@ -1,0 +1,142 @@
+# =============================================================================
+# ResearchFlow - PodDisruptionBudget Configuration
+# =============================================================================
+# PDBs ensure high availability during voluntary disruptions like:
+#   - Node maintenance/upgrades
+#   - Cluster autoscaling
+#   - Rolling deployments
+#
+# Configuration rationale:
+#   - Critical services (orchestrator, web): maxUnavailable 1 (always at least N-1 pods)
+#   - Worker services: minAvailable based on queue depth requirements
+#   - Stateful services (postgres, redis): maxUnavailable 0 during maintenance windows
+# =============================================================================
+
+---
+# Orchestrator PDB - Ensure API availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orchestrator-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: orchestrator
+spec:
+  # At most 1 pod can be unavailable during disruptions
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: orchestrator
+
+---
+# Worker PDB - Ensure job processing capacity
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: worker
+spec:
+  # Ensure at least 1 worker is always available
+  # Changed from 50% to absolute value for predictability
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: worker
+
+---
+# Web Frontend PDB - Ensure UI availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: web
+spec:
+  # At most 1 pod can be unavailable
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: web
+
+---
+# Collab Service PDB - Ensure real-time collaboration
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: collab-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: collab
+spec:
+  # WebSocket connections are sticky; minimize disruptions
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: collab
+
+---
+# Guideline Engine PDB - Ensure clinical scoring availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: guideline-engine-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: guideline-engine
+spec:
+  # At least 1 replica must be available
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: guideline-engine
+
+---
+# PostgreSQL PDB - Database must remain available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: postgres
+spec:
+  # For single-replica Postgres: no voluntary disruption allowed
+  # For HA setup: change to maxUnavailable: 1
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: postgres
+
+---
+# Redis PDB - Cache must remain available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: redis
+spec:
+  # For single-replica Redis: no voluntary disruption allowed
+  # For Redis cluster: change to maxUnavailable: 1
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: researchflow
+      app.kubernetes.io/component: redis

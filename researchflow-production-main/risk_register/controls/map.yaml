@@ -1,0 +1,326 @@
+---
+# NIST AI RMF - Map Function Controls
+# Evaluates and documents AI system design, development, and use case against organizational context
+# Phase 2 Implementation
+# Reference: https://www.nist.gov/itl/ai-risk-management-framework
+
+controls:
+  # =====================================================================
+  # AI SYSTEM CONTEXT AND SCOPING
+  # =====================================================================
+
+  - control_id: "MAP-001"
+    control_name: "AI System Use Case Definition"
+    objective: "Clearly define the intended use, scope, and applicability of AI systems"
+    description: |
+      Establish comprehensive documentation of AI system use cases including:
+      - Primary intended use and clinical application
+      - Target population and patient demographics
+      - Applicable clinical scenarios and workflows
+      - System limitations and out-of-scope uses
+      - Performance requirements and success criteria
+      - Regulatory classification and requirements
+      - Comparison with standard of care
+      - Expected clinical impact and value proposition
+    implementation_steps:
+      - Conduct stakeholder interviews (clinicians, patients, IT, compliance)
+      - Document use case with clinical validation
+      - Create decision tree for system applicability
+      - Document population characteristics and expected performance
+      - Establish baseline against standard of care
+      - Map requirements to clinical workflows
+      - Create user persona documentation
+      - Conduct regulatory classification assessment
+    maturity_levels:
+      - Level 1: Basic use case documentation, limited scope definition
+      - Level 2: Comprehensive use case document, stakeholder input, workflow mapping
+      - Level 3: Detailed use case with clinical validation, regulatory alignment, comparative analysis
+      - Level 4: Dynamic use case documentation, automated scope verification, continuous alignment
+    success_metrics:
+      - Use case documentation covers all identified dimensions
+      - Stakeholder alignment score > 90%
+      - Clinical validation completed before deployment
+      - 100% of use cases have regulatory classification
+      - Use case misuse rate < 5%
+    responsible_role: "Clinical AI Specialist"
+    related_risks:
+      - RIS-002
+      - RIS-017
+      - RIS-019
+
+  - control_id: "MAP-002"
+    control_name: "Data Inventory and Characterization"
+    objective: "Comprehensively inventory and document all data used in AI systems"
+    description: |
+      Establish data inventory including:
+      - Complete data source identification
+      - Data collection methods and governance
+      - Demographic and population characteristics
+      - Data volume, distribution, and representativeness
+      - Data quality metrics and baselines
+      - Known limitations and biases
+      - Temporal characteristics and recency
+      - Data sensitivity classification (PHI, PII, etc.)
+      - Data transformations and preprocessing steps
+    implementation_steps:
+      - Create data source inventory with metadata
+      - Conduct demographic analysis of training data
+      - Document data collection procedures and governance
+      - Quantify data representativeness and coverage
+      - Identify and document known data limitations
+      - Create data quality baseline metrics
+      - Map data to system outputs and decisions
+      - Implement automated data profiling tools
+    maturity_levels:
+      - Level 1: Partial data documentation, limited metadata
+      - Level 2: Comprehensive data inventory, demographic analysis, quality metrics
+      - Level 3: Automated data profiling, continuous monitoring, detailed lineage
+      - Level 4: Predictive data assessment, autonomous data quality management
+    success_metrics:
+      - 100% of data sources documented in inventory
+      - Demographic composition analysis completed
+      - Data quality metrics tracked continuously
+      - Data lineage documentation complete for all transformations
+      - No undocumented data sources in models
+    responsible_role: "Data Governance Officer"
+    related_risks:
+      - RIS-002
+      - RIS-004
+      - RIS-005
+
+  - control_id: "MAP-003"
+    control_name: "Bias and Fairness Assessment"
+    objective: "Systematically assess and document potential biases and fairness concerns"
+    description: |
+      Establish bias assessment framework including:
+      - Identification of protected and sensitive attributes
+      - Assessment of disparities across demographic groups
+      - Fairness metric definition and baseline measurement
+      - Known limitations and bias sources
+      - Mitigation strategies and effectiveness
+      - Bias testing procedures and results
+      - Ongoing bias monitoring plans
+    implementation_steps:
+      - Define protected attributes (race, gender, age, protected characteristics)
+      - Conduct stratified analysis by demographic groups
+      - Select appropriate fairness metrics (demographic parity, equalized odds, etc.)
+      - Establish baseline fairness measurements
+      - Document known bias sources and their potential impact
+      - Implement bias mitigation techniques (data augmentation, fairness constraints, etc.)
+      - Conduct bias testing and validation
+      - Create ongoing bias monitoring dashboard
+    maturity_levels:
+      - Level 1: Ad-hoc bias assessment, limited scope
+      - Level 2: Systematic bias assessment, documented procedures, baseline metrics
+      - Level 3: Continuous bias monitoring, automated testing, comparative analysis
+      - Level 4: Predictive bias detection, autonomous mitigation, anticipatory management
+    success_metrics:
+      - All protected attributes identified and analyzed
+      - Fairness metrics meet defined thresholds across all groups
+      - Bias testing results documented for all models
+      - Demographic parity difference < 5% for critical metrics
+      - Bias-related complaints or incidents: zero
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-001
+      - RIS-002
+      - RIS-003
+
+  # =====================================================================
+  # MODEL DESIGN AND DEVELOPMENT CONTEXT
+  # =====================================================================
+
+  - control_id: "MAP-004"
+    control_name: "Model Architecture and Design Documentation"
+    objective: "Document the technical design and architectural choices of AI models"
+    description: |
+      Establish model design documentation including:
+      - Model architecture and component descriptions
+      - Algorithms selected and justification
+      - Key design decisions and trade-offs
+      - Training objectives and loss functions
+      - Feature engineering and selection rationale
+      - Model assumptions and prerequisites
+      - Known limitations and constraints
+      - System dependencies and interfaces
+      - Inference pipeline architecture
+    implementation_steps:
+      - Create architecture diagram and documentation
+      - Document algorithm selection with justification
+      - Maintain design decision log
+      - Document feature engineering process
+      - Create model assumptions documentation
+      - Map dependencies to other systems
+      - Document inference infrastructure
+      - Version and track all design changes
+    maturity_levels:
+      - Level 1: Basic model documentation, incomplete coverage
+      - Level 2: Comprehensive architecture documentation, design decisions recorded
+      - Level 3: Detailed technical documentation, version history, dependency mapping
+      - Level 4: Living documentation, automated updates, dynamic architecture models
+    success_metrics:
+      - Architecture documentation complete for all models
+      - 100% of design decisions documented with rationale
+      - Design documentation review score > 90%
+      - Zero undocumented architectural changes
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-005
+      - RIS-010
+      - RIS-011
+
+  - control_id: "MAP-005"
+    control_name: "Training Data Quality and Provenance"
+    objective: "Establish and document data quality standards and provenance"
+    description: |
+      Implement data quality framework including:
+      - Data quality requirements and standards
+      - Quality assessment procedures and metrics
+      - Data validation and cleaning procedures
+      - Handling of missing data and outliers
+      - Documentation of data transformations
+      - Data lineage and provenance tracking
+      - Quality assurance and approval process
+      - Ongoing data quality monitoring
+    implementation_steps:
+      - Define data quality dimensions (completeness, accuracy, consistency, timeliness)
+      - Establish quality thresholds and acceptance criteria
+      - Create data validation rules and automated checks
+      - Implement data cleaning and preprocessing procedures
+      - Document all data transformations step-by-step
+      - Create data lineage tracking system
+      - Establish quality assurance review process
+      - Implement continuous quality monitoring
+    maturity_levels:
+      - Level 1: Basic quality controls, manual checks
+      - Level 2: Defined quality standards, automated validation, documented procedures
+      - Level 3: Continuous quality monitoring, automated lineage tracking, alerts
+      - Level 4: Predictive quality management, autonomous optimization
+    success_metrics:
+      - Data quality score > 95% across all dimensions
+      - Validation rule pass rate > 99%
+      - Data lineage documented for 100% of transformations
+      - Quality issues detected and resolved within 24 hours
+    responsible_role: "Data Quality Lead"
+    related_risks:
+      - RIS-004
+      - RIS-005
+      - RIS-006
+
+  - control_id: "MAP-006"
+    control_name: "Model Interpretability and Explainability"
+    objective: "Ensure AI systems provide understandable and explainable outputs"
+    description: |
+      Establish explainability framework including:
+      - Model interpretability assessment
+      - Feature importance and contribution documentation
+      - Explanation generation procedures
+      - Explanation validation with clinical experts
+      - User-facing explanation design
+      - Uncertainty quantification
+      - Known limitations of explanations
+      - Ongoing explanation quality monitoring
+    implementation_steps:
+      - Assess model interpretability (inherent vs. post-hoc)
+      - Implement explanation methods (SHAP, LIME, attention mechanisms)
+      - Generate feature importance analysis
+      - Validate explanations with clinical experts
+      - Design user-facing explanations
+      - Implement uncertainty quantification
+      - Create explanation documentation
+      - Monitor explanation quality and user understanding
+    maturity_levels:
+      - Level 1: Limited explainability, basic documentation
+      - Level 2: Explanation methods implemented, clinical validation, documented procedures
+      - Level 3: Integrated explanations, continuous quality monitoring, user feedback
+      - Level 4: Adaptive explanations, user-specific customization, autonomous optimization
+    success_metrics:
+      - All models have explanation methods implemented
+      - Clinician understanding of explanations > 80%
+      - Feature importance validated by domain experts
+      - Explanation accuracy score > 90%
+    responsible_role: "Clinical AI Specialist"
+    related_risks:
+      - RIS-017
+      - RIS-019
+      - RIS-022
+
+  # =====================================================================
+  # MEASUREMENT AND PERFORMANCE PLANNING
+  # =====================================================================
+
+  - control_id: "MAP-007"
+    control_name: "Performance Metrics and Success Criteria"
+    objective: "Define and plan measurement of AI system performance"
+    description: |
+      Establish performance measurement framework including:
+      - Primary and secondary performance metrics
+      - Success criteria and acceptance thresholds
+      - Clinical outcome measures
+      - Performance stratification by population
+      - Baseline and comparison standards
+      - Measurement protocols and procedures
+      - Data collection methods
+      - Analysis and reporting procedures
+    implementation_steps:
+      - Define comprehensive performance metrics
+      - Establish clinical and technical success criteria
+      - Select appropriate performance measures
+      - Define stratification for different populations
+      - Establish baseline and control comparisons
+      - Create measurement procedures and protocols
+      - Design data collection and analysis workflows
+      - Plan regular performance reporting
+    maturity_levels:
+      - Level 1: Basic metrics, limited stratification
+      - Level 2: Comprehensive metrics, stratified analysis, documented procedures
+      - Level 3: Automated measurement, continuous monitoring, integrated reporting
+      - Level 4: Predictive performance modeling, autonomous optimization
+    success_metrics:
+      - All metrics align with clinical and organizational goals
+      - Performance baseline established for all metrics
+      - Performance stratification completed for all populations
+      - Metric reporting completed per schedule
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-010
+      - RIS-011
+      - RIS-019
+
+  - control_id: "MAP-008"
+    control_name: "Risk Mitigation Planning"
+    objective: "Develop and document risk mitigation strategies"
+    description: |
+      Establish risk mitigation framework including:
+      - Risk identification and assessment
+      - Mitigation strategy development
+      - Control effectiveness evaluation
+      - Residual risk assessment
+      - Contingency planning
+      - Implementation roadmap
+      - Success metrics for mitigation
+      - Ongoing monitoring procedures
+    implementation_steps:
+      - Conduct comprehensive risk assessment
+      - Identify mitigation strategies for each risk
+      - Evaluate control effectiveness
+      - Calculate residual risk after mitigation
+      - Develop contingency and escalation plans
+      - Create mitigation implementation roadmap
+      - Establish risk monitoring procedures
+      - Document mitigation completion and effectiveness
+    maturity_levels:
+      - Level 1: Ad-hoc risk mitigation, limited documentation
+      - Level 2: Systematic risk assessment, documented mitigations, tracking
+      - Level 3: Integrated risk management, continuous monitoring, predictive analysis
+      - Level 4: Autonomous risk management, predictive mitigation, intelligent adaptation
+    success_metrics:
+      - All identified risks have documented mitigations
+      - Residual risk levels acceptable per policy
+      - Mitigation implementation completion > 95%
+      - Risk incidents declining over time
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-018
+      - RIS-021
+      - RIS-022

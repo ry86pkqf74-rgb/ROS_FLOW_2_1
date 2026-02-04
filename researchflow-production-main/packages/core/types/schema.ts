@@ -1,0 +1,2267 @@
+import { sql, type InferSelectModel } from "drizzle-orm";
+import { pgTable, text, varchar, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Import users table from auth models for foreign key references
+import { users, sessions } from "./auth";
+import type { User as AuthUser } from "./auth";
+export { users, sessions };
+export type { UpsertUser } from "./auth";
+// Note: We export AuthUser renamed to avoid conflicts with User from roles.ts
+export type { AuthUser };
+
+// =====================
+// ROLE TYPES
+// =====================
+export const USER_ROLES = ["VIEWER", "RESEARCHER", "STEWARD", "ADMIN"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED", "EXPIRED", "ESCALATED"] as const;
+export type ApprovalStatusType = (typeof APPROVAL_STATUSES)[number];
+
+export const OPERATION_TYPES = [
+  "AI_GENERATION",
+  "DATA_EXPORT", 
+  "PHI_ACCESS",
+  "MANUSCRIPT_PUBLISH",
+  "DATASET_MODIFICATION",
+  "IRB_SUBMISSION",
+  "EXTERNAL_SHARE",
+  "BULK_OPERATION"
+] as const;
+export type OperationTypeEnum = (typeof OPERATION_TYPES)[number];
+
+export const DATA_CLASSIFICATIONS = ["SYNTHETIC", "DEIDENTIFIED", "IDENTIFIED", "UNKNOWN"] as const;
+export type DataClassification = (typeof DATA_CLASSIFICATIONS)[number];
+
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({id: true, createdAt: true} as any);
+
+export const insertMessageSchema = createInsertSchema(messages).omit({id: true, createdAt: true} as any);
+
+export type Conversation = InferSelectModel<typeof conversations>;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Message = InferSelectModel<typeof messages>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Artifact Type Enum
+export const ARTIFACT_TYPES = [
+  "manuscript",
+  "irb_document",
+  "analysis_output",
+  "dataset",
+  "config_snapshot",
+  "execution_log",
+] as const;
+
+export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
+
+// Artifacts Table (Database)
+export const artifacts = pgTable("artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  stageId: varchar("stage_id").notNull(),
+  artifactType: text("artifact_type").notNull(),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  content: text("content").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  sha256Hash: varchar("sha256_hash").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  currentVersionId: varchar("current_version_id"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertArtifactSchema = createInsertSchema(artifacts).omit({id: true, createdAt: true} as any);
+
+export const artifactSchema = z.object({
+  id: z.string(),
+  researchId: z.string(),
+  stageId: z.string(),
+  artifactType: z.enum(ARTIFACT_TYPES),
+  filename: z.string(),
+  mimeType: z.string(),
+  content: z.string(),
+  sizeBytes: z.number().int(),
+  sha256Hash: z.string(),
+  createdBy: z.string(),
+  currentVersionId: z.string().nullable(),
+  createdAt: z.date(),
+});
+
+export type Artifact = InferSelectModel<typeof artifacts>;
+export type InsertArtifact = z.infer<typeof insertArtifactSchema>;
+
+// Artifact Versions Table (Database)
+export const artifactVersions = pgTable("artifact_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  artifactId: varchar("artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  versionNumber: integer("version_number").notNull(),
+  content: text("content").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  sha256Hash: varchar("sha256_hash").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  changeDescription: text("change_description").notNull(),
+  branch: varchar("branch", { length: 100 }).default("main").notNull(),
+  parentVersionId: varchar("parent_version_id"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertArtifactVersionSchema = createInsertSchema(artifactVersions).omit({id: true, createdAt: true} as any);
+
+export const artifactVersionSchema = z.object({
+  id: z.string(),
+  artifactId: z.string(),
+  versionNumber: z.number().int().positive(),
+  content: z.string(),
+  sizeBytes: z.number().int(),
+  sha256Hash: z.string(),
+  createdBy: z.string(),
+  changeDescription: z.string(),
+  createdAt: z.date(),
+});
+
+export type ArtifactVersion = InferSelectModel<typeof artifactVersions>;
+export type InsertArtifactVersion = z.infer<typeof insertArtifactVersionSchema>;
+
+// Artifact Comparisons Table (Database)
+export const artifactComparisons = pgTable("artifact_comparisons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  artifactId: varchar("artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  fromVersionId: varchar("from_version_id").notNull().references(() => artifactVersions.id),
+  toVersionId: varchar("to_version_id").notNull().references(() => artifactVersions.id),
+  diffSummary: text("diff_summary").notNull(),
+  addedLines: integer("added_lines").notNull(),
+  removedLines: integer("removed_lines").notNull(),
+  comparedBy: varchar("compared_by").notNull(),
+  comparedAt: timestamp("compared_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertArtifactComparisonSchema = createInsertSchema(artifactComparisons).omit({id: true, comparedAt: true} as any);
+
+export type ArtifactComparison = InferSelectModel<typeof artifactComparisons>;
+export type InsertArtifactComparison = z.infer<typeof insertArtifactComparisonSchema>;
+
+// File Uploads Table (for real file upload functionality)
+export const fileUploads = pgTable("file_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id"),
+  originalFilename: text("original_filename").notNull(),
+  storedFilename: text("stored_filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  sha256Hash: varchar("sha256_hash").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  status: text("status").default("pending").notNull(),
+  phiScanStatus: text("phi_scan_status").default("pending"),
+  phiScanResult: jsonb("phi_scan_result"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({id: true, createdAt: true} as any);
+
+export type FileUpload = InferSelectModel<typeof fileUploads>;
+export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
+
+// Research Sessions Table (for workflow state persistence)
+export const researchSessions = pgTable("research_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  currentStageId: integer("current_stage_id").default(1).notNull(),
+  stageProgress: jsonb("stage_progress"),
+  workflowState: jsonb("workflow_state"),
+  lastActiveAt: timestamp("last_active_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertResearchSessionSchema = createInsertSchema(researchSessions).omit({id: true, createdAt: true, lastActiveAt: true} as any);
+
+export type ResearchSession = InferSelectModel<typeof researchSessions>;
+export type InsertResearchSession = z.infer<typeof insertResearchSessionSchema>;
+
+// =====================
+// GOVERNANCE TABLES
+// =====================
+
+// Research Projects Table
+export const researchProjects = pgTable("research_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull().unique(),
+  sessionId: varchar("session_id"),
+  title: text("title").notNull(),
+  description: text("description"),
+  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  orgId: varchar("org_id"), // Phase E: Multi-tenancy FK to organizations
+  dataClassification: text("data_classification").default("UNKNOWN").notNull(),
+  status: text("status").default("ACTIVE").notNull(),
+  irbApprovalNumber: varchar("irb_approval_number"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertResearchProjectSchema = createInsertSchema(researchProjects).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ResearchProject = InferSelectModel<typeof researchProjects>;
+export type InsertResearchProject = z.infer<typeof insertResearchProjectSchema>;
+
+// User Roles Table (for RBAC)
+export const userRoles = pgTable("user_roles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").default("VIEWER").notNull(),
+  grantedBy: varchar("granted_by").references(() => users.id),
+  grantedAt: timestamp("granted_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const insertUserRoleSchema = createInsertSchema(userRoles).omit({id: true, grantedAt: true} as any);
+
+export type UserRoleRecord = InferSelectModel<typeof userRoles>;
+export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
+
+// Approval Mode Types
+export const APPROVAL_MODES = ["AUTO_APPROVE", "REQUIRE_EACH", "BATCH_REVIEW"] as const;
+export type ApprovalMode = (typeof APPROVAL_MODES)[number];
+
+// Approval Gates Table
+export const approvalGates = pgTable("approval_gates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  operationType: text("operation_type").notNull(),
+  resourceId: varchar("resource_id").notNull(),
+  resourceType: text("resource_type").notNull(),
+  approvalMode: text("approval_mode").default("REQUIRE_EACH").notNull(),
+  requestedById: varchar("requested_by_id").notNull().references(() => users.id),
+  requestedByRole: text("requested_by_role").notNull(),
+  requestedByEmail: varchar("requested_by_email"),
+  requestedByName: varchar("requested_by_name"),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedByRole: text("approved_by_role"),
+  approvedByEmail: varchar("approved_by_email"),
+  approvedByName: varchar("approved_by_name"),
+  status: text("status").default("PENDING").notNull(),
+  reason: text("reason"),
+  rejectionReason: text("rejection_reason"),
+  conditions: jsonb("conditions"),
+  metadata: jsonb("metadata"),
+  sessionId: varchar("session_id"),
+  ipAddress: varchar("ip_address"),
+  escalatedAt: timestamp("escalated_at"),
+  escalatedTo: varchar("escalated_to").references(() => users.id),
+  isOverride: boolean("is_override").default(false),
+  overrideJustification: text("override_justification"),
+  overrideConfirmedBy: varchar("override_confirmed_by").references(() => users.id),
+  expiresAt: timestamp("expires_at"),
+  requestedAt: timestamp("requested_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertApprovalGateSchema = createInsertSchema(approvalGates).omit({id: true, requestedAt: true} as any);
+
+export type ApprovalGateRecord = InferSelectModel<typeof approvalGates>;
+export type InsertApprovalGate = z.infer<typeof insertApprovalGateSchema>;
+
+// Approval Audit Entries Table (linked to approval gates)
+export const APPROVAL_ACTIONS = ["CREATED", "APPROVED", "REJECTED", "ESCALATED", "EXPIRED", "VIEWED"] as const;
+export type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
+
+export const approvalAuditEntries = pgTable("approval_audit_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gateId: varchar("gate_id").notNull().references(() => approvalGates.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  performedById: varchar("performed_by_id").references(() => users.id),
+  performedByRole: text("performed_by_role"),
+  performedByEmail: varchar("performed_by_email"),
+  performedByName: varchar("performed_by_name"),
+  reason: text("reason"),
+  details: jsonb("details"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  performedAt: timestamp("performed_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertApprovalAuditEntrySchema = createInsertSchema(approvalAuditEntries).omit({id: true, performedAt: true} as any);
+
+export type ApprovalAuditEntryRecord = InferSelectModel<typeof approvalAuditEntries>;
+export type InsertApprovalAuditEntry = z.infer<typeof insertApprovalAuditEntrySchema>;
+
+// Audit Logs Table (with hash chain for immutable audit trail)
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  resourceType: text("resource_type"),
+  resourceId: varchar("resource_id"),
+  action: text("action").notNull(),
+  details: jsonb("details"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  researchId: varchar("research_id"),
+  previousHash: varchar("previous_hash"),
+  entryHash: varchar("entry_hash"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({id: true, createdAt: true} as any);
+
+export type AuditLog = InferSelectModel<typeof auditLogs>;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+// PHI Incidents Table
+export const phiIncidents = pgTable("phi_incidents", {
+  id: serial("id").primaryKey(),
+  incidentId: varchar("incident_id").notNull().unique(),
+  severity: text("severity").default("LOW").notNull(),
+  description: text("description").notNull(),
+  detectedBy: varchar("detected_by").references(() => users.id),
+  affectedResearchId: varchar("affected_research_id"),
+  affectedDatasetId: varchar("affected_dataset_id"),
+  phiType: text("phi_type"),
+  status: text("status").default("OPEN").notNull(),
+  remediationSteps: jsonb("remediation_steps"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPhiIncidentSchema = createInsertSchema(phiIncidents).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type PhiIncident = InferSelectModel<typeof phiIncidents>;
+export type InsertPhiIncident = z.infer<typeof insertPhiIncidentSchema>;
+
+// Handoff Packs Table (for structured AI outputs)
+export const handoffPacks = pgTable("handoff_packs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packId: varchar("pack_id").notNull().unique(),
+  packType: text("pack_type").notNull(),
+  version: varchar("version").default("1.0.0").notNull(),
+  researchId: varchar("research_id").notNull(),
+  stageId: varchar("stage_id").notNull(),
+  stageName: text("stage_name").notNull(),
+  sessionId: varchar("session_id"),
+  modelId: varchar("model_id"),
+  modelVersion: varchar("model_version"),
+  promptHash: varchar("prompt_hash").notNull(),
+  responseHash: varchar("response_hash").notNull(),
+  content: jsonb("content"),
+  contentSchema: text("content_schema"),
+  tokenUsageInput: integer("token_usage_input").default(0).notNull(),
+  tokenUsageOutput: integer("token_usage_output").default(0).notNull(),
+  tokenUsageTotal: integer("token_usage_total").default(0).notNull(),
+  latencyMs: integer("latency_ms"),
+  costCents: integer("cost_cents").default(0),
+  approvalGateId: varchar("approval_gate_id").references(() => approvalGates.id),
+  parentPackId: varchar("parent_pack_id"),
+  tags: jsonb("tags"),
+  isValid: boolean("is_valid").default(true),
+  validationErrors: jsonb("validation_errors"),
+  validationWarnings: jsonb("validation_warnings"),
+  signature: varchar("signature"),
+  generatedAt: timestamp("generated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const insertHandoffPackSchema = createInsertSchema(handoffPacks).omit({id: true, createdAt: true, generatedAt: true} as any);
+
+export type HandoffPackRecord = InferSelectModel<typeof handoffPacks>;
+export type InsertHandoffPack = z.infer<typeof insertHandoffPackSchema>;
+
+// =====================
+// TOPIC VERSIONING TABLES
+// =====================
+
+export const TOPIC_STATUSES = ["DRAFT", "LOCKED", "SUPERSEDED"] as const;
+export type TopicStatus = (typeof TOPIC_STATUSES)[number];
+
+// Note: TOPIC_ENTRY_MODES and TopicEntryMode are exported from ./topic-declaration.ts
+// to avoid duplicate exports
+
+export const topics = pgTable("topics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  version: integer("version").default(1).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+
+  // Entry mode: 'quick' for rapid topic definition, 'pico' for structured protocols
+  entryMode: text("entry_mode").default("pico").notNull(),
+
+  // Quick Entry fields (always stored, may be empty for PICO mode)
+  generalTopic: text("general_topic"),
+  scope: text("scope"),
+  datasetSource: text("dataset_source"),
+  cohortInclusion: text("cohort_inclusion"),
+  cohortExclusion: text("cohort_exclusion"),
+  exposures: jsonb("exposures"),
+  covariates: jsonb("covariates"),
+  constraints: text("constraints"),
+
+  // PICO elements (structured format for protocols)
+  picoElements: jsonb("pico_elements"),
+
+  // Shared fields
+  keywords: jsonb("keywords"),
+  outcomes: jsonb("outcomes"),
+
+  // Version tracking
+  versionHash: varchar("version_hash").notNull(),
+  contentHash: varchar("content_hash"),
+  versionHistory: jsonb("version_history"),
+  previousVersionId: varchar("previous_version_id"),
+  createdBy: varchar("created_by").notNull(),
+  status: text("status").default("DRAFT").notNull(),
+  lockedAt: timestamp("locked_at"),
+  lockedBy: varchar("locked_by"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertTopicSchema = createInsertSchema(topics).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type Topic = InferSelectModel<typeof topics>;
+export type InsertTopic = z.infer<typeof insertTopicSchema>;
+
+// =====================
+// STATISTICAL ANALYSIS PLAN TABLES
+// =====================
+
+export const SAP_STATUSES = ["draft", "approved", "executed"] as const;
+export type SAPStatus = (typeof SAP_STATUSES)[number];
+
+export const MODEL_TYPES = ["linear", "logistic", "cox", "poisson", "mixed", "ordinal", "negative_binomial"] as const;
+export type ModelType = (typeof MODEL_TYPES)[number];
+
+export const MULTIPLICITY_CORRECTIONS = ["none", "bonferroni", "fdr", "hierarchical", "holm"] as const;
+export type MultiplicityCorrection = (typeof MULTIPLICITY_CORRECTIONS)[number];
+
+export const statisticalPlans = pgTable("statistical_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topicId: varchar("topic_id").notNull().references(() => topics.id, { onDelete: "cascade" }),
+  topicVersion: integer("topic_version").notNull(),
+  researchId: varchar("research_id").notNull(),
+  primaryAnalyses: jsonb("primary_analyses").notNull(),
+  secondaryAnalyses: jsonb("secondary_analyses"),
+  covariateStrategy: jsonb("covariate_strategy").notNull(),
+  sensitivityAnalyses: jsonb("sensitivity_analyses"),
+  missingDataPlan: jsonb("missing_data_plan").notNull(),
+  multiplicityCorrection: text("multiplicity_correction").default("none").notNull(),
+  assumptionChecks: jsonb("assumption_checks"),
+  subgroupAnalyses: jsonb("subgroup_analyses"),
+  alphaLevel: text("alpha_level").default("0.05").notNull(),
+  randomSeed: integer("random_seed").notNull(),
+  status: text("status").default("draft").notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  executedAt: timestamp("executed_at"),
+  executionResult: jsonb("execution_result"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertStatisticalPlanSchema = createInsertSchema(statisticalPlans).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type StatisticalPlanRecord = InferSelectModel<typeof statisticalPlans>;
+export type InsertStatisticalPlan = z.infer<typeof insertStatisticalPlanSchema>;
+
+// =====================
+// RESEARCH BRIEFS TABLE
+// =====================
+
+// Note: RESEARCH_BRIEF_STATUSES and ResearchBriefStatus are exported from ./research-brief.ts
+// to avoid duplicate exports
+
+export const researchBriefs = pgTable("research_briefs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topicId: varchar("topic_id").notNull().references(() => topics.id, { onDelete: "cascade" }),
+  topicVersion: integer("topic_version").notNull(),
+  researchId: varchar("research_id").notNull(),
+
+  // Entry mode info (preserved from topic)
+  entryMode: text("entry_mode"),
+  convertedPico: jsonb("converted_pico"),
+
+  // Core brief content
+  summary: text("summary"),
+  studyObjectives: jsonb("study_objectives").notNull(),
+  population: text("population").notNull(),
+  exposure: text("exposure").notNull(),
+  comparator: text("comparator"),
+  outcomes: jsonb("outcomes").notNull(),
+  timeframe: text("timeframe"),
+  candidateEndpoints: jsonb("candidate_endpoints").notNull(),
+  keyConfounders: jsonb("key_confounders").notNull(),
+  minimumDatasetFields: jsonb("minimum_dataset_fields").notNull(),
+  clarifyingPrompts: jsonb("clarifying_prompts").notNull(),
+
+  // AI-generated refinement suggestions
+  refinementSuggestions: jsonb("refinement_suggestions"),
+
+  // AI generation metadata
+  modelUsed: varchar("model_used").notNull(),
+  promptVersion: varchar("prompt_version").notNull(),
+  artifactHash: varchar("artifact_hash").notNull(),
+  tokenUsageInput: integer("token_usage_input"),
+  tokenUsageOutput: integer("token_usage_output"),
+  generationLatencyMs: integer("generation_latency_ms"),
+
+  // Status tracking
+  status: text("status").default("draft").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertResearchBriefSchema = createInsertSchema(researchBriefs).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ResearchBriefRecord = InferSelectModel<typeof researchBriefs>;
+export type InsertResearchBrief = z.infer<typeof insertResearchBriefSchema>;
+
+// =====================
+// CONFERENCE MATERIALS TABLES
+// =====================
+
+export const PRESENTATION_TYPES = ["poster", "oral", "symposium", "workshop", "lightning", "panel"] as const;
+export type PresentationType = (typeof PRESENTATION_TYPES)[number];
+
+export const MATERIAL_TYPES = ["poster", "slides", "handout", "speaker_notes", "qr_codes"] as const;
+export type MaterialType = (typeof MATERIAL_TYPES)[number];
+
+export const conferenceRequirements = pgTable("conference_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conferenceName: text("conference_name").notNull(),
+  conferenceAcronym: varchar("conference_acronym"),
+  abstractWordLimit: integer("abstract_word_limit").notNull(),
+  posterDimensions: jsonb("poster_dimensions"),
+  slideCount: jsonb("slide_count"),
+  submissionDeadline: text("submission_deadline").notNull(),
+  presentationType: text("presentation_type").notNull(),
+  requiredSections: jsonb("required_sections").notNull(),
+  fileFormats: jsonb("file_formats").notNull(),
+  disclosureRequired: boolean("disclosure_required").default(true).notNull(),
+  fundingStatementRequired: boolean("funding_statement_required").default(true).notNull(),
+  authorLimitPerPresentation: integer("author_limit_per_presentation"),
+  speakingTimeMinutes: integer("speaking_time_minutes"),
+  qaSeparateMinutes: integer("qa_separate_minutes"),
+  additionalRequirements: jsonb("additional_requirements"),
+  websiteUrl: text("website_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertConferenceRequirementsSchema = createInsertSchema(conferenceRequirements).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ConferenceRequirementsRecord = InferSelectModel<typeof conferenceRequirements>;
+export type InsertConferenceRequirements = z.infer<typeof insertConferenceRequirementsSchema>;
+
+export const conferenceMaterials = pgTable("conference_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conferenceId: varchar("conference_id").references(() => conferenceRequirements.id),
+  researchId: varchar("research_id").notNull(),
+  stageId: integer("stage_id").notNull(),
+  materialType: text("material_type").notNull(),
+  title: text("title").notNull(),
+  content: text("content"),
+  fileUrl: text("file_url"),
+  fileFormat: text("file_format"),
+  fileSizeBytes: integer("file_size_bytes"),
+  dimensions: jsonb("dimensions"),
+  slideCount: integer("slide_count"),
+  generatedFromManuscript: boolean("generated_from_manuscript").default(true).notNull(),
+  manuscriptVersion: varchar("manuscript_version"),
+  phiStatus: text("phi_status").default("UNCHECKED").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertConferenceMaterialSchema = createInsertSchema(conferenceMaterials).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ConferenceMaterialRecord = InferSelectModel<typeof conferenceMaterials>;
+export type InsertConferenceMaterial = z.infer<typeof insertConferenceMaterialSchema>;
+
+export const complianceChecklists = pgTable("compliance_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conferenceId: varchar("conference_id").references(() => conferenceRequirements.id),
+  researchId: varchar("research_id").notNull(),
+  stageId: integer("stage_id").notNull(),
+  items: jsonb("items").notNull(),
+  overallStatus: text("overall_status").default("incomplete").notNull(),
+  completedItems: integer("completed_items").default(0).notNull(),
+  totalItems: integer("total_items").notNull(),
+  requiredItems: integer("required_items").default(0).notNull(),
+  requiredCompleted: integer("required_completed").default(0).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertComplianceChecklistSchema = createInsertSchema(complianceChecklists).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ComplianceChecklistRecord = InferSelectModel<typeof complianceChecklists>;
+export type InsertComplianceChecklist = z.infer<typeof insertComplianceChecklistSchema>;
+
+// =====================
+// PHI SCAN RESULTS TABLE
+// =====================
+
+export const phiScanResults = pgTable("phi_scan_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scanId: varchar("scan_id").notNull().unique(),
+  researchId: varchar("research_id"),
+  resourceType: text("resource_type").notNull(),
+  resourceId: varchar("resource_id"),
+  context: text("context").notNull(),
+  riskLevel: text("risk_level").notNull(),
+  detected: jsonb("detected").notNull(),
+  summary: jsonb("summary").notNull(),
+  contentLength: integer("content_length").notNull(),
+  requiresOverride: boolean("requires_override").default(false).notNull(),
+  overrideApproved: boolean("override_approved"),
+  overrideApprovedBy: varchar("override_approved_by").references(() => users.id),
+  overrideApprovedAt: timestamp("override_approved_at"),
+  overrideJustification: text("override_justification"),
+  overrideConditions: jsonb("override_conditions"),
+  overrideExpiresAt: timestamp("override_expires_at"),
+  scannedBy: varchar("scanned_by").references(() => users.id),
+  scannedAt: timestamp("scanned_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPhiScanResultSchema = createInsertSchema(phiScanResults).omit({id: true, scannedAt: true} as any);
+
+export type PhiScanResultRecord = InferSelectModel<typeof phiScanResults>;
+export type InsertPhiScanResult = z.infer<typeof insertPhiScanResultSchema>;
+
+// =====================
+// DATASETS TABLE - Core data storage with PHI protection
+// =====================
+
+export const datasets = pgTable("datasets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  classification: varchar("classification", { length: 50 }).default("UNKNOWN").notNull(),
+  riskScore: integer("risk_score").default(0),
+  format: varchar("format", { length: 50 }),
+  sizeBytes: integer("size_bytes"),
+  rowCount: integer("row_count"),
+  columnCount: integer("column_count"),
+  encryptedAtRest: boolean("encrypted_at_rest").default(false),
+  encryptionKeyId: varchar("encryption_key_id", { length: 100 }),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  metadata: jsonb("metadata"),
+  phiFlags: jsonb("phi_flags"),
+});
+
+export const insertDatasetSchema = createInsertSchema(datasets).omit({id: true, uploadedAt: true} as any);
+
+export type Dataset = InferSelectModel<typeof datasets>;
+export type InsertDataset = z.infer<typeof insertDatasetSchema>;
+
+// =====================
+// STORAGE FILES TABLE - File tracking with encryption metadata
+// =====================
+
+export const storageFiles = pgTable("storage_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 500 }).notNull().unique(),
+  backend: varchar("backend", { length: 20 }).default("local"),
+  bucketName: varchar("bucket_name", { length: 100 }),
+  sizeBytes: integer("size_bytes"),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(),
+  contentType: varchar("content_type", { length: 100 }),
+  encrypted: boolean("encrypted").default(false),
+  encryptionKeyId: varchar("encryption_key_id", { length: 100 }),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+export const insertStorageFileSchema = createInsertSchema(storageFiles).omit({id: true, uploadedAt: true} as any);
+
+export type StorageFile = InferSelectModel<typeof storageFiles>;
+export type InsertStorageFile = z.infer<typeof insertStorageFileSchema>;
+
+// =====================
+// APPROVALS TABLE - For governance gates
+// =====================
+
+export const approvals = pgTable("approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: varchar("entity_id").notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  status: varchar("status", { length: 20 }).default("pending"),
+  reason: text("reason"),
+  approvalType: varchar("approval_type", { length: 50 }),
+  requestedAt: timestamp("requested_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  metadata: jsonb("metadata"),
+});
+
+export const insertApprovalSchema = createInsertSchema(approvals).omit({id: true, requestedAt: true} as any);
+
+export type Approval = InferSelectModel<typeof approvals>;
+export type InsertApproval = z.infer<typeof insertApprovalSchema>;
+
+// =====================
+// PHASE D: AI ETHICS & SECURITY TABLES
+// =====================
+
+// Ethics Approvals Table (Task 62)
+export const ETHICS_CATEGORIES = ["bias_review", "data_usage", "patient_impact", "model_safety", "consent_verification"] as const;
+export type EthicsCategory = (typeof ETHICS_CATEGORIES)[number];
+
+export const ETHICS_RISK_LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+export type EthicsRiskLevel = (typeof ETHICS_RISK_LEVELS)[number];
+
+export const ethicsApprovals = pgTable("ethics_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskType: text("task_type").notNull(),
+  ethicsCategory: text("ethics_category").notNull(),
+  riskLevel: text("risk_level").default("LOW").notNull(),
+  requestedById: varchar("requested_by_id").notNull().references(() => users.id),
+  requestedByRole: text("requested_by_role").notNull(),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  status: text("status").default("PENDING").notNull(),
+  riskAssessment: jsonb("risk_assessment"),
+  conditions: jsonb("conditions"),
+  justification: text("justification"),
+  governanceMode: text("governance_mode").notNull(),
+  phiRiskLevel: text("phi_risk_level"),
+  validUntil: timestamp("valid_until"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export const insertEthicsApprovalSchema = createInsertSchema(ethicsApprovals).omit({id: true, createdAt: true} as any);
+
+export type EthicsApprovalRecord = InferSelectModel<typeof ethicsApprovals>;
+export type InsertEthicsApproval = z.infer<typeof insertEthicsApprovalSchema>;
+
+// AI Invocations Table (Task 64 - Explainability)
+export const AI_INVOCATION_STATUSES = ["SUCCESS", "FAILED", "BLOCKED", "TIMEOUT"] as const;
+export type AIInvocationStatus = (typeof AI_INVOCATION_STATUSES)[number];
+
+export const aiInvocations = pgTable("ai_invocations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  auditEventId: integer("audit_event_id").references(() => auditLogs.id),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  taskType: text("task_type").notNull(),
+  workflowStage: integer("workflow_stage"),
+  promptTemplateId: varchar("prompt_template_id"),
+  promptTemplateVersion: integer("prompt_template_version"),
+  promptHash: varchar("prompt_hash").notNull(),
+  promptTokenCount: integer("prompt_token_count").notNull(),
+  responseHash: varchar("response_hash").notNull(),
+  responseTokenCount: integer("response_token_count").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
+  phiScanPassed: boolean("phi_scan_passed").notNull(),
+  phiRiskLevel: text("phi_risk_level"),
+  initialTier: text("initial_tier").notNull(),
+  finalTier: text("final_tier").notNull(),
+  escalated: boolean("escalated").default(false).notNull(),
+  escalationCount: integer("escalation_count").default(0),
+  escalationReason: text("escalation_reason"),
+  qualityGatePassed: boolean("quality_gate_passed").notNull(),
+  qualityChecks: jsonb("quality_checks"),
+  estimatedCostUsd: text("estimated_cost_usd"),
+  reasoningTrace: jsonb("reasoning_trace"),
+  ethicsApprovalId: varchar("ethics_approval_id").references(() => ethicsApprovals.id),
+  status: text("status").default("SUCCESS").notNull(),
+  errorMessage: text("error_message"),
+  researchId: varchar("research_id"),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAiInvocationSchema = createInsertSchema(aiInvocations).omit({id: true, createdAt: true} as any);
+
+export type AiInvocationRecord = InferSelectModel<typeof aiInvocations>;
+export type InsertAiInvocation = z.infer<typeof insertAiInvocationSchema>;
+
+// AI Output Feedback Table (Task 65)
+export const FEEDBACK_TYPES = ["accuracy", "relevance", "safety", "quality", "bias", "completeness"] as const;
+export type FeedbackType = (typeof FEEDBACK_TYPES)[number];
+
+export const aiOutputFeedback = pgTable("ai_output_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invocationId: varchar("invocation_id").notNull().references(() => aiInvocations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  rating: integer("rating").notNull(),
+  feedbackType: text("feedback_type").notNull(),
+  tags: jsonb("tags"),
+  comment: text("comment"),
+  isUsefulForTraining: boolean("is_useful_for_training").default(false),
+  reviewedByAdmin: boolean("reviewed_by_admin").default(false),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAiOutputFeedbackSchema = createInsertSchema(aiOutputFeedback).omit({id: true, createdAt: true} as any);
+
+export type AiOutputFeedbackRecord = InferSelectModel<typeof aiOutputFeedback>;
+export type InsertAiOutputFeedback = z.infer<typeof insertAiOutputFeedbackSchema>;
+
+// User Consents Table (Task 73 - GDPR)
+export const CONSENT_TYPES = ["data_processing", "ai_usage", "phi_access", "marketing", "research_participation", "data_sharing"] as const;
+export type ConsentType = (typeof CONSENT_TYPES)[number];
+
+export const LEGAL_BASES = ["consent", "legitimate_interest", "contract", "legal_obligation", "vital_interest", "public_task"] as const;
+export type LegalBasis = (typeof LEGAL_BASES)[number];
+
+export const userConsents = pgTable("user_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  consentType: text("consent_type").notNull(),
+  consentVersion: varchar("consent_version").notNull(),
+  granted: boolean("granted").notNull(),
+  grantedAt: timestamp("granted_at"),
+  revokedAt: timestamp("revoked_at"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  legalBasis: text("legal_basis"),
+  purpose: text("purpose"),
+  dataCategories: jsonb("data_categories"),
+  retentionPeriodDays: integer("retention_period_days"),
+  expiresAt: timestamp("expires_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertUserConsentSchema = createInsertSchema(userConsents).omit({id: true, createdAt: true} as any);
+
+export type UserConsentRecord = InferSelectModel<typeof userConsents>;
+export type InsertUserConsent = z.infer<typeof insertUserConsentSchema>;
+
+// User Quotas Table (Task 75)
+export const QUOTA_TYPES = ["ai_calls_per_minute", "ai_calls_per_day", "tokens_per_day", "storage_mb", "exports_per_day", "concurrent_jobs"] as const;
+export type QuotaType = (typeof QUOTA_TYPES)[number];
+
+export const RESET_PERIODS = ["minute", "hour", "day", "week", "month"] as const;
+export type ResetPeriod = (typeof RESET_PERIODS)[number];
+
+export const userQuotas = pgTable("user_quotas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  quotaType: text("quota_type").notNull(),
+  maxValue: integer("max_value").notNull(),
+  currentValue: integer("current_value").default(0).notNull(),
+  resetPeriod: text("reset_period").notNull(),
+  lastResetAt: timestamp("last_reset_at").default(sql`CURRENT_TIMESTAMP`),
+  customLimit: integer("custom_limit"),
+  customLimitSetBy: varchar("custom_limit_set_by").references(() => users.id),
+  customLimitReason: text("custom_limit_reason"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertUserQuotaSchema = createInsertSchema(userQuotas).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type UserQuotaRecord = InferSelectModel<typeof userQuotas>;
+export type InsertUserQuota = z.infer<typeof insertUserQuotaSchema>;
+
+// MFA Enrollments Table (Task 79)
+export const MFA_TYPES = ["totp", "webauthn", "sms", "email"] as const;
+export type MfaType = (typeof MFA_TYPES)[number];
+
+export const mfaEnrollments = pgTable("mfa_enrollments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  mfaType: text("mfa_type").default("totp").notNull(),
+  secretEncrypted: varchar("secret_encrypted").notNull(),
+  backupCodesEncrypted: text("backup_codes_encrypted"),
+  backupCodesUsed: jsonb("backup_codes_used"),
+  isActive: boolean("is_active").default(false).notNull(),
+  isVerified: boolean("is_verified").default(false).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  failedAttempts: integer("failed_attempts").default(0),
+  lockedUntil: timestamp("locked_until"),
+  enrolledAt: timestamp("enrolled_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  verifiedAt: timestamp("verified_at"),
+});
+
+export const insertMfaEnrollmentSchema = createInsertSchema(mfaEnrollments).omit({id: true, enrolledAt: true} as any);
+
+export type MfaEnrollmentRecord = InferSelectModel<typeof mfaEnrollments>;
+export type InsertMfaEnrollment = z.infer<typeof insertMfaEnrollmentSchema>;
+
+// Security Anomalies Table (Task 67)
+export const ANOMALY_TYPES = ["brute_force", "unusual_access", "phi_spike", "privilege_escalation", "geographic_anomaly", "rate_limit_abuse"] as const;
+export type AnomalyType = (typeof ANOMALY_TYPES)[number];
+
+export const ANOMALY_SEVERITIES = ["INFO", "WARNING", "ALERT", "CRITICAL"] as const;
+export type AnomalySeverity = (typeof ANOMALY_SEVERITIES)[number];
+
+export const securityAnomalies = pgTable("security_anomalies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  anomalyType: text("anomaly_type").notNull(),
+  severity: text("severity").default("WARNING").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  ipAddress: varchar("ip_address"),
+  description: text("description").notNull(),
+  detectionScore: text("detection_score"),
+  evidence: jsonb("evidence"),
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  falsePositive: boolean("false_positive").default(false),
+  detectedAt: timestamp("detected_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertSecurityAnomalySchema = createInsertSchema(securityAnomalies).omit({id: true, detectedAt: true} as any);
+
+export type SecurityAnomalyRecord = InferSelectModel<typeof securityAnomalies>;
+export type InsertSecurityAnomaly = z.infer<typeof insertSecurityAnomalySchema>;
+
+// =====================
+// PHASE E: MULTI-TENANCY TABLES (Tasks 81-100)
+// =====================
+
+// Note: ORG_ROLES and SUBSCRIPTION_TIERS are defined in organization.ts
+// Types re-declared here for schema use only (not exported to avoid conflicts)
+const ORG_ROLES_INTERNAL = ["OWNER", "ADMIN", "MEMBER", "VIEWER"] as const;
+const SUBSCRIPTION_TIERS_INTERNAL = ["FREE", "PRO", "TEAM", "ENTERPRISE"] as const;
+
+// Invite Statuses
+export const INVITE_STATUSES = ["PENDING", "ACCEPTED", "EXPIRED", "REVOKED"] as const;
+export type InviteStatus = (typeof INVITE_STATUSES)[number];
+
+// Integration Types
+export const INTEGRATION_TYPES = ["slack", "notion", "github", "salesforce", "zoom"] as const;
+export type IntegrationType = (typeof INTEGRATION_TYPES)[number];
+
+// Organizations Table (Task 81)
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  settings: jsonb("settings").default({}),
+  billingEmail: varchar("billing_email", { length: 255 }),
+  subscriptionTier: varchar("subscription_tier", { length: 50 }).default("FREE").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type OrganizationRecord = InferSelectModel<typeof organizations>;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+
+// Org Memberships Table (Task 81)
+export const orgMemberships = pgTable("org_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  orgRole: varchar("org_role", { length: 50 }).default("MEMBER").notNull(),
+  joinedAt: timestamp("joined_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  invitedBy: varchar("invited_by").references(() => users.id),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const insertOrgMembershipSchema = createInsertSchema(orgMemberships).omit({id: true, joinedAt: true} as any);
+
+export type OrgMembershipRecord = InferSelectModel<typeof orgMemberships>;
+export type InsertOrgMembership = z.infer<typeof insertOrgMembershipSchema>;
+
+// Org Invites Table (Task 83)
+export const orgInvites = pgTable("org_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  orgRole: varchar("org_role", { length: 50 }).default("MEMBER").notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  status: varchar("status", { length: 20 }).default("PENDING").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrgInviteSchema = createInsertSchema(orgInvites).omit({id: true, createdAt: true} as any);
+
+export type OrgInviteRecord = InferSelectModel<typeof orgInvites>;
+export type InsertOrgInvite = z.infer<typeof insertOrgInviteSchema>;
+
+// Org Subscriptions Table (Task 84)
+export const orgSubscriptions = pgTable("org_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 100 }),
+  tier: varchar("tier", { length: 50 }).default("FREE").notNull(),
+  status: varchar("status", { length: 50 }).default("active").notNull(),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrgSubscriptionSchema = createInsertSchema(orgSubscriptions).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type OrgSubscriptionRecord = InferSelectModel<typeof orgSubscriptions>;
+export type InsertOrgSubscription = z.infer<typeof insertOrgSubscriptionSchema>;
+
+// Org Integrations Table (Task 85-86, 99)
+export const orgIntegrations = pgTable("org_integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  integrationType: varchar("integration_type", { length: 50 }).notNull(),
+  config: jsonb("config").default({}).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncStatus: varchar("sync_status", { length: 50 }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrgIntegrationSchema = createInsertSchema(orgIntegrations).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type OrgIntegrationRecord = InferSelectModel<typeof orgIntegrations>;
+export type InsertOrgIntegration = z.infer<typeof insertOrgIntegrationSchema>;
+
+// Review Sessions Table (Task 87 - Zoom)
+export const REVIEW_SESSION_STATUSES = ["scheduled", "in_progress", "completed", "cancelled"] as const;
+export type ReviewSessionStatus = (typeof REVIEW_SESSION_STATUSES)[number];
+
+export const reviewSessions = pgTable("review_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  researchId: varchar("research_id"),
+  zoomMeetingId: varchar("zoom_meeting_id", { length: 100 }),
+  topic: varchar("topic", { length: 500 }),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  durationMinutes: integer("duration_minutes"),
+  participants: jsonb("participants"),
+  recordingUrl: text("recording_url"),
+  transcriptUrl: text("transcript_url"),
+  status: varchar("status", { length: 50 }).default("scheduled").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertReviewSessionSchema = createInsertSchema(reviewSessions).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ReviewSessionRecord = InferSelectModel<typeof reviewSessions>;
+export type InsertReviewSession = z.infer<typeof insertReviewSessionSchema>;
+
+// Badges Table (Task 92 - Gamification)
+export const badges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  iconUrl: text("icon_url"),
+  category: varchar("category", { length: 50 }),
+  criteria: jsonb("criteria"),
+  points: integer("points").default(0),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({id: true, createdAt: true} as any);
+
+export type BadgeRecord = InferSelectModel<typeof badges>;
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+
+// User Badges Table (Task 92)
+export const userBadges = pgTable("user_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  badgeId: varchar("badge_id").notNull().references(() => badges.id, { onDelete: "cascade" }),
+  orgId: varchar("org_id").references(() => organizations.id, { onDelete: "set null" }),
+  awardedAt: timestamp("awarded_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  awardedBy: varchar("awarded_by").references(() => users.id),
+  metadata: jsonb("metadata"),
+});
+
+export const insertUserBadgeSchema = createInsertSchema(userBadges).omit({id: true, awardedAt: true} as any);
+
+export type UserBadgeRecord = InferSelectModel<typeof userBadges>;
+export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
+
+// User Onboarding Table (Task 97)
+export const userOnboarding = pgTable("user_onboarding", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  orgId: varchar("org_id").references(() => organizations.id, { onDelete: "set null" }),
+  stepsCompleted: jsonb("steps_completed").default([]),
+  currentStep: integer("current_step").default(0),
+  completedAt: timestamp("completed_at"),
+  skipped: boolean("skipped").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertUserOnboardingSchema = createInsertSchema(userOnboarding).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type UserOnboardingRecord = InferSelectModel<typeof userOnboarding>;
+export type InsertUserOnboarding = z.infer<typeof insertUserOnboardingSchema>;
+
+// Notion Mappings Table (Task 86)
+export const notionMappings = pgTable("notion_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  artifactId: varchar("artifact_id").references(() => artifacts.id, { onDelete: "set null" }),
+  notionPageId: varchar("notion_page_id", { length: 100 }),
+  notionDatabaseId: varchar("notion_database_id", { length: 100 }),
+  syncDirection: varchar("sync_direction", { length: 20 }).default("push"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncStatus: varchar("sync_status", { length: 50 }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertNotionMappingSchema = createInsertSchema(notionMappings).omit({id: true, createdAt: true} as any);
+
+export type NotionMappingRecord = InferSelectModel<typeof notionMappings>;
+export type InsertNotionMapping = z.infer<typeof insertNotionMappingSchema>;
+
+// ============================================================
+// DOCS-FIRST PHASE 1 TABLES (Migration 010)
+// ============================================================
+
+// Ideas Table - Research idea backlog
+export const ideas = pgTable("ideas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id", { length: 255 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).default("BACKLOG").notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  orgId: varchar("org_id", { length: 255 }),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertIdeaSchema = createInsertSchema(ideas).omit({id: true, createdAt: true, updatedAt: true, deletedAt: true} as any);
+
+export type Idea = InferSelectModel<typeof ideas>;
+export type InsertIdea = z.infer<typeof insertIdeaSchema>;
+
+// Idea Scorecards Table - Scoring criteria for evaluating ideas
+export const ideaScorecards = pgTable("idea_scorecards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").notNull().references(() => ideas.id, { onDelete: "cascade" }),
+  noveltyScore: integer("novelty_score"),
+  feasibilityScore: integer("feasibility_score"),
+  impactScore: integer("impact_score"),
+  alignmentScore: integer("alignment_score"),
+  totalScore: integer("total_score"),  // Computed by database trigger
+  notes: text("notes"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertIdeaScorecardSchema = createInsertSchema(ideaScorecards).omit({id: true, totalScore: true, createdAt: true, updatedAt: true} as any);
+
+export type IdeaScorecard = InferSelectModel<typeof ideaScorecards>;
+export type InsertIdeaScorecard = z.infer<typeof insertIdeaScorecardSchema>;
+
+// Topic Briefs Table - Structured research planning documents with PICO framework
+export const topicBriefs = pgTable("topic_briefs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id", { length: 255 }).notNull(),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  versionNumber: integer("version_number").default(1).notNull(),
+
+  // PICO Framework
+  population: text("population"),
+  intervention: text("intervention"),
+  comparison: text("comparison"),
+  outcomes: text("outcomes").array(),
+
+  // Research structure
+  researchQuestion: text("research_question").notNull(),
+  hypothesis: text("hypothesis"),
+  background: text("background"),
+  methodsOverview: text("methods_overview"),
+  expectedFindings: text("expected_findings"),
+
+  status: varchar("status", { length: 20 }).default("DRAFT").notNull(),
+  frozenAt: timestamp("frozen_at"),
+  frozenBy: varchar("frozen_by", { length: 255 }),
+
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  orgId: varchar("org_id", { length: 255 }),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertTopicBriefSchema = createInsertSchema(topicBriefs).omit({id: true, versionNumber: true, createdAt: true, updatedAt: true, deletedAt: true} as any);
+
+export type TopicBrief = InferSelectModel<typeof topicBriefs>;
+export type InsertTopicBrief = z.infer<typeof insertTopicBriefSchema>;
+
+// Venues Table - Target publication/presentation venues
+export const venues = pgTable("venues", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 500 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  impactFactor: text("impact_factor"),  // Using text for DECIMAL compatibility
+  acceptanceRate: text("acceptance_rate"),
+
+  // Requirements
+  wordLimit: integer("word_limit"),
+  abstractLimit: integer("abstract_limit"),
+  guidelinesUrl: text("guidelines_url"),
+  submissionDeadline: timestamp("submission_deadline"),
+
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertVenueSchema = createInsertSchema(venues).omit({id: true, createdAt: true, updatedAt: true, deletedAt: true} as any);
+
+export type Venue = InferSelectModel<typeof venues>;
+export type InsertVenue = z.infer<typeof insertVenueSchema>;
+
+// Doc Kits Table - Document preparation kits per venue
+export const docKits = pgTable("doc_kits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topicBriefId: varchar("topic_brief_id").notNull().references(() => topicBriefs.id, { onDelete: "cascade" }),
+  venueId: varchar("venue_id").notNull().references(() => venues.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).default("IN_PROGRESS").notNull(),
+
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  orgId: varchar("org_id", { length: 255 }),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertDocKitSchema = createInsertSchema(docKits).omit({id: true, createdAt: true, updatedAt: true, deletedAt: true} as any);
+
+export type DocKit = InferSelectModel<typeof docKits>;
+export type InsertDocKit = z.infer<typeof insertDocKitSchema>;
+
+// Doc Kit Items Table - Individual documents in a kit
+export const docKitItems = pgTable("doc_kit_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  docKitId: varchar("doc_kit_id").notNull().references(() => docKits.id, { onDelete: "cascade" }),
+  itemType: varchar("item_type", { length: 100 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  content: text("content"),
+  artifactId: varchar("artifact_id").references(() => artifacts.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 20 }).default("NOT_STARTED").notNull(),
+  required: boolean("required").default(true).notNull(),
+  displayOrder: integer("display_order").notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertDocKitItemSchema = createInsertSchema(docKitItems).omit({id: true, createdAt: true, updatedAt: true, deletedAt: true} as any);
+
+export type DocKitItem = InferSelectModel<typeof docKitItems>;
+export type InsertDocKitItem = z.infer<typeof insertDocKitItemSchema>;
+
+// Doc Anchors Table - Hash chain for immutable scope freeze snapshots
+export const docAnchors = pgTable("doc_anchors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topicBriefId: varchar("topic_brief_id").notNull().references(() => topicBriefs.id, { onDelete: "cascade" }),
+  versionNumber: integer("version_number").notNull(),
+  snapshotData: jsonb("snapshot_data").notNull(),
+  previousHash: varchar("previous_hash", { length: 64 }),
+  currentHash: varchar("current_hash", { length: 64 }).notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertDocAnchorSchema = createInsertSchema(docAnchors).omit({id: true, createdAt: true} as any);
+
+export type DocAnchor = InferSelectModel<typeof docAnchors>;
+export type InsertDocAnchor = z.infer<typeof insertDocAnchorSchema>;
+
+// ============================================================
+// PHASE F: UI/UX ENHANCEMENTS TABLES (Migration 011, Tasks 101-110)
+// ============================================================
+
+// =====================
+// FEATURE FLAGS & EXPERIMENTS (Task 110)
+// =====================
+
+// Feature Flags Table
+export const featureFlags = pgTable("feature_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flagKey: varchar("flag_key", { length: 100 }).unique().notNull(),
+  enabled: boolean("enabled").default(false).notNull(),
+  description: text("description"),
+  tierRequired: varchar("tier_required", { length: 20 }), // 'FREE', 'TEAM', 'ENTERPRISE'
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type FeatureFlag = InferSelectModel<typeof featureFlags>;
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+
+// Experiments Table (A/B Testing)
+export const EXPERIMENT_STATUSES = ["DRAFT", "RUNNING", "PAUSED", "COMPLETE"] as const;
+export type ExperimentStatus = (typeof EXPERIMENT_STATUSES)[number];
+
+export const experiments = pgTable("experiments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  experimentKey: varchar("experiment_key", { length: 100 }).unique().notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  variants: jsonb("variants").notNull(), // [{"key": "control", "weight": 50}, {"key": "variant_a", "weight": 50}]
+  status: varchar("status", { length: 20 }).default("DRAFT").notNull(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertExperimentSchema = createInsertSchema(experiments).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type Experiment = InferSelectModel<typeof experiments>;
+export type InsertExperiment = z.infer<typeof insertExperimentSchema>;
+
+// Experiment Assignments Table
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  experimentId: varchar("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  variantKey: varchar("variant_key", { length: 100 }).notNull(),
+  assignedAt: timestamp("assigned_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertExperimentAssignmentSchema = createInsertSchema(experimentAssignments).omit({id: true, assignedAt: true} as any);
+
+export type ExperimentAssignment = InferSelectModel<typeof experimentAssignments>;
+export type InsertExperimentAssignment = z.infer<typeof insertExperimentAssignmentSchema>;
+
+// =====================
+// CUSTOM FIELDS (Task 101)
+// =====================
+
+// Org Custom Fields Schema Table
+export const orgCustomFields = pgTable("org_custom_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id", { length: 255 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(), // 'project', 'dataset', 'artifact'
+  schemaJson: jsonb("schema_json").notNull(), // Array of field definitions
+  version: integer("version").default(1).notNull(),
+  updatedBy: varchar("updated_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrgCustomFieldSchema = createInsertSchema(orgCustomFields).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type OrgCustomField = InferSelectModel<typeof orgCustomFields>;
+export type InsertOrgCustomField = z.infer<typeof insertOrgCustomFieldSchema>;
+
+// Entity Custom Field Values Table
+export const entityCustomFieldValues = pgTable("entity_custom_field_values", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: varchar("entity_id", { length: 255 }).notNull(),
+  orgId: varchar("org_id", { length: 255 }).notNull(),
+  valuesJson: jsonb("values_json").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertEntityCustomFieldValueSchema = createInsertSchema(entityCustomFieldValues).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type EntityCustomFieldValue = InferSelectModel<typeof entityCustomFieldValues>;
+export type InsertEntityCustomFieldValue = z.infer<typeof insertEntityCustomFieldValueSchema>;
+
+// =====================
+// SEMANTIC SEARCH (Task 107)
+// =====================
+
+// Artifact Embeddings Table (PHI-safe metadata embeddings)
+export const artifactEmbeddings = pgTable("artifact_embeddings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  artifactId: varchar("artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  orgId: varchar("org_id", { length: 255 }).notNull(),
+  embeddingVector: jsonb("embedding_vector").notNull(), // Store as JSON array (or use pgvector if available)
+  modelName: varchar("model_name", { length: 100 }).default("text-embedding-3-small").notNull(),
+  metadataHash: varchar("metadata_hash", { length: 64 }).notNull(), // SHA-256 of metadata
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertArtifactEmbeddingSchema = createInsertSchema(artifactEmbeddings).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type ArtifactEmbedding = InferSelectModel<typeof artifactEmbeddings>;
+export type InsertArtifactEmbedding = z.infer<typeof insertArtifactEmbeddingSchema>;
+
+// =====================
+// TUTORIALS (Task 108)
+// =====================
+
+// Tutorial Assets Table
+export const tutorialAssets = pgTable("tutorial_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tutorialKey: varchar("tutorial_key", { length: 100 }).unique().notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  videoUrl: text("video_url"), // YouTube/Vimeo/self-hosted
+  steps: jsonb("steps").notNull(), // [{"title": "Step 1", "content": "...", "targetSelector": ".upload-button"}]
+  enabled: boolean("enabled").default(true),
+  orgId: varchar("org_id", { length: 255 }), // Null = global; set = org-specific override
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertTutorialAssetSchema = createInsertSchema(tutorialAssets).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type TutorialAsset = InferSelectModel<typeof tutorialAssets>;
+export type InsertTutorialAsset = z.infer<typeof insertTutorialAssetSchema>;
+// ============================================================
+// PHASE G: CUSTOM WORKFLOW BUILDER TABLES (Migration 0007)
+// ============================================================
+
+// =====================
+// WORKFLOW STATUSES
+// =====================
+export const WORKFLOW_STATUSES_G = ["draft", "published", "archived"] as const;
+export type WorkflowStatusG = (typeof WORKFLOW_STATUSES_G)[number];
+
+export const RUN_STATUSES = ["running", "paused", "completed", "failed"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+// =====================
+// WORKFLOWS TABLE
+// =====================
+export const workflows = pgTable("workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id", { length: 255 }).references(() => organizations.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).notNull().default("draft"),
+  createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowSchema = createInsertSchema(workflows).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type WorkflowRecord = InferSelectModel<typeof workflows>;
+export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
+
+// =====================
+// WORKFLOW VERSIONS TABLE
+// =====================
+export const workflowVersions = pgTable("workflow_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id", { length: 255 }).notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  definition: jsonb("definition").notNull(),
+  changelog: text("changelog"),
+  createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowVersionSchema = createInsertSchema(workflowVersions).omit({id: true, createdAt: true} as any);
+
+export type WorkflowVersionRecord = InferSelectModel<typeof workflowVersions>;
+export type InsertWorkflowVersion = z.infer<typeof insertWorkflowVersionSchema>;
+
+// =====================
+// WORKFLOW TEMPLATES TABLE
+// =====================
+export const workflowTemplates = pgTable("workflow_templates", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  definition: jsonb("definition").notNull(),
+  category: varchar("category", { length: 100 }).default("general"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowTemplateSchema = createInsertSchema(workflowTemplates).omit({createdAt: true} as any);
+
+export type WorkflowTemplateRecord = InferSelectModel<typeof workflowTemplates>;
+export type InsertWorkflowTemplate = z.infer<typeof insertWorkflowTemplateSchema>;
+
+// =====================
+// WORKFLOW POLICIES TABLE
+// =====================
+export const workflowPolicies = pgTable("workflow_policies", {
+  workflowId: varchar("workflow_id", { length: 255 }).primaryKey().references(() => workflows.id, { onDelete: "cascade" }),
+  policy: jsonb("policy").default({}).notNull(),
+  updatedBy: varchar("updated_by", { length: 255 }).references(() => users.id),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowPolicySchema = createInsertSchema(workflowPolicies).omit({updatedAt: true} as any);
+
+export type WorkflowPolicyRecord = InferSelectModel<typeof workflowPolicies>;
+export type InsertWorkflowPolicy = z.infer<typeof insertWorkflowPolicySchema>;
+
+// =====================
+// WORKFLOW RUN CHECKPOINTS TABLE
+// =====================
+export const workflowRunCheckpoints = pgTable("workflow_run_checkpoints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id", { length: 255 }).notNull(),
+  workflowId: varchar("workflow_id", { length: 255 }).notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  workflowVersion: integer("workflow_version").notNull(),
+  currentNodeId: varchar("current_node_id", { length: 255 }).notNull(),
+  completedNodes: jsonb("completed_nodes").default([]).notNull(),
+  nodeOutputs: jsonb("node_outputs").default({}).notNull(),
+  status: varchar("status", { length: 50 }).default("running").notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowRunCheckpointSchema = createInsertSchema(workflowRunCheckpoints).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type WorkflowRunCheckpointRecord = InferSelectModel<typeof workflowRunCheckpoints>;
+export type InsertWorkflowRunCheckpoint = z.infer<typeof insertWorkflowRunCheckpointSchema>;
+
+// =====================
+// DOCUMENT LIFECYCLE TABLES (Phase H)
+// =====================
+
+// Artifact Edge Relation Types
+export const ARTIFACT_EDGE_RELATIONS = [
+  'derived_from',
+  'references', 
+  'supersedes',
+  'uses',
+  'generated_from',
+  'exported_to',
+  'annotates'
+] as const;
+export type ArtifactEdgeRelation = (typeof ARTIFACT_EDGE_RELATIONS)[number];
+
+// Artifact Edges (Provenance Graph)
+export const artifactEdges = pgTable("artifact_edges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  sourceArtifactId: varchar("source_artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  targetArtifactId: varchar("target_artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  relationType: varchar("relation_type", { length: 50 }).notNull(),
+  transformationType: varchar("transformation_type", { length: 100 }),
+  transformationConfig: jsonb("transformation_config").default({}).notNull(),
+  sourceVersionId: varchar("source_version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  targetVersionId: varchar("target_version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+  metadata: jsonb("metadata").default({}).notNull(),
+});
+
+export const insertArtifactEdgeSchema = createInsertSchema(artifactEdges).omit({id: true, createdAt: true} as any);
+
+export type ArtifactEdge = InferSelectModel<typeof artifactEdges>;
+export type InsertArtifactEdge = z.infer<typeof insertArtifactEdgeSchema>;
+
+// Comment Anchor Types
+export const COMMENT_ANCHOR_TYPES = [
+  'text_selection',
+  'entire_section',
+  'table_cell',
+  'figure_region',
+  'slide_region'
+] as const;
+export type CommentAnchorType = (typeof COMMENT_ANCHOR_TYPES)[number];
+
+// PHI Scan Statuses
+export const PHI_SCAN_STATUSES = ['PASS', 'FAIL', 'PENDING', 'OVERRIDE'] as const;
+export type PhiScanStatus = (typeof PHI_SCAN_STATUSES)[number];
+
+// Comments Table
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  artifactId: varchar("artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  parentCommentId: varchar("parent_comment_id"),
+  threadId: varchar("thread_id").notNull(),
+  anchorType: varchar("anchor_type", { length: 50 }).notNull(),
+  anchorData: jsonb("anchor_data").notNull(),
+  body: text("body").notNull(),
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deletedAt: timestamp("deleted_at"),
+  phiScanStatus: varchar("phi_scan_status", { length: 20 }).default('PENDING'),
+  phiFindings: jsonb("phi_findings").default([]).notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type Comment = InferSelectModel<typeof comments>;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+
+// Claim Status Types
+export const CLAIM_STATUSES = ['draft', 'verified', 'disputed', 'retracted'] as const;
+export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
+
+// Claims Table
+export const claims = pgTable("claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  manuscriptArtifactId: varchar("manuscript_artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  section: varchar("section", { length: 50 }),
+  claimText: text("claim_text").notNull(),
+  claimTextHash: varchar("claim_text_hash", { length: 64 }),
+  anchor: jsonb("anchor").default({}).notNull(),
+  status: varchar("status", { length: 20 }).default('draft'),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  phiScanStatus: varchar("phi_scan_status", { length: 20 }).default('PENDING'),
+  phiFindings: jsonb("phi_findings").default([]).notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertClaimSchema = createInsertSchema(claims).omit({id: true, createdAt: true} as any);
+
+export type Claim = InferSelectModel<typeof claims>;
+export type InsertClaim = z.infer<typeof insertClaimSchema>;
+
+// Evidence Types
+export const EVIDENCE_TYPES = ['citation', 'artifact', 'pdf_highlight', 'url'] as const;
+export type EvidenceType = (typeof EVIDENCE_TYPES)[number];
+
+// Claim Evidence Links Table
+// Evidence Types for Claims
+export const CLAIM_EVIDENCE_TYPES = ['citation', 'data_artifact', 'figure', 'table', 'external_url'] as const;
+export type ClaimEvidenceType = (typeof CLAIM_EVIDENCE_TYPES)[number];
+
+export const claimEvidenceLinks = pgTable("claim_evidence_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  claimId: varchar("claim_id").notNull().references(() => claims.id, { onDelete: "cascade" }),
+  evidenceType: varchar("evidence_type", { length: 30 }).notNull(),
+  evidenceArtifactId: varchar("evidence_artifact_id").references(() => artifacts.id, { onDelete: "set null" }),
+  citationId: varchar("citation_id"),
+  externalUrl: text("external_url"),
+  locator: jsonb("locator").default({}).notNull(),
+  linkedBy: varchar("linked_by").notNull(),
+  linkedAt: timestamp("linked_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  notes: text("notes"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const insertClaimEvidenceLinkSchema = createInsertSchema(claimEvidenceLinks).omit({id: true, linkedAt: true} as any);
+
+export type ClaimEvidenceLink = InferSelectModel<typeof claimEvidenceLinks>;
+export type InsertClaimEvidenceLink = z.infer<typeof insertClaimEvidenceLinkSchema>;
+
+// Share Permissions
+export const SHARE_PERMISSIONS = ['read', 'comment'] as const;
+export type SharePermission = (typeof SHARE_PERMISSIONS)[number];
+
+// Artifact Shares Table
+export const artifactShares = pgTable("artifact_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  artifactId: varchar("artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  permission: varchar("permission", { length: 20 }).notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  revokedAt: timestamp("revoked_at"),
+  metadata: jsonb("metadata").default({}).notNull(),
+});
+
+export const insertArtifactShareSchema = createInsertSchema(artifactShares).omit({id: true, createdAt: true} as any);
+
+export type ArtifactShare = InferSelectModel<typeof artifactShares>;
+export type InsertArtifactShare = z.infer<typeof insertArtifactShareSchema>;
+
+// Submission Target Kinds
+export const SUBMISSION_TARGET_KINDS = ['journal', 'conference'] as const;
+export type SubmissionTargetKind = (typeof SUBMISSION_TARGET_KINDS)[number];
+
+// Submission Targets Table
+export const submissionTargets = pgTable("submission_targets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id"),
+  name: text("name").notNull(),
+  kind: varchar("kind", { length: 20 }).notNull(),
+  websiteUrl: text("website_url"),
+  requirementsArtifactId: varchar("requirements_artifact_id").references(() => artifacts.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertSubmissionTargetSchema = createInsertSchema(submissionTargets).omit({id: true, createdAt: true} as any);
+
+export type SubmissionTarget = InferSelectModel<typeof submissionTargets>;
+export type InsertSubmissionTarget = z.infer<typeof insertSubmissionTargetSchema>;
+
+// Submission Statuses
+export const SUBMISSION_STATUSES = [
+  'draft',
+  'submitted',
+  'revise',
+  'accepted',
+  'rejected',
+  'withdrawn',
+  'camera_ready'
+] as const;
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
+
+// Submissions Table
+export const submissions = pgTable("submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  researchId: varchar("research_id").notNull(),
+  targetId: varchar("target_id").notNull().references(() => submissionTargets.id, { onDelete: "restrict" }),
+  status: varchar("status", { length: 30 }).default('draft').notNull(),
+  currentManuscriptArtifactId: varchar("current_manuscript_artifact_id").references(() => artifacts.id, { onDelete: "set null" }),
+  currentManuscriptVersionId: varchar("current_manuscript_version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  submittedAt: timestamp("submitted_at"),
+  decisionAt: timestamp("decision_at"),
+  externalTrackingId: varchar("external_tracking_id"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertSubmissionSchema = createInsertSchema(submissions).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type Submission = InferSelectModel<typeof submissions>;
+export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
+
+// Reviewer Point Statuses
+export const REVIEWER_POINT_STATUSES = ['open', 'resolved'] as const;
+export type ReviewerPointStatus = (typeof REVIEWER_POINT_STATUSES)[number];
+
+// Reviewer Points Table
+export const reviewerPoints = pgTable("reviewer_points", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => submissions.id, { onDelete: "cascade" }),
+  reviewerLabel: varchar("reviewer_label", { length: 50 }).default('reviewer_1'),
+  body: text("body").notNull(),
+  anchorData: jsonb("anchor_data").default({}).notNull(),
+  status: varchar("status", { length: 20 }).default('open').notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  phiScanStatus: varchar("phi_scan_status", { length: 20 }).default('PENDING'),
+  phiFindings: jsonb("phi_findings").default([]).notNull(),
+});
+
+export const insertReviewerPointSchema = createInsertSchema(reviewerPoints).omit({id: true, createdAt: true} as any);
+
+export type ReviewerPoint = InferSelectModel<typeof reviewerPoints>;
+export type InsertReviewerPoint = z.infer<typeof insertReviewerPointSchema>;
+
+// Rebuttal Responses Table
+export const rebuttalResponses = pgTable("rebuttal_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewerPointId: varchar("reviewer_point_id").notNull().references(() => reviewerPoints.id, { onDelete: "cascade" }),
+  responseBody: text("response_body").notNull(),
+  linkedVersionId: varchar("linked_version_id").references(() => artifactVersions.id, { onDelete: "set null" }),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  phiScanStatus: varchar("phi_scan_status", { length: 20 }).default('PENDING'),
+  phiFindings: jsonb("phi_findings").default([]).notNull(),
+});
+
+export const insertRebuttalResponseSchema = createInsertSchema(rebuttalResponses).omit({id: true, createdAt: true} as any);
+
+export type RebuttalResponse = InferSelectModel<typeof rebuttalResponses>;
+export type InsertRebuttalResponse = z.infer<typeof insertRebuttalResponseSchema>;
+
+// Submission Package Types
+export const SUBMISSION_PACKAGE_TYPES = ['initial', 'rebuttal', 'camera_ready', 'conference_bundle'] as const;
+export type SubmissionPackageType = (typeof SUBMISSION_PACKAGE_TYPES)[number];
+
+// Submission Packages Table
+export const submissionPackages = pgTable("submission_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => submissions.id, { onDelete: "cascade" }),
+  packageType: varchar("package_type", { length: 30 }).notNull(),
+  artifactIds: jsonb("artifact_ids").notNull(),
+  manifest: jsonb("manifest").notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertSubmissionPackageSchema = createInsertSchema(submissionPackages).omit({id: true, createdAt: true} as any);
+
+export type SubmissionPackage = InferSelectModel<typeof submissionPackages>;
+export type InsertSubmissionPackage = z.infer<typeof insertSubmissionPackageSchema>;
+
+// Manuscript Yjs Snapshots Table
+export const manuscriptYjsSnapshots = pgTable("manuscript_yjs_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  manuscriptArtifactId: varchar("manuscript_artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  snapshotClock: integer("snapshot_clock").notNull(),
+  snapshot: text("snapshot").notNull(), // Base64 encoded for BYTEA
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertManuscriptYjsSnapshotSchema = createInsertSchema(manuscriptYjsSnapshots).omit({id: true, createdAt: true} as any);
+
+export type ManuscriptYjsSnapshot = InferSelectModel<typeof manuscriptYjsSnapshots>;
+export type InsertManuscriptYjsSnapshot = z.infer<typeof insertManuscriptYjsSnapshotSchema>;
+
+// Manuscript Yjs Updates Table
+export const manuscriptYjsUpdates = pgTable("manuscript_yjs_updates", {
+  id: serial("id").primaryKey(),
+  manuscriptArtifactId: varchar("manuscript_artifact_id").notNull().references(() => artifacts.id, { onDelete: "cascade" }),
+  clock: integer("clock").notNull(),
+  updateData: text("update_data").notNull(), // Base64 encoded for BYTEA
+  userId: varchar("user_id").references(() => users.id),
+  appliedAt: timestamp("applied_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertManuscriptYjsUpdateSchema = createInsertSchema(manuscriptYjsUpdates).omit({id: true, appliedAt: true} as any);
+
+export type ManuscriptYjsUpdate = InferSelectModel<typeof manuscriptYjsUpdates>;
+export type InsertManuscriptYjsUpdate = z.infer<typeof insertManuscriptYjsUpdateSchema>;
+
+// =====================
+// PHASE F: OBSERVABILITY + FEATURE FLAGS
+// =====================
+
+// Governance Mode Types
+export const GOVERNANCE_MODES = ['DEMO', 'LIVE'] as const;
+export type GovernanceMode = (typeof GOVERNANCE_MODES)[number];
+
+// Feature Flag Scope Types
+export const FEATURE_FLAG_SCOPES = ['product', 'governance'] as const;
+export type FeatureFlagScope = (typeof FEATURE_FLAG_SCOPES)[number];
+
+// Governance Config Table (DB-backed mode configuration)
+export const governanceConfig = pgTable("governance_config", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: jsonb("value").default({}).notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertGovernanceConfigSchema = createInsertSchema(governanceConfig).omit({createdAt: true, updatedAt: true} as any);
+
+export type GovernanceConfig = InferSelectModel<typeof governanceConfig>;
+export type InsertGovernanceConfig = z.infer<typeof insertGovernanceConfigSchema>;
+
+// Note: Feature Flags, Experiments, and Experiment Assignments tables are defined
+// in the "FEATURE FLAGS & EXPERIMENTS (Task 110)" section above (lines ~1507-1569)
+
+// Analytics Events Table (PHI-safe, opt-in only)
+// PHI-safe by design: only stores IDs, counts, booleans, timings, feature identifiers
+// No raw dataset values, no manuscript content, no user-entered free text
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventName: varchar("event_name", { length: 120 }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: varchar("session_id"),
+  researchId: varchar("research_id"),
+  mode: varchar("mode", { length: 20 }).notNull(),
+  properties: jsonb("properties").default({}),
+  ipHash: varchar("ip_hash", { length: 64 }), // SHA256(ip + salt), never raw IP
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({id: true, createdAt: true} as any);
+
+export type AnalyticsEvent = InferSelectModel<typeof analyticsEvents>;
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+
+// Allowed analytics event names (PHI-safe allowlist)
+export const ANALYTICS_EVENT_NAMES = [
+  'ui.page_view',
+  'ui.button_click',
+  'governance.console_view',
+  'governance.mode_changed',
+  'governance.flag_changed',
+  'job.started',
+  'job.progress',
+  'job.completed',
+  'job.failed',
+  'experiment.assigned',
+] as const;
+export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
+
+
+// ============================================================
+// PHASE 6: INSIGHTS & OBSERVABILITY TABLES
+// ============================================================
+
+// =====================
+// INSIGHT EVENT CATEGORIES & SOURCES
+// =====================
+
+export const INSIGHT_CATEGORIES = ['trace', 'metric', 'alert', 'audit'] as const;
+export type InsightCategory = (typeof INSIGHT_CATEGORIES)[number];
+
+export const INSIGHT_SOURCES = ['orchestrator', 'worker', 'web', 'collab', 'guideline-engine'] as const;
+export type InsightSource = (typeof INSIGHT_SOURCES)[number];
+
+export const INSIGHT_SEVERITIES = ['info', 'warning', 'error', 'critical'] as const;
+export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
+
+// =====================
+// INSIGHT EVENTS TABLE
+// Store events for replay, audit, and analytics
+// =====================
+
+export const insightEvents = pgTable("insight_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  category: varchar("category", { length: 20 }).notNull(),
+  source: varchar("source", { length: 50 }).notNull(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 20 }).default('info').notNull(),
+  
+  // Context identifiers
+  runId: varchar("run_id"),
+  researchId: varchar("research_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: varchar("session_id"),
+  
+  // Event payload (PHI-safe: no raw data content)
+  payload: jsonb("payload").default({}).notNull(),
+  
+  // Tracing support
+  traceId: varchar("trace_id", { length: 64 }),
+  spanId: varchar("span_id", { length: 32 }),
+  parentSpanId: varchar("parent_span_id", { length: 32 }),
+  
+  // Metadata
+  durationMs: integer("duration_ms"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  
+  // Retention
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertInsightEventSchema = createInsertSchema(insightEvents).omit({id: true, createdAt: true} as any);
+
+export type InsightEvent = InferSelectModel<typeof insightEvents>;
+export type InsertInsightEvent = z.infer<typeof insertInsightEventSchema>;
+
+// =====================
+// INSIGHT SUBSCRIPTIONS TABLE
+// Track who subscribes to what events (WebSocket channels)
+// =====================
+
+export const insightSubscriptions = pgTable("insight_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Subscription filters
+  categories: jsonb("categories").default([]).notNull(), // ['trace', 'metric']
+  sources: jsonb("sources").default([]).notNull(),       // ['orchestrator', 'worker']
+  eventTypes: jsonb("event_types").default([]).notNull(), // Specific event types
+  severities: jsonb("severities").default([]).notNull(), // ['warning', 'error', 'critical']
+  
+  // Scope filters
+  researchIds: jsonb("research_ids").default([]).notNull(),
+  
+  // Delivery settings
+  deliveryChannel: varchar("delivery_channel", { length: 50 }).default('websocket').notNull(),
+  webhookUrl: text("webhook_url"),
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  lastDeliveredAt: timestamp("last_delivered_at"),
+  
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertInsightSubscriptionSchema = createInsertSchema(insightSubscriptions).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type InsightSubscription = InferSelectModel<typeof insightSubscriptions>;
+export type InsertInsightSubscription = z.infer<typeof insertInsightSubscriptionSchema>;
+
+// =====================
+// INSIGHT ALERTS TABLE
+// Alert configurations with thresholds and actions
+// =====================
+
+export const ALERT_OPERATORS = ['gt', 'gte', 'lt', 'lte', 'eq', 'neq', 'contains', 'matches'] as const;
+export type AlertOperator = (typeof ALERT_OPERATORS)[number];
+
+export const ALERT_ACTIONS = ['email', 'slack', 'webhook', 'pagerduty', 'in_app'] as const;
+export type AlertAction = (typeof ALERT_ACTIONS)[number];
+
+export const insightAlerts = pgTable("insight_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Alert condition
+  category: varchar("category", { length: 20 }).notNull(),
+  eventType: varchar("event_type", { length: 100 }),
+  conditionField: varchar("condition_field", { length: 100 }).notNull(),
+  conditionOperator: varchar("condition_operator", { length: 20 }).notNull(),
+  conditionValue: text("condition_value").notNull(),
+  
+  // Threshold settings (for rate-based alerts)
+  thresholdCount: integer("threshold_count"),
+  thresholdWindowSeconds: integer("threshold_window_seconds"),
+  
+  // Actions
+  actions: jsonb("actions").default([]).notNull(), // [{type: 'email', config: {...}}]
+  
+  // Scope
+  orgId: varchar("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  researchIds: jsonb("research_ids").default([]).notNull(),
+  
+  // Status
+  enabled: boolean("enabled").default(true).notNull(),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  triggerCount: integer("trigger_count").default(0).notNull(),
+  
+  // Cooldown (prevent alert storms)
+  cooldownSeconds: integer("cooldown_seconds").default(300).notNull(),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertInsightAlertSchema = createInsertSchema(insightAlerts).omit({id: true, createdAt: true, updatedAt: true} as any);
+
+export type InsightAlert = InferSelectModel<typeof insightAlerts>;
+export type InsertInsightAlert = z.infer<typeof insertInsightAlertSchema>;
+
+// =====================
+// INSIGHT ALERT HISTORY TABLE
+// Track when alerts were triggered
+// =====================
+
+export const insightAlertHistory = pgTable("insight_alert_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertId: varchar("alert_id").notNull().references(() => insightAlerts.id, { onDelete: "cascade" }),
+  eventId: varchar("event_id").references(() => insightEvents.id, { onDelete: "set null" }),
+  
+  // Trigger context
+  triggerValue: text("trigger_value"),
+  matchedCondition: jsonb("matched_condition").notNull(),
+  
+  // Actions taken
+  actionsTaken: jsonb("actions_taken").default([]).notNull(),
+  actionResults: jsonb("action_results").default({}).notNull(),
+  
+  // Resolution
+  acknowledged: boolean("acknowledged").default(false).notNull(),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolution: text("resolution"),
+  
+  triggeredAt: timestamp("triggered_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertInsightAlertHistorySchema = createInsertSchema(insightAlertHistory).omit({id: true, triggeredAt: true} as any);
+
+export type InsightAlertHistory = InferSelectModel<typeof insightAlertHistory>;
+export type InsertInsightAlertHistory = z.infer<typeof insertInsightAlertHistorySchema>;
+
+// =====================
+// AI TRACE EVENTS TABLE
+// Detailed AI invocation tracing for explainability
+// =====================
+
+export const aiTraceEvents = pgTable("ai_trace_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Link to parent invocation
+  invocationId: varchar("invocation_id").references(() => aiInvocations.id, { onDelete: "cascade" }),
+  insightEventId: varchar("insight_event_id").references(() => insightEvents.id, { onDelete: "set null" }),
+  
+  // Tracing identifiers
+  traceId: varchar("trace_id", { length: 64 }).notNull(),
+  spanId: varchar("span_id", { length: 32 }).notNull(),
+  parentSpanId: varchar("parent_span_id", { length: 32 }),
+  
+  // Event details
+  spanName: varchar("span_name", { length: 100 }).notNull(),
+  spanKind: varchar("span_kind", { length: 20 }).default('internal').notNull(),
+  
+  // Timing
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  durationMs: integer("duration_ms"),
+  
+  // Attributes (PHI-safe metadata only)
+  attributes: jsonb("attributes").default({}).notNull(),
+  
+  // Status
+  statusCode: varchar("status_code", { length: 20 }).default('OK').notNull(),
+  statusMessage: text("status_message"),
+  
+  // Context
+  researchId: varchar("research_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAiTraceEventSchema = createInsertSchema(aiTraceEvents).omit({id: true, createdAt: true} as any);
+
+export type AiTraceEvent = InferSelectModel<typeof aiTraceEvents>;
+export type InsertAiTraceEvent = z.infer<typeof insertAiTraceEventSchema>;
+
+// =====================
+// ANALYSIS PLANNING TABLES
+// For agentic analysis workflow
+// =====================
+
+// Plan status and type enums
+export const PLAN_TYPES = ['statistical', 'exploratory', 'comparative', 'predictive'] as const;
+export type PlanTypeEnum = (typeof PLAN_TYPES)[number];
+
+export const PLAN_STATUSES = ['draft', 'pending_approval', 'approved', 'rejected', 'running', 'completed', 'failed'] as const;
+export type PlanStatusEnum = (typeof PLAN_STATUSES)[number];
+
+export const JOB_TYPES = ['plan_build', 'plan_run'] as const;
+export type JobTypeEnum = (typeof JOB_TYPES)[number];
+
+export const JOB_STATUSES = ['pending', 'queued', 'running', 'completed', 'failed', 'cancelled'] as const;
+export type JobStatusEnum = (typeof JOB_STATUSES)[number];
+
+export const ANALYSIS_ARTIFACT_TYPES = ['table', 'figure', 'report', 'manifest', 'log', 'data', 'other'] as const;
+export type AnalysisArtifactTypeEnum = (typeof ANALYSIS_ARTIFACT_TYPES)[number];
+
+// Analysis Plans Table
+export const analysisPlans = pgTable("analysis_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id"),
+  datasetId: varchar("dataset_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  researchQuestion: text("research_question").notNull(),
+  planType: varchar("plan_type", { length: 50 }).notNull(),
+  constraints: jsonb("constraints").default({}).notNull(),
+  planSpec: jsonb("plan_spec").default({}).notNull(),
+  status: varchar("status", { length: 50 }).default('draft').notNull(),
+  requiresApproval: boolean("requires_approval").default(true).notNull(),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalysisPlanSchema = createInsertSchema(analysisPlans).omit({id: true, createdAt: true, updatedAt: true} as any);
+export type AnalysisPlanRow = InferSelectModel<typeof analysisPlans>;
+export type InsertAnalysisPlan = z.infer<typeof insertAnalysisPlanSchema>;
+
+// Analysis Jobs Table
+export const analysisJobs = pgTable("analysis_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planId: varchar("plan_id").notNull().references(() => analysisPlans.id, { onDelete: "cascade" }),
+  jobType: varchar("job_type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 50 }).default('pending').notNull(),
+  progress: integer("progress").default(0).notNull(),
+  currentStage: varchar("current_stage", { length: 100 }),
+  stagesCompleted: jsonb("stages_completed").default([]).notNull(),
+  result: jsonb("result"),
+  errorMessage: text("error_message"),
+  errorDetails: jsonb("error_details"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  startedBy: varchar("started_by").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalysisJobSchema = createInsertSchema(analysisJobs).omit({id: true, createdAt: true} as any);
+export type AnalysisJobRow = InferSelectModel<typeof analysisJobs>;
+export type InsertAnalysisJob = z.infer<typeof insertAnalysisJobSchema>;
+
+// Analysis Job Events Table
+export const analysisJobEvents = pgTable("analysis_job_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => analysisJobs.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  eventData: jsonb("event_data").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalysisJobEventSchema = createInsertSchema(analysisJobEvents).omit({id: true, createdAt: true} as any);
+export type AnalysisJobEventRow = InferSelectModel<typeof analysisJobEvents>;
+export type InsertAnalysisJobEvent = z.infer<typeof insertAnalysisJobEventSchema>;
+
+// Analysis Artifacts Table
+export const analysisArtifacts = pgTable("analysis_artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => analysisJobs.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id").notNull().references(() => analysisPlans.id, { onDelete: "cascade" }),
+  artifactType: varchar("artifact_type", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  filePath: text("file_path"),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  inlineData: jsonb("inline_data"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalysisArtifactSchema = createInsertSchema(analysisArtifacts).omit({id: true, createdAt: true} as any);
+export type AnalysisArtifactRow = InferSelectModel<typeof analysisArtifacts>;
+export type InsertAnalysisArtifact = z.infer<typeof insertAnalysisArtifactSchema>;

@@ -1,0 +1,11 @@
+participant_id,age,sex,systolic_bp,total_cholesterol,bmi,smoking_status,diabetes,cardiovascular_event,risk_category
+CVD-00001,55,Male,142,220,28.4,Former,1,1,High
+CVD-00002,43,Female,118,185,24.2,Never,0,0,Low
+CVD-00003,67,Male,156,245,31.2,Current,1,1,High
+CVD-00004,39,Female,108,165,22.8,Never,0,0,Low
+CVD-00005,58,Male,134,198,26.7,Former,0,0,Moderate
+CVD-00006,62,Female,128,212,29.1,Never,1,0,Moderate
+CVD-00007,71,Male,148,235,30.8,Former,1,1,High
+CVD-00008,35,Female,112,172,23.5,Never,0,0,Low
+CVD-00009,49,Male,125,188,25.9,Current,0,0,Moderate
+CVD-00010,54,Female,122,201,27.3,Never,0,0,Moderate

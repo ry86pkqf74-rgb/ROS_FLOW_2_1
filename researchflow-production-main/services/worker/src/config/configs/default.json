@@ -1,0 +1,61 @@
+{
+  "environment": "development",
+  "debug_mode": true,
+  "log_level": "DEBUG",
+  "template_version": "v1.2",
+  "customization_level": "basic",
+  "phi_compliance": {
+    "enabled": true,
+    "compliance_level": "strict",
+    "auto_sanitize": true,
+    "audit_logging": true,
+    "custom_patterns": {},
+    "allowed_phi_types": [],
+    "sanitization_method": "redact"
+  },
+  "api_config": {
+    "host": "0.0.0.0",
+    "port": 8002,
+    "cors_enabled": true,
+    "cors_origins": ["*"],
+    "rate_limiting": false,
+    "rate_limit_requests": 100,
+    "rate_limit_window": 60,
+    "gzip_enabled": true,
+    "request_timeout": 30,
+    "max_content_length": 10485760
+  },
+  "performance": {
+    "max_concurrent_requests": 10,
+    "template_caching": true,
+    "cache_ttl": 3600,
+    "async_processing": true,
+    "batch_size_limit": 50,
+    "memory_limit_mb": 512,
+    "cpu_optimization": true
+  },
+  "regulatory": {
+    "enabled_frameworks": ["hipaa", "ich_gcp"],
+    "default_framework": "hipaa",
+    "require_framework_selection": true,
+    "framework_validation": true,
+    "compliance_checking": true,
+    "audit_trail": true
+  },
+  "user_preferences": {
+    "user_id": "default",
+    "default_template": "rct_basic_v1",
+    "preferred_output_format": "markdown",
+    "auto_save": true,
+    "language": "en",
+    "timezone": "UTC",
+    "notification_preferences": {
+      "generation_complete": true,
+      "validation_warnings": true,
+      "phi_alerts": true
+    },
+    "custom_variables": {}
+  },
+  "template_configs": {},
+  "config_version": "1.0"
+}

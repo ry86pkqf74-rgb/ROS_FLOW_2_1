@@ -1,0 +1,31 @@
+# Development Dockerfile for manuscript-engine testing
+FROM node:20-alpine
+
+WORKDIR /workspace
+
+# Copy root package files
+COPY package.json package-lock.json* ./
+COPY tsconfig.json ./
+COPY vitest.config.ts ./
+
+# Copy all workspace packages
+COPY packages/ ./packages/
+
+# Copy services directory for governance test dependencies
+COPY services/ ./services/
+
+# Copy tests directory for governance and integration tests
+COPY tests/ ./tests/
+
+# Install ALL dependencies at workspace root (this handles workspaces correctly)
+RUN npm install --include=dev
+
+# Set working directory to manuscript-engine
+WORKDIR /workspace/packages/manuscript-engine
+
+# Set environment variables
+ENV NODE_ENV=test
+ENV CI=true
+
+# Default command runs tests
+CMD ["npm", "test"]

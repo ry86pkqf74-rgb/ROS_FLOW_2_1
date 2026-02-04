@@ -1,0 +1,41 @@
+{
+  "name": "@researchflow/design-tokens",
+  "version": "1.0.0",
+  "description": "Design tokens for ResearchFlow UI - compiled from Figma",
+  "main": "dist/tokens.js",
+  "module": "dist/tokens.mjs",
+  "types": "dist/tokens.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/tokens.mjs",
+      "require": "./dist/tokens.js",
+      "types": "./dist/tokens.d.ts"
+    },
+    "./css": "./dist/tokens.css"
+  },
+  "files": [
+    "dist",
+    "tokens"
+  ],
+  "scripts": {
+    "build": "style-dictionary build",
+    "build:watch": "nodemon --watch tokens -e json --exec 'npm run build'",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "style-dictionary": "^3.9.2",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "design-tokens",
+    "design-system",
+    "researchflow",
+    "figma"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ry86pkqf74-rgb/researchflow-production.git",
+    "directory": "packages/design-tokens"
+  }
+}

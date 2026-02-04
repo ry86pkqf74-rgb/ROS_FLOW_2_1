@@ -1,0 +1,207 @@
+# Docker Compose for Analytics System
+# Production-ready configuration with all analytics services
+
+version: '3.8'
+
+services:
+  # Analytics PostgreSQL Database
+  analytics-db:
+    image: postgres:15-alpine
+    container_name: researchflow-analytics-db
+    environment:
+      POSTGRES_DB: researchflow_analytics
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD:-analytics_secure_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - analytics_db_data:/var/lib/postgresql/data
+      - ./scripts/analytics_db_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - analytics_network
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics_user -d researchflow_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for WebSocket Session Management
+  analytics-redis:
+    image: redis:7-alpine
+    container_name: researchflow-analytics-redis
+    command: redis-server --appendonly yes --requirepass ${ANALYTICS_REDIS_PASSWORD:-redis_secure_password}
+    volumes:
+      - analytics_redis_data:/data
+    networks:
+      - analytics_network
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Analytics Worker Service
+  analytics-worker:
+    build:
+      context: ../services/worker
+      dockerfile: Dockerfile.analytics
+      args:
+        BUILD_ENV: production
+    container_name: researchflow-analytics-worker
+    environment:
+      # Database
+      ANALYTICS_DATABASE_URL: postgresql://analytics_user:${ANALYTICS_DB_PASSWORD:-analytics_secure_password}@analytics-db:5432/researchflow_analytics
+      
+      # Redis
+      ANALYTICS_REDIS_URL: redis://:${ANALYTICS_REDIS_PASSWORD:-redis_secure_password}@analytics-redis:6379/0
+      
+      # Load configuration from .env.analytics
+      ANALYTICS_MONITORING_ENABLED: ${ANALYTICS_MONITORING_ENABLED:-true}
+      ANALYTICS_METRICS_INTERVAL: ${ANALYTICS_METRICS_INTERVAL:-5.0}
+      ANALYTICS_WEBSOCKET_ENABLED: ${ANALYTICS_WEBSOCKET_ENABLED:-true}
+      ANALYTICS_AUTH_ENABLED: ${ANALYTICS_AUTH_ENABLED:-false}
+      ANALYTICS_JWT_SECRET: ${ANALYTICS_JWT_SECRET}
+      ANALYTICS_LOG_LEVEL: ${ANALYTICS_LOG_LEVEL:-INFO}
+      ANALYTICS_ENVIRONMENT: production
+      
+      # Feature flags
+      ANALYTICS_FEATURE_ADVANCED_PREDICTOR: ${ANALYTICS_FEATURE_ADVANCED_PREDICTOR:-true}
+      ANALYTICS_FEATURE_REAL_TIME_WEBSOCKET: ${ANALYTICS_FEATURE_REAL_TIME_WEBSOCKET:-true}
+      ANALYTICS_FEATURE_DATABASE_PERSISTENCE: ${ANALYTICS_FEATURE_DATABASE_PERSISTENCE:-true}
+    volumes:
+      - analytics_models:/app/models/analytics
+      - analytics_logs:/app/logs
+      - ./config/analytics:/app/config:ro
+    networks:
+      - analytics_network
+      - researchflow_network  # Connect to main app network
+    ports:
+      - "8001:8000"  # Analytics API
+      - "8081:8080"  # WebSocket port
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+      analytics-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/analytics/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Optional: Prometheus for Metrics Collection
+  analytics-prometheus:
+    image: prom/prometheus:latest
+    container_name: researchflow-analytics-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus/analytics.yml:/etc/prometheus/prometheus.yml:ro
+      - analytics_prometheus_data:/prometheus
+    networks:
+      - analytics_network
+    ports:
+      - "9091:9090"
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # Optional: Grafana for Dashboards
+  analytics-grafana:
+    image: grafana/grafana:latest
+    container_name: researchflow-analytics-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+    volumes:
+      - analytics_grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - analytics_network
+    ports:
+      - "3001:3000"
+    depends_on:
+      - analytics-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # Analytics Nginx Proxy (for SSL termination and load balancing)
+  analytics-proxy:
+    image: nginx:alpine
+    container_name: researchflow-analytics-proxy
+    volumes:
+      - ./config/nginx/analytics.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - analytics_logs:/var/log/nginx
+    networks:
+      - analytics_network
+    ports:
+      - "443:443"   # HTTPS
+      - "80:80"     # HTTP (redirects to HTTPS)
+    depends_on:
+      - analytics-worker
+    restart: unless-stopped
+    profiles: ["production"]
+
+# Networks
+networks:
+  analytics_network:
+    driver: bridge
+    name: researchflow-analytics-network
+  researchflow_network:
+    external: true
+    name: researchflow_network
+
+# Volumes
+volumes:
+  analytics_db_data:
+    name: researchflow-analytics-db-data
+    driver: local
+  
+  analytics_redis_data:
+    name: researchflow-analytics-redis-data
+    driver: local
+  
+  analytics_models:
+    name: researchflow-analytics-models
+    driver: local
+  
+  analytics_logs:
+    name: researchflow-analytics-logs
+    driver: local
+  
+  analytics_prometheus_data:
+    name: researchflow-analytics-prometheus-data
+    driver: local
+    
+  analytics_grafana_data:
+    name: researchflow-analytics-grafana-data
+    driver: local

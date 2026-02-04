@@ -1,0 +1,26 @@
+{
+  "info": {
+    "name": "ResearchFlow API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:3001"},
+    {"key": "token", "value": ""}
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Attach Authorization header if token is set",
+          "const token = pm.collectionVariables.get('token');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": []
+}

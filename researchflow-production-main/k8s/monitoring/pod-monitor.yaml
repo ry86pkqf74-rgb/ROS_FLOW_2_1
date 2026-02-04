@@ -1,0 +1,86 @@
+# ============================================
+# ResearchFlow - Pod Monitor for Prometheus
+# ============================================
+# Phase 6.1: Kubernetes Monitoring
+# Linear Issue: ROS-102
+# Requires: Prometheus Operator CRDs
+# ============================================
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: researchflow-pods
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: researchflow
+  namespaceSelector:
+    matchNames:
+      - researchflow
+      - researchflow-dev
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_container_name]
+          targetLabel: container
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+---
+# Monitor for Worker pods (Python/FastAPI)
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: researchflow-worker
+  namespace: researchflow
+  labels:
+    app: researchflow-worker
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# Monitor for Ollama pods
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ollama-pods
+  namespace: researchflow
+  labels:
+    app: ollama
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: monitoring
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: ollama
+  namespaceSelector:
+    matchNames:
+      - researchflow
+  podMetricsEndpoints:
+    - port: http
+      path: /api/metrics
+      interval: 30s
+      scrapeTimeout: 10s

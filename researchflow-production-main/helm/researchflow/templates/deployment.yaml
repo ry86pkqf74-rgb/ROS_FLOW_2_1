@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "researchflow.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "researchflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "researchflow.name" . }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "researchflow.name" . }}
+        {{- include "researchflow.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}
+          name: http
+        envFrom:
+        - configMapRef:
+            name: {{ include "researchflow.name" . }}-config
+        - secretRef:
+            name: {{ include "researchflow.name" . }}-secrets
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5

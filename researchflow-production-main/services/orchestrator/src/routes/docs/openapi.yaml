@@ -1,0 +1,884 @@
+openapi: 3.0.3
+info:
+  title: ResearchFlow Orchestrator API (Delta Routes)
+  version: "1.0.0"
+  description: |
+    Addendum specification for newly added endpoints. Covers:
+    - RIS export
+    - Favorites (bookmarks)
+    - Phrase library
+    - Citation source attributes (HTI-1)
+    - Audit transparency bundles
+    - Cloud storage integrations (Box, Dropbox)
+servers:
+  - url: /api
+    description: Same-origin relative API base
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Missing permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    Favorite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        resourceType:
+          type: string
+          enum: [project, workflow, artifact, paper]
+        resourceId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, resourceType, resourceId, createdAt]
+    FavoriteCreateRequest:
+      type: object
+      required: [resourceType, resourceId]
+      properties:
+        resourceType:
+          type: string
+          enum: [project, workflow, artifact, paper]
+        resourceId:
+          type: string
+    Article:
+      type: object
+      required: [title, authors]
+      properties:
+        title: { type: string }
+        authors:
+          type: array
+          items: { type: string }
+        year: { type: string }
+        journal: { type: string }
+        venue: { type: string }
+        abstract: { type: string }
+        doi: { type: string }
+        pmid: { type: string }
+        url: { type: string, format: uri }
+        volume: { type: string }
+        issue: { type: string }
+        pages: { type: string }
+        keywords:
+          type: array
+          items: { type: string }
+    Phrase:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        phrase: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        rationale: { type: string }
+        usageCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PhraseCreateRequest:
+      type: object
+      required: [phrase, category]
+      properties:
+        phrase: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        rationale: { type: string }
+    PhraseBulkItem:
+      allOf:
+        - $ref: '#/components/schemas/PhraseCreateRequest'
+    Dsi:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        model_id: { type: string, format: uuid }
+        dsi_name: { type: string }
+        dsi_type: { type: string, enum: [DIAGNOSIS, PROGNOSIS, TREATMENT, RISK_ASSESSMENT, MONITORING, OTHER] }
+        clinical_context: { type: string }
+        integration_point: { type: string }
+        requires_human_review: { type: boolean }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    SourceAttribute:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        dsi_id: { type: string, format: uuid }
+        attribute_key: { type: string, enum: [output_source, output_developer, data_sources, intended_use, limitations, intervention_risk, last_updated] }
+        display_name: { type: string }
+        value_text: { type: string }
+        version: { type: integer }
+        is_current: { type: boolean }
+        effective_date: { type: string, format: date-time }
+        expiry_date: { type: string, format: date-time }
+        requires_update_review: { type: boolean }
+    EvidenceBundle:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        model_id: { type: string, format: uuid }
+        model_version: { type: string }
+        bundle_type: { type: string, enum: [TRIPOD_AI, CONSORT_AI, HTI_1, FAVES, CUSTOM] }
+        status: { type: string, enum: [DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED] }
+        title: { type: string }
+        description: { type: string }
+        created_at: { type: string, format: date-time }
+    PerformanceMetric:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        metric_name: { type: string }
+        metric_type: { type: string, enum: [DISCRIMINATION, CALIBRATION, FAIRNESS, UTILITY, SAFETY] }
+        value: { type: number }
+        confidence_lower: { type: number }
+        confidence_upper: { type: number }
+        threshold: { type: number }
+        passed: { type: boolean }
+        unit: { type: string }
+    StorageUploadRequest:
+      type: object
+      required: [accessToken, filename, content]
+      properties:
+        accessToken: { type: string }
+        folderId: { type: string, description: "Box folder id" }
+        path: { type: string, description: "Dropbox path starting with /" }
+        filename: { type: string }
+        content: { type: string, format: byte }
+        createSharedLink: { type: boolean }
+paths:
+  /export/ris:
+    post:
+      summary: Export articles to RIS
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [articles]
+              properties:
+                articles:
+                  type: array
+                  items: { $ref: '#/components/schemas/Article' }
+                filename:
+                  type: string
+                  default: export.ris
+      responses:
+        '200':
+          description: RIS file content
+          content:
+            application/x-research-info-systems:
+              schema:
+                type: string
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /export/ris/sample:
+    get:
+      summary: Get sample RIS file
+      responses:
+        '200':
+          description: Sample RIS
+          content:
+            application/x-research-info-systems:
+              schema:
+                type: string
+  /favorites:
+    get:
+      summary: List current user's favorites
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Favorites
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorites:
+                    type: array
+                    items: { $ref: '#/components/schemas/Favorite' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      summary: Add a favorite (idempotent)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FavoriteCreateRequest' }
+      responses:
+        '200':
+          description: Favorite created or existing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorite: { $ref: '#/components/schemas/Favorite' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /favorites/{id}:
+    delete:
+      summary: Remove a favorite
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /phrases:
+    get:
+      summary: Search phrases
+      parameters:
+        - in: query
+          name: query
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: tags
+          schema:
+            type: array
+            items: { type: string }
+            style: form
+            explode: true
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Phrases with pagination
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  phrases:
+                    type: array
+                    items: { $ref: '#/components/schemas/Phrase' }
+                  count: { type: integer }
+    post:
+      summary: Create a phrase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhraseCreateRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Phrase' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /phrases/popular:
+    get:
+      summary: Get popular phrases
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Popular phrases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  phrases:
+                    type: array
+                    items: { $ref: '#/components/schemas/Phrase' }
+  /phrases/categories:
+    get:
+      summary: Get category stats
+      responses:
+        '200':
+          description: Categories and stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items: { type: string }
+                  stats:
+                    type: object
+  /phrases/category/{category}:
+    get:
+      summary: Get phrases by category
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Phrases in category
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  category: { type: string }
+                  phrases:
+                    type: array
+                    items: { $ref: '#/components/schemas/Phrase' }
+                  count: { type: integer }
+  /phrases/{id}:
+    get:
+      summary: Get phrase by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Phrase, content: { application/json: { schema: { $ref: '#/components/schemas/Phrase' }}} }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Update phrase
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhraseCreateRequest' }
+      responses:
+        '200': { description: Updated phrase, content: { application/json: { schema: { $ref: '#/components/schemas/Phrase' }}} }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Delete phrase
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Deleted, content: { application/json: { schema: { type: object, properties: { success: { type: boolean }}}}} }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /phrases/{id}/use:
+    post:
+      summary: Record phrase usage
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Usage recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  newUsageCount: { type: integer }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /phrases/bulk:
+    post:
+      summary: Bulk import phrases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phrases]
+              properties:
+                phrases:
+                  type: array
+                  items: { $ref: '#/components/schemas/PhraseBulkItem' }
+      responses:
+        '200': { description: Import result }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /citations/attributes/dsi:
+    get:
+      summary: List Predictive DSI registrations
+      parameters:
+        - in: query
+          name: model_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: dsi_type
+          schema: { type: string }
+        - in: query
+          name: is_active
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: DSI list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dsi_list:
+                    type: array
+                    items: { $ref: '#/components/schemas/Dsi' }
+    post:
+      summary: Register Predictive DSI
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model_id, dsi_name, dsi_type]
+              properties:
+                model_id: { type: string, format: uuid }
+                dsi_name: { type: string }
+                dsi_type: { type: string }
+                clinical_context: { type: string }
+                integration_point: { type: string }
+                requires_human_review: { type: boolean }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Dsi' }}} }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /citations/attributes/dsi/{id}:
+    get:
+      summary: Get DSI by id with attributes
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: DSI detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update DSI
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active: { type: boolean }
+                clinical_context: { type: string }
+                integration_point: { type: string }
+                requires_human_review: { type: boolean }
+      responses:
+        '200': { description: Updated DSI }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /citations/attributes/dsi/{dsiId}/attributes:
+    post:
+      summary: Add or update source attribute (versioned)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: dsiId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [attribute_key, display_name, value_text]
+              properties:
+                attribute_key: { type: string, enum: [output_source, output_developer, data_sources, intended_use, limitations, intervention_risk, last_updated] }
+                display_name: { type: string }
+                value_text: { type: string }
+                plain_language_summary: { type: string }
+                source_document_url: { type: string, format: uri }
+                effective_date: { type: string, format: date-time }
+                expiry_date: { type: string, format: date-time }
+                requires_update_review: { type: boolean }
+      responses:
+        '201': { description: Attribute version created, content: { application/json: { schema: { $ref: '#/components/schemas/SourceAttribute' }}} }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /citations/attributes/dsi/{dsiId}/attributes/{key}/history:
+    get:
+      summary: Attribute history
+      parameters:
+        - in: path
+          name: dsiId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: key
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Version history }
+  /citations/attributes/dsi/{dsiId}/plain-language:
+    post:
+      summary: Add plain language response
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: dsiId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question_text, answer_text]
+              properties:
+                question_text: { type: string }
+                answer_text: { type: string }
+                reading_level: { type: string, enum: [BASIC, INTERMEDIATE, TECHNICAL] }
+                language_code: { type: string, minLength: 2, maxLength: 2 }
+      responses:
+        '201': { description: Created }
+  /citations/attributes/dsi/{dsiId}/plain-language:
+    get:
+      summary: List plain language responses
+      parameters:
+        - in: path
+          name: dsiId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: language
+          schema: { type: string, default: en }
+      responses:
+        '200': { description: Plain language list }
+  /citations/attributes/dsi/{dsiId}/compliance:
+    get:
+      summary: HTI-1 compliance check
+      parameters:
+        - in: path
+          name: dsiId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Compliance report }
+  /citations/attributes/compliance/summary:
+    get:
+      summary: Overall HTI-1 compliance summary
+      responses:
+        '200': { description: Summary }
+  /citations/attributes/batch/attributes:
+    post:
+      summary: Batch update source attributes
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [updates]
+              properties:
+                updates:
+                  type: array
+                  items:
+                    type: object
+                    required: [dsi_id, attribute_key, value_text]
+                    properties:
+                      dsi_id: { type: string, format: uuid }
+                      attribute_key: { type: string }
+                      value_text: { type: string }
+                      display_name: { type: string }
+                      plain_language_summary: { type: string }
+                      source_document_url: { type: string, format: uri }
+                batch_reason: { type: string }
+                dry_run: { type: boolean, default: false }
+      responses:
+        '200': { description: Dry run result }
+        '201': { description: Batch applied }
+  /citations/attributes/validate/integrity:
+    post:
+      summary: Validate source integrity
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dsi_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                check_expiry: { type: boolean, default: true }
+                check_completeness: { type: boolean, default: true }
+                check_consistency: { type: boolean, default: true }
+      responses:
+        '200': { description: Validation results }
+  /citations/attributes/validate/sources:
+    get:
+      summary: Data provenance report
+      parameters:
+        - in: query
+          name: dsi_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: include_history
+          schema: { type: boolean, default: false }
+      responses:
+        '200': { description: Source report }
+  /audit/transparency/bundles:
+    get:
+      summary: List evidence bundles
+      parameters:
+        - in: query
+          name: model_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: bundle_type
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0 }
+      responses:
+        '200': { description: Bundles list, content: { application/json: { schema: { type: object, properties: { bundles: { type: array, items: { $ref: '#/components/schemas/EvidenceBundle' }}, pagination: { type: object }}}}} }
+    post:
+      summary: Create evidence bundle
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model_id, model_version, bundle_type, title]
+              properties:
+                model_id: { type: string, format: uuid }
+                model_version: { type: string }
+                bundle_type: { type: string }
+                title: { type: string }
+                description: { type: string }
+      responses:
+        '201': { description: Bundle created }
+  /audit/transparency/bundles/{id}:
+    get:
+      summary: Get bundle with metrics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Bundle detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update bundle
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                title: { type: string }
+                description: { type: string }
+                approved_by: { type: string }
+                published_at: { type: string, format: date-time }
+      responses:
+        '200': { description: Bundle updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Archive bundle
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Archived }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /audit/transparency/bundles/{id}/metrics:
+    post:
+      summary: Add performance metrics
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/PerformanceMetric'
+      responses:
+        '201': { description: Metrics added }
+  /audit/transparency/metrics/{metricId}/stratified:
+    post:
+      summary: Add stratified metric results
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: metricId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [stratum_variable, stratum_value, sample_size, metric_value]
+                properties:
+                  stratum_variable: { type: string }
+                  stratum_value: { type: string }
+                  sample_size: { type: integer }
+                  metric_value: { type: number }
+                  confidence_lower: { type: number }
+                  confidence_upper: { type: number }
+      responses:
+        '201': { description: Stratified metrics added }
+  /audit/transparency/bundles/{id}/export:
+    get:
+      summary: Export bundle
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, markdown], default: json }
+      responses:
+        '200': { description: Exported data }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /audit/transparency/stats:
+    get:
+      summary: Transparency statistics
+      parameters:
+        - in: query
+          name: model_id
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Stats }
+  /integrations/storage/box/upload:
+    post:
+      summary: Upload file to Box
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StorageUploadRequest' }
+      responses:
+        '200': { description: File uploaded }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/storage/dropbox/upload:
+    post:
+      summary: Upload file to Dropbox
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StorageUploadRequest' }
+      responses:
+        '200': { description: File uploaded }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/storage/status:
+    get:
+      summary: Storage integration status
+      responses:
+        '200':
+          description: Feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cloudStorage:
+                    type: object
+                    properties:
+                      enabled: { type: boolean }
+                      providers:
+                        type: object
+                        properties:
+                          box: { type: boolean }
+                          dropbox: { type: boolean }
+security:
+  - BearerAuth: []

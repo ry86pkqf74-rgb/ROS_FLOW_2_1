@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-02-04T06:28:05.505648",
+  "test_results": [
+    {
+      "test": "system_performance",
+      "status": "success",
+      "data": {
+        "platform": "macOS-26.2-arm64-arm-64bit",
+        "python_version": "3.9.6",
+        "cpu_cores": 10,
+        "cpu_usage": 18.0,
+        "memory_total_gb": 32.0,
+        "memory_used_gb": 11.22,
+        "memory_percent": 73.2
+      }
+    },
+    {
+      "test": "analytics_import",
+      "status": "success",
+      "data": {
+        "import_time": 0.6516311168670654,
+        "analyzer_status": "empty",
+        "node_count": 0
+      }
+    },
+    {
+      "test": "data_processing",
+      "status": "success",
+      "data": {
+        "processing_time": 0.022467851638793945,
+        "throughput": 2225401.9122000914,
+        "items_processed": 50000
+      }
+    },
+    {
+      "test": "dependencies",
+      "status": "success",
+      "data": {
+        "available": 4,
+        "total": 4,
+        "details": {
+          "psutil": "available",
+          "numpy": "available",
+          "pandas": "available",
+          "networkx": "available"
+        }
+      }
+    }
+  ],
+  "summary": {
+    "total_tests": 4,
+    "successful_tests": 4,
+    "success_rate": 100.0,
+    "baseline_established": true
+  }
+}

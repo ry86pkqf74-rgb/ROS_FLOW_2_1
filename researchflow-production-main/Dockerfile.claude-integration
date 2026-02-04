@@ -1,0 +1,87 @@
+# Claude Code Integration Container
+# Optimized for running automated integration tasks against ResearchFlow
+# =====================================================================
+# SECURITY: Runs as non-root, no build-time secrets, smaller base image
+
+FROM node:20-slim AS base
+
+# Install system dependencies in a single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    wget \
+    jq \
+    ripgrep \
+    make \
+    build-essential \
+    python3 \
+    python3-pip \
+    python3-venv \
+    postgresql-client \
+    redis-tools \
+    ca-certificates \
+    # Playwright dependencies (minimal set)
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN groupadd -r claude && useradd -r -g claude -m -s /bin/bash claude
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Set up working directory with proper ownership
+WORKDIR /workspace
+RUN chown -R claude:claude /workspace
+
+# Copy package files first for better caching
+COPY --chown=claude:claude package*.json ./
+
+# Switch to non-root user
+USER claude
+
+# Install dependencies as non-root
+RUN npm ci --include=dev
+
+# Copy all source files
+COPY --chown=claude:claude . .
+
+# Install Playwright browsers
+RUN npx playwright install chromium
+
+# Create directories for Claude Code session data
+RUN mkdir -p /home/claude/.claude /workspace/.claude
+
+# Configure git for commits
+RUN git config --global user.email "claude@integration.local" && \
+    git config --global user.name "Claude Integration" && \
+    git config --global --add safe.directory /workspace
+
+# Environment variables (no secrets - pass at runtime)
+ENV NODE_ENV=development
+ENV PATH="/workspace/node_modules/.bin:$PATH"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "console.log('healthy')" || exit 1
+
+# Document required runtime environment variables
+# Pass these at runtime via docker run -e or docker-compose
+# ANTHROPIC_API_KEY - Required for Claude Code
+# GITHUB_TOKEN - Required for GitHub integration
+
+# Default command - start interactive shell ready for Claude Code
+CMD ["/bin/bash"]

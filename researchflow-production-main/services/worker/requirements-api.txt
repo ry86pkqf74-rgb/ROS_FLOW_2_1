@@ -1,0 +1,18 @@
+# Protocol Generation API Requirements
+# Additional requirements for the REST API wrapper
+
+# Core FastAPI dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+
+# Additional API features
+python-multipart>=0.0.6  # For form data
+aiofiles>=23.0.0         # Async file operations
+
+# Optional dependencies for enhanced features
+# Uncomment as needed:
+# python-docx>=0.8.11     # Word document generation
+# reportlab>=4.0.0        # PDF generation
+# jinja2>=3.1.0           # Advanced templating
+# markdown>=3.5.0         # Markdown processing

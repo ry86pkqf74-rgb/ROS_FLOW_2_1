@@ -1,0 +1,26 @@
+name: sentry-smoke-test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate required secret
+        run: |
+          if [ -z "${{ secrets.ORCHESTRATOR_BASE_URL }}" ]; then
+            echo "Missing ORCHESTRATOR_BASE_URL secret" >&2
+            exit 1
+          fi
+
+      - name: Call /health
+        run: |
+          curl -fsSL "${{ secrets.ORCHESTRATOR_BASE_URL }}/health" >/dev/null
+
+      - name: Trigger Sentry test endpoint
+        run: |
+          curl -fsSL -X GET "${{ secrets.ORCHESTRATOR_BASE_URL }}/api/sentry-test" >/dev/null

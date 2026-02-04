@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: ResearchFlow Documents API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for Documents and Auth endpoints.
+
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+
+tags:
+  - name: Auth
+  - name: Documents
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: UNAUTHORIZED
+            message:
+              type: string
+              example: Missing or invalid token
+            requestId:
+              type: string
+              example: req_abc123
+      required: [error]
+
+    Document:
+      type: object
+      required: [id, workflowId, type, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          example: doc_123
+        workflowId:
+          type: string
+          example: wf_456
+        type:
+          type: string
+          description: Artifact/document type.
+          example: docx
+        name:
+          type: string
+          example: Research Report.docx
+        mimeType:
+          type: string
+          example: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        sizeBytes:
+          type: integer
+          format: int64
+          example: 182044
+        downloadUrl:
+          type: string
+          format: uri
+          example: https://example.com/presigned/...
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-02-02T19:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-02-02T19:00:00Z
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            stage: 20
+            exportFormat: docx
+
+    ListDocumentsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        nextCursor:
+          type: string
+          nullable: true
+          example: null
+
+    GetDocumentResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Document'
+
+    ExportDocumentRequest:
+      type: object
+      required: [format]
+      properties:
+        format:
+          type: string
+          enum: [docx, pdf]
+          example: docx
+
+    ExportDocumentResult:
+      type: object
+      required: [exportId, format, mimeType, downloadUrl, createdAt]
+      properties:
+        exportId:
+          type: string
+          example: exp_789
+        format:
+          type: string
+          enum: [docx, pdf]
+          example: docx
+        mimeType:
+          type: string
+          example: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        downloadUrl:
+          type: string
+          format: uri
+          example: https://example.com/presigned/...
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-02-02T19:05:00Z
+
+    ExportDocumentResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ExportDocumentResult'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: "********"
+
+    TokenResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [accessToken]
+          properties:
+            accessToken:
+              type: string
+              description: Bearer access token.
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              example:
+                value:
+                  email: user@example.com
+                  password: "********"
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    error:
+                      code: UNAUTHORIZED
+                      message: Invalid credentials
+                      requestId: req_abc123
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              empty:
+                value: {}
+      responses:
+        '200':
+          description: Refresh success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Refresh invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/documents:
+    get:
+      tags: [Documents]
+      summary: List user documents
+      description: Returns documents for the authenticated user (backed by artifacts table).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: workflowId
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: type
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+            minimum: 1
+          required: false
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          required: false
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentsResponse'
+              examples:
+                example:
+                  value:
+                    data:
+                      - id: doc_123
+                        workflowId: wf_456
+                        type: docx
+                        name: Research Report.docx
+                        mimeType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                        sizeBytes: 182044
+                        downloadUrl: https://example.com/presigned/...
+                        createdAt: 2026-02-02T19:00:00Z
+                        updatedAt: 2026-02-02T19:00:00Z
+                        metadata:
+                          stage: 20
+                          exportFormat: docx
+                    nextCursor: null
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/documents/{id}:
+    get:
+      tags: [Documents]
+      summary: Get a specific document
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetDocumentResponse'
+              examples:
+                example:
+                  value:
+                    data:
+                      id: doc_123
+                      workflowId: wf_456
+                      type: docx
+                      name: Research Report.docx
+                      mimeType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                      sizeBytes: 182044
+                      downloadUrl: https://example.com/presigned/...
+                      createdAt: 2026-02-02T19:00:00Z
+                      updatedAt: 2026-02-02T19:00:00Z
+                      metadata:
+                        stage: 20
+                        exportFormat: docx
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: Document not found
+                      requestId: req_abc123
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/documents/{id}/export:
+    post:
+      tags: [Documents]
+      summary: Export a document
+      description: Export the specified document to DOCX or PDF.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportDocumentRequest'
+            examples:
+              docx:
+                value:
+                  format: docx
+              pdf:
+                value:
+                  format: pdf
+      responses:
+        '200':
+          description: Export created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportDocumentResponse'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

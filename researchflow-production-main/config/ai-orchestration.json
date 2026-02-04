@@ -1,0 +1,552 @@
+{
+  "$schema": "https://researchflow.dev/schemas/ai-orchestration.json",
+  "version": "2.0.0",
+  "name": "ResearchFlow AI Orchestration",
+  "description": "Unified coordination layer for all AI tools, services, and integrations including FAVES compliance monitoring",
+
+  "providers": {
+    "cloud": {
+      "anthropic": {
+        "enabled": true,
+        "models": ["claude-sonnet-4-20250514", "claude-3-opus-20240229", "claude-opus-4-5-20251101"],
+        "capabilities": ["reasoning", "code-review", "analysis", "chat", "faves-validation"],
+        "priority": 1,
+        "rateLimit": { "rpm": 1000, "tpm": 100000 }
+      },
+      "openai": {
+        "enabled": true,
+        "models": ["gpt-4-turbo", "gpt-4o", "gpt-5-mini", "text-embedding-3-large"],
+        "capabilities": ["code-generation", "embeddings", "analysis", "transparency-monitoring"],
+        "priority": 2,
+        "rateLimit": { "rpm": 500, "tpm": 90000 }
+      },
+      "xai": {
+        "enabled": true,
+        "models": ["grok-2-latest", "grok-2-mini"],
+        "capabilities": ["reasoning", "code", "chat"],
+        "priority": 3,
+        "rateLimit": { "rpm": 100, "tpm": 50000 }
+      },
+      "mercury": {
+        "enabled": true,
+        "models": ["mercury"],
+        "capabilities": ["chat", "reasoning", "tool-calling"],
+        "priority": 4,
+        "rateLimit": { "rpm": 500, "tpm": 100000 },
+        "useFor": ["fast-chat", "tool-calling"]
+      },
+      "mercury-coder": {
+        "enabled": true,
+        "models": ["mercury-coder-small", "mercury-coder"],
+        "capabilities": ["autocomplete", "code-completion", "fim", "apply-edit", "next-edit", "code-analysis", "realtime", "structured-outputs"],
+        "priority": 1,
+        "rateLimit": { "rpm": 1000, "tpm": 200000 },
+        "useFor": ["autocomplete", "code-generation", "refactoring", "codebase-analysis", "agent-chat", "low-latency"],
+        "endpoints": {
+          "chat": "v1/chat/completions",
+          "fim": "v1/fim/completions",
+          "apply": "v1/apply/completions",
+          "edit": "v1/edit/completions"
+        },
+        "contextWindows": {
+          "chat": 128000,
+          "fim": 32000,
+          "apply": 32000,
+          "edit": 32000
+        },
+        "realtime": {
+          "enabled": true,
+          "useFor": ["agent-chat", "voice-assistants", "chatbots", "decision-systems", "low-latency-workflows"],
+          "taskTypes": ["classify", "extract_metadata", "template_fill", "policy_check", "summarize"]
+        },
+        "structuredOutputs": {
+          "enabled": true,
+          "schemas": ["classification", "extraction", "sentiment", "action-items"]
+        },
+        "autoRoute": {
+          "enabled": true,
+          "liveMode": true,
+          "demoMode": false,
+          "preferForPhaseChat": true
+        }
+      },
+      "sourcegraph": {
+        "enabled": true,
+        "capabilities": ["code-search", "context-retrieval", "codebase-analysis"],
+        "endpoint": "https://sourcegraph.com/.api"
+      },
+      "exa": {
+        "enabled": true,
+        "endpoint": "https://api.exa.ai",
+        "mcpUrl": "https://mcp.exa.ai/mcp",
+        "capabilities": ["web-search", "rag", "code-context", "company-research", "deep-research", "crawling"],
+        "useFor": ["web-search", "literature-search", "current-events", "composio", "cursor-mcp", "claude-tools", "notion-research"],
+        "rateLimit": { "rpm": 1000, "tpm": 200000 },
+        "searchType": "auto",
+        "contents": { "text": { "max_characters": 20000 } }
+      }
+    },
+    "local": {
+      "lm-studio": {
+        "enabled": true,
+        "endpoint": "http://localhost:1234/v1",
+        "capabilities": ["chat", "code", "phi-safe"],
+        "useFor": ["phi-data", "offline", "cost-savings"],
+        "fallbackTo": "anthropic"
+      },
+      "ollama": {
+        "enabled": true,
+        "endpoint": "http://localhost:11434",
+        "models": ["llama3.2", "codellama"],
+        "capabilities": ["chat", "code", "phi-safe"],
+        "useFor": ["local-inference", "phi-data"]
+      }
+    }
+  },
+
+  "agents": {
+    "langsmith": {
+      "enabled": true,
+      "workspace": "55c5d712-45ce-439a-9234-d08afbbb7570",
+      "projectId": "266fb8ef-dbc0-4b64-8ce5-e74f8e29827f",
+      "endpoint": "https://smith.langchain.com",
+      "agents": {
+        "transparency-monitor-agent": {
+          "enabled": true,
+          "model": "gpt-5-mini",
+          "prompt": "transparency-monitor-agent",
+          "capabilities": ["drift-detection", "faves-compliance", "evidence-bundle", "bias-tracking"],
+          "metrics": ["psi", "kl-divergence", "confidence-score"],
+          "url": "https://smith.langchain.com/prompts/transparency-monitor-agent"
+        }
+      }
+    },
+    "composio": {
+      "enabled": true,
+      "workspace": "logan.glosser_workspace",
+      "project": "logan.glosser_workspace_first_project",
+      "endpoint": "https://platform.composio.dev",
+      "toolkits": {
+        "figma": {
+          "enabled": true,
+          "auth": "oauth2",
+          "fileKey": "${FIGMA_FILE_KEY}",
+          "capabilities": [
+            "extract-design-tokens",
+            "design-tokens-to-tailwind",
+            "create-dev-resources",
+            "create-webhook",
+            "get-file-components",
+            "get-file-styles"
+          ],
+          "actions": [
+            "FIGMA_EXTRACT_DESIGN_TOKENS",
+            "FIGMA_DESIGN_TOKENS_TO_TAILWIND",
+            "FIGMA_CREATE_DEV_RESOURCES",
+            "FIGMA_CREATE_WEBHOOK"
+          ]
+        },
+        "linear": {
+          "enabled": true,
+          "auth": "linear-dswifn",
+          "scopes": ["admin", "read", "write", "issues:create", "comments:create"],
+          "capabilities": ["issue-create", "issue-update", "label-manage"]
+        },
+        "slack": {
+          "enabled": true,
+          "auth": "oauth2",
+          "channels": ["compliance-updates", "all-gmail-lg", "social", "new-channel"],
+          "capabilities": ["message-send", "channel-notify", "alert-dispatch"]
+        },
+        "github": {
+          "enabled": true,
+          "auth": "oauth2",
+          "repo": "ry86pkqf74-rgb/researchflow-production",
+          "capabilities": [
+            "issue-create",
+            "pr-create",
+            "pr-review",
+            "branch-create",
+            "commit-files",
+            "add-reviewers",
+            "workflow-trigger",
+            "check-ci-status"
+          ],
+          "actions": [
+            "GITHUB_CREATE_BRANCH",
+            "GITHUB_COMMIT_FILES",
+            "GITHUB_CREATE_PULL_REQUEST",
+            "GITHUB_ADD_REVIEWERS",
+            "GITHUB_CREATE_ISSUE",
+            "GITHUB_ADD_LABELS",
+            "GITHUB_CREATE_MILESTONE",
+            "GITHUB_GET_CI_STATUS"
+          ]
+        },
+        "notion": {
+          "enabled": true,
+          "auth": "oauth2",
+          "capabilities": [
+            "page-create",
+            "database-query",
+            "content-update",
+            "fetch-database",
+            "fetch-database-row",
+            "insert-row-database"
+          ],
+          "actions": [
+            "NOTION_FETCH_DATABASE",
+            "NOTION_FETCH_DATABASE_ROW",
+            "NOTION_INSERT_ROW_DATABASE",
+            "NOTION_UPDATE_PAGE",
+            "NOTION_CREATE_PAGE"
+          ],
+          "databases": {
+            "problemRegistry": "${NOTION_PROBLEM_REGISTRY_DB}",
+            "datasetRegistry": "${NOTION_DATASET_REGISTRY_DB}",
+            "modelRegistry": "${NOTION_MODEL_REGISTRY_DB}",
+            "riskRegister": "${NOTION_RISK_REGISTER_DB}",
+            "deployments": "${NOTION_DEPLOYMENTS_DB}",
+            "incidents": "${NOTION_INCIDENTS_DB}"
+          }
+        }
+      },
+      "agents": {
+        "design_ops": {
+          "enabled": true,
+          "description": "Figma → design tokens → PR automation",
+          "model": "gpt-4o",
+          "temperature": 0,
+          "toolkits": ["figma", "github"],
+          "workflow": {
+            "trigger": "figma-webhook",
+            "steps": [
+              { "action": "FIGMA_EXTRACT_DESIGN_TOKENS", "output": "tokens" },
+              { "action": "FIGMA_DESIGN_TOKENS_TO_TAILWIND", "input": "tokens", "output": "tailwind_config" },
+              { "action": "GITHUB_CREATE_BRANCH", "name": "design-tokens-update-{timestamp}" },
+              { "action": "GITHUB_COMMIT_FILES", "files": ["packages/design-tokens/tokens.json", "tailwind.config.ts"] },
+              { "action": "GITHUB_CREATE_PULL_REQUEST", "title": "feat: Update design tokens from Figma" },
+              { "action": "GITHUB_ADD_REVIEWERS", "reviewers": ["design-team"] }
+            ]
+          }
+        },
+        "spec_ops": {
+          "enabled": true,
+          "description": "Notion PRD → GitHub issues synchronization",
+          "model": "gpt-4o-mini",
+          "temperature": 0,
+          "toolkits": ["notion", "github"],
+          "workflow": {
+            "trigger": "notion-prd-update",
+            "steps": [
+              { "action": "NOTION_FETCH_DATABASE", "database": "problemRegistry", "output": "prds" },
+              { "action": "extract-requirements", "input": "prds", "output": "requirements" },
+              { "action": "GITHUB_CREATE_MILESTONE", "input": "requirements.milestone" },
+              { "action": "GITHUB_CREATE_ISSUE", "input": "requirements.issues", "labels": ["from-prd"] },
+              { "action": "NOTION_UPDATE_PAGE", "linkGitHubIssues": true }
+            ]
+          }
+        },
+        "compliance": {
+          "enabled": true,
+          "description": "Auto-generate TRIPOD+AI, CONSORT-AI, HTI-1 disclosures",
+          "model": "gpt-4o",
+          "temperature": 0,
+          "toolkits": ["notion", "github"],
+          "inputs": {
+            "evidencePack": "evidence/models/{version}/",
+            "auditLogs": "services/orchestrator/logs/ai-router/",
+            "evaluations": "evidence/models/{version}/evaluation/"
+          },
+          "outputs": {
+            "tripodaiChecklist": "tripodai_checklist.json",
+            "consortaiChecklist": "consortai_checklist.json",
+            "hti1Disclosure": "hti1_disclosure.md"
+          },
+          "faves_gates": {
+            "fair": { "check": "subgroup-performance-audit-exists", "required": true },
+            "appropriate": { "check": "intended-use-documented", "required": true },
+            "valid": { "check": "calibration-methodology-documented", "required": true },
+            "effective": { "check": "outcome-metrics-or-research-label", "required": true },
+            "safe": { "check": "monitoring-rollback-incident-plan", "required": true }
+          },
+          "workflow": {
+            "trigger": "model-release",
+            "steps": [
+              { "action": "validate-tripodai", "output": "tripodai_status" },
+              { "action": "validate-consortai", "output": "consortai_status" },
+              { "action": "validate-faves", "output": "faves_status" },
+              { "action": "NOTION_UPDATE_PAGE", "database": "modelRegistry", "status": "faves_status" },
+              { "action": "GITHUB_CREATE_ISSUE", "condition": "faves_status.failed", "label": "compliance-required" }
+            ]
+          }
+        },
+        "release_guardian": {
+          "enabled": true,
+          "description": "Pre-deploy gate enforcement + rollback readiness",
+          "model": "gpt-4o",
+          "temperature": 0,
+          "toolkits": ["github", "notion"],
+          "gates": {
+            "ci_checks": { "required": true, "action": "GITHUB_GET_CI_STATUS" },
+            "evidence_pack": { "required": true, "check": "hash-computed-and-recorded" },
+            "faves_gate": { "required": "LIVE_MODE_ONLY", "check": "faves-validation-passed" },
+            "rollback_plan": { "required": true, "check": "rollback-documented" },
+            "monitoring": { "required": true, "check": "dashboard-configured" }
+          },
+          "workflow": {
+            "trigger": "deployment-request",
+            "steps": [
+              { "action": "GITHUB_GET_CI_STATUS", "output": "ci_status" },
+              { "action": "verify-evidence-pack-hash", "output": "evidence_status" },
+              { "action": "check-faves-gate", "output": "faves_status" },
+              { "action": "NOTION_FETCH_DATABASE_ROW", "database": "deployments", "output": "deployment_record" },
+              { "action": "verify-rollback-plan", "output": "rollback_status" },
+              { "action": "approve-or-block", "inputs": ["ci_status", "evidence_status", "faves_status", "rollback_status"] }
+            ]
+          }
+        }
+      },
+      "workflows": {
+        "faves-compliance-alert": {
+          "trigger": "drift-threshold-exceeded",
+          "actions": [
+            { "toolkit": "linear", "action": "create-issue", "template": "compliance-review" },
+            { "toolkit": "slack", "action": "send-message", "channel": "compliance-updates" },
+            { "toolkit": "github", "action": "create-issue", "label": "compliance" }
+          ]
+        },
+        "evidence-bundle-publish": {
+          "trigger": "model-release",
+          "actions": [
+            { "toolkit": "notion", "action": "create-page", "template": "evidence-bundle" },
+            { "toolkit": "github", "action": "create-release", "artifacts": ["tripod-ai-checklist", "faves-validation"] }
+          ]
+        }
+      }
+    }
+  },
+
+  "tools": {
+    "ide": {
+      "cursor": {
+        "enabled": true,
+        "configPath": "~/Library/Application Support/Cursor/User/settings.json",
+        "providers": ["anthropic", "openai"],
+        "useFor": ["interactive-coding", "refactoring"]
+      },
+      "continue-dev": {
+        "enabled": true,
+        "configPath": "~/.continue/config.yaml",
+        "providers": ["anthropic", "openai", "xai", "mercury", "lm-studio"],
+        "useFor": ["terminal-ai", "code-review", "autocomplete"]
+      },
+      "codex-cli": {
+        "enabled": true,
+        "version": "0.92.0",
+        "providers": ["openai"],
+        "useFor": ["terminal-commands", "shell-automation"]
+      }
+    },
+    "design": {
+      "figma": {
+        "enabled": true,
+        "useFor": ["ui-components", "design-tokens", "prototypes"]
+      }
+    },
+    "project-management": {
+      "linear": {
+        "enabled": true,
+        "workspace": "rostemp",
+        "endpoint": "https://linear.app/rostemp",
+        "issues": {
+          "ROS-116": "FAVES Compliance Gate Implementation",
+          "ROS-117": "FAVES Compliance Review Required"
+        },
+        "useFor": ["sprint-tracking", "compliance-issues", "task-assignment"]
+      }
+    },
+    "infrastructure": {
+      "docker": {
+        "enabled": true,
+        "services": [
+          "orchestrator",
+          "worker",
+          "web",
+          "collab",
+          "guideline-engine",
+          "postgres",
+          "redis",
+          "ollama"
+        ],
+        "composeFile": "docker-compose.yml"
+      },
+      "github": {
+        "enabled": true,
+        "repo": "ry86pkqf74-rgb/researchflow-production",
+        "workflows": ["ai-code-review.yml"],
+        "issues": {
+          "65": "FAVES Gate CI/CD Integration"
+        },
+        "authenticated": true
+      }
+    },
+    "productivity": {
+      "notion": {
+        "enabled": true,
+        "databases": {
+          "tasks": "ResearchFlow Deployment Tasks",
+          "aiLogs": "AI Tool Usage Log",
+          "complianceTracker": "FAVES Compliance Tracker"
+        },
+        "useFor": ["task-tracking", "documentation", "coordination", "evidence-bundles"]
+      },
+      "slack": {
+        "enabled": true,
+        "workspace": "researchflow",
+        "channels": {
+          "compliance-updates": "FAVES compliance alerts and model drift notifications",
+          "all-gmail-lg": "General team communication",
+          "social": "Team social channel"
+        },
+        "bots": {
+          "composio-agent": {
+            "enabled": true,
+            "webhooks": ["drift-alert", "compliance-review", "evidence-published"]
+          }
+        }
+      }
+    }
+  },
+
+  "routing": {
+    "default": "anthropic",
+    "rules": [
+      {
+        "condition": { "containsPHI": true },
+        "provider": "lm-studio",
+        "fallback": "ollama"
+      },
+      {
+        "condition": { "taskType": "autocomplete" },
+        "provider": "mercury-coder",
+        "endpoint": "fim"
+      },
+      {
+        "condition": { "taskType": "code-generation" },
+        "provider": "mercury-coder",
+        "endpoint": "chat"
+      },
+      {
+        "condition": { "taskType": "refactoring" },
+        "provider": "mercury-coder",
+        "endpoint": "apply"
+      },
+      {
+        "condition": { "taskType": "codebase-analysis" },
+        "provider": "mercury-coder",
+        "endpoint": "chat"
+      },
+      {
+        "condition": { "taskType": "next-edit" },
+        "provider": "mercury-coder",
+        "endpoint": "edit"
+      },
+      {
+        "condition": { "taskType": "embeddings" },
+        "provider": "openai"
+      },
+      {
+        "condition": { "taskType": "code-search" },
+        "provider": "sourcegraph"
+      },
+      {
+        "condition": { "taskType": "transparency-monitoring" },
+        "provider": "langsmith",
+        "agent": "transparency-monitor-agent"
+      },
+      {
+        "condition": { "taskType": "compliance-alert" },
+        "provider": "composio",
+        "workflow": "faves-compliance-alert"
+      },
+      {
+        "condition": { "requiresReasoning": true, "complexity": "high" },
+        "provider": "anthropic",
+        "model": "claude-3-opus-20240229"
+      },
+      {
+        "condition": { "taskType": "faves-validation" },
+        "provider": "anthropic",
+        "model": "claude-opus-4-5-20251101"
+      }
+    ]
+  },
+
+  "coordination": {
+    "composio": {
+      "enabled": true,
+      "autoTrigger": true,
+      "webhookUrl": "https://api.composio.dev/webhook/researchflow"
+    },
+    "langsmith": {
+      "enabled": true,
+      "tracing": true,
+      "evaluations": true
+    },
+    "notion": {
+      "syncTasks": true,
+      "logUsage": true,
+      "updateOnCompletion": true
+    },
+    "github": {
+      "autoReview": true,
+      "createIssues": true,
+      "updatePRs": true
+    },
+    "linear": {
+      "syncIssues": true,
+      "autoLabel": true,
+      "complianceTracking": true
+    },
+    "slack": {
+      "alertOnDrift": true,
+      "notifyOnRelease": true,
+      "complianceChannel": "compliance-updates"
+    },
+    "docker": {
+      "healthCheck": true,
+      "autoRestart": false
+    }
+  },
+
+  "faves": {
+    "enabled": true,
+    "dimensions": ["fair", "appropriate", "valid", "effective", "safe"],
+    "thresholds": {
+      "psi": 0.2,
+      "kl_divergence": 0.1,
+      "confidence_minimum": 0.7
+    },
+    "triggers": {
+      "onDriftDetected": ["composio:faves-compliance-alert", "slack:compliance-updates"],
+      "onModelRelease": ["composio:evidence-bundle-publish", "notion:complianceTracker"]
+    }
+  },
+
+  "monitoring": {
+    "enabled": true,
+    "metrics": ["latency", "tokens", "cost", "errors", "drift", "compliance"],
+    "alertThresholds": {
+      "errorRate": 0.05,
+      "latencyP99": 30000,
+      "dailyCostUsd": 50,
+      "psiThreshold": 0.2,
+      "complianceViolations": 1
+    },
+    "endpoints": {
+      "langsmith": "https://smith.langchain.com/o/55c5d712-45ce-439a-9234-d08afbbb7570/projects",
+      "composio": "https://platform.composio.dev/logan.glosser_workspace/metrics"
+    }
+  }
+}

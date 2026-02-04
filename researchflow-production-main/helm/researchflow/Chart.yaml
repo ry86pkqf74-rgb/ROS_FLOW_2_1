@@ -1,0 +1,13 @@
+apiVersion: v2
+name: researchflow
+description: ResearchFlow - Research Operating System (orchestrator, worker, web)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - researchflow
+  - ros
+  - clinical-research
+maintainers:
+  - name: ResearchFlow
+    email: logan.glosser@gmail.com

@@ -1,0 +1,90 @@
+# ============================================
+# ResearchFlow - ChromaDB & Ollama Services
+# ============================================
+# Add these services to docker-compose.yml
+# Linear Issue: ROS-81
+
+services:
+  # ===================
+  # ChromaDB - Vector Database for RAG
+  # ===================
+  chromadb:
+    image: chromadb/chroma:0.4.22
+    ports:
+      - "8002:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_AUTH_TOKEN:?CHROMA_AUTH_TOKEN must be set}
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - researchflow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ===================
+  # Ollama - Local LLM Inference
+  # ===================
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_KEEP_ALIVE=24h
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./models:/models
+    networks:
+      - researchflow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+        reservations:
+          cpus: '2'
+          memory: 8G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+# Add to existing volumes section:
+volumes:
+  chroma_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+# Add these environment variables to orchestrator and worker services:
+# CHROMADB_URL=http://chromadb:8000
+# CHROMADB_AUTH_TOKEN=${CHROMA_AUTH_TOKEN:?CHROMA_AUTH_TOKEN must be set}
+# CHROMA_HOST=chromadb
+# CHROMA_PORT=8000
+# OLLAMA_URL=http://ollama:11434

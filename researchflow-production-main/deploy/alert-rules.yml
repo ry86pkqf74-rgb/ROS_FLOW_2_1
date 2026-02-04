@@ -1,0 +1,254 @@
+groups:
+  - name: ai_inference_alerts
+    interval: 30s
+    rules:
+      # Inference Latency Alerts
+      - alert: HighInferenceLatency
+        expr: |
+          histogram_quantile(0.95, rate(ai_inference_duration_ms_bucket[5m])) > 5000
+        for: 2m
+        labels:
+          severity: warning
+          component: ai-inference
+        annotations:
+          summary: "High AI inference latency detected"
+          description: "P95 latency is {{ $value }}ms (threshold: 5000ms) on {{ $labels.service }}"
+
+      - alert: CriticalInferenceLatency
+        expr: |
+          histogram_quantile(0.99, rate(ai_inference_duration_ms_bucket[5m])) > 10000
+        for: 1m
+        labels:
+          severity: critical
+          component: ai-inference
+        annotations:
+          summary: "Critical AI inference latency"
+          description: "P99 latency is {{ $value }}ms on {{ $labels.service }}"
+
+      # Error Rate Alerts
+      - alert: HighAIErrorRate
+        expr: |
+          rate(ai_inference_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: ai-inference
+        annotations:
+          summary: "High AI inference error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }}"
+
+      - alert: CriticalAIErrorRate
+        expr: |
+          rate(ai_inference_errors_total[5m]) > 0.10
+        for: 1m
+        labels:
+          severity: critical
+          component: ai-inference
+        annotations:
+          summary: "Critical AI inference error rate"
+          description: "Error rate reached {{ $value | humanizePercentage }} on {{ $labels.service }}"
+
+  - name: ollama_alerts
+    interval: 30s
+    rules:
+      - alert: OllamaServiceDown
+        expr: |
+          up{service="ollama"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: ollama
+        annotations:
+          summary: "Ollama service is down"
+          description: "Ollama has been unreachable for more than 1 minute"
+
+      - alert: OllamaMemoryPressure
+        expr: |
+          ollama_memory_usage_bytes / ollama_memory_total_bytes > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: ollama
+        annotations:
+          summary: "Ollama memory pressure detected"
+          description: "Ollama memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: OllamaGPUNotAvailable
+        expr: |
+          ollama_gpu_available == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: ollama
+        annotations:
+          summary: "Ollama GPU unavailable"
+          description: "GPU is not available for Ollama inference"
+
+  - name: triton_alerts
+    interval: 30s
+    rules:
+      - alert: TritonServiceDown
+        expr: |
+          up{service="triton"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: triton
+        annotations:
+          summary: "Triton Inference Server is down"
+          description: "Triton has been unreachable for more than 1 minute"
+
+      - alert: TritonQueueDepth
+        expr: |
+          triton_inference_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: triton
+        annotations:
+          summary: "Triton inference queue is backed up"
+          description: "Queue depth is {{ $value }} requests (threshold: 100)"
+
+      - alert: TritonGPUMemory
+        expr: |
+          nv_gpu_memory_used_mb / nv_gpu_memory_total_mb > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: triton
+        annotations:
+          summary: "Triton GPU memory exhausted"
+          description: "GPU memory usage is {{ $value | humanizePercentage }}"
+
+  - name: faiss_alerts
+    interval: 30s
+    rules:
+      - alert: FAISSServiceDown
+        expr: |
+          up{service="faiss"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: faiss
+        annotations:
+          summary: "FAISS Vector Database is down"
+          description: "FAISS has been unreachable for more than 1 minute"
+
+      - alert: FAISSIndexCorruption
+        expr: |
+          faiss_index_corruption_detected == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: faiss
+        annotations:
+          summary: "FAISS index corruption detected"
+          description: "Index integrity check failed on {{ $labels.index_name }}"
+
+      - alert: FAISSSearchLatency
+        expr: |
+          histogram_quantile(0.99, rate(faiss_search_duration_ms_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: faiss
+        annotations:
+          summary: "FAISS search latency high"
+          description: "P99 search latency is {{ $value }}ms (threshold: 1000ms)"
+
+      - alert: FAISSDiskSpace
+        expr: |
+          faiss_disk_usage_bytes / faiss_disk_capacity_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: faiss
+        annotations:
+          summary: "FAISS disk space running low"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+  - name: redis_alerts
+    interval: 30s
+    rules:
+      - alert: RedisMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisConnectionCount
+        expr: |
+          redis_connected_clients > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "High Redis connection count"
+          description: "Connected clients: {{ $value }} (threshold: 10000)"
+
+  - name: cost_alerts
+    interval: 1m
+    rules:
+      - alert: HighGPUUtilization
+        expr: |
+          avg(rate(nvidia_smi_gpu_core_utilization[5m])) > 0.95
+        for: 10m
+        labels:
+          severity: warning
+          cost_impact: high
+        annotations:
+          summary: "High GPU utilization - potential cost increase"
+          description: "GPU utilization is {{ $value | humanizePercentage }}"
+
+      - alert: ExcessiveModelLoading
+        expr: |
+          rate(ollama_model_loads_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          cost_impact: medium
+        annotations:
+          summary: "Excessive model loading detected"
+          description: "Model load rate is {{ $value }}/sec (threshold: 10/sec)"
+
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on host"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceRunningOut
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes)) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Disk space running low"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.device }}"
+
+      - alert: HighNetworkTraffic
+        expr: |
+          rate(node_network_receive_bytes_total[5m]) > 1000000000
+        for: 5m
+        labels:
+          severity: info
+          component: infrastructure
+        annotations:
+          summary: "High network traffic detected"
+          description: "Network receive rate is {{ $value | humanize }}bps"

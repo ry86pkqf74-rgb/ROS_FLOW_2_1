@@ -1,0 +1,51 @@
+# ResearchFlow Phase 4: Pre-commit hooks
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Python formatting
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        files: ^(services/worker/|tests/|agents/|scripts/.*\.py|migrations/.*\.py)
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^(services/worker/|tests/|agents/|scripts/.*\.py)
+
+  # Type checking (worker and tests only; ignore missing imports for third-party)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests, types-PyYAML]
+        args: [--ignore-missing-imports, --no-strict-optional]
+        files: ^(services/worker/src/|tests/.*\.py)
+
+  # Security linting
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["-ll", "-r"]
+        files: ^services/worker/src/
+
+  # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        args: ["--config=security/gitleaks.toml"]
+
+  # Python dependency vulnerability scanning (Safety)
+  - repo: https://github.com/pyupio/safety
+    rev: 3.2.14
+    hooks:
+      - id: safety
+        args: ["check", "--full-report"]
+        files: ^services/worker/requirements.*\.txt$

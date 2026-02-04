@@ -1,0 +1,229 @@
+# ============================================
+# ResearchFlow - Application RBAC Configuration
+# ============================================
+# Defines ServiceAccounts, Roles, and RoleBindings for all application services
+# Following principle of least privilege
+# ============================================
+
+---
+# ============================================
+# ServiceAccounts
+# ============================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orchestrator
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: orchestrator
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: worker
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: worker
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: web
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guideline-engine
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: guideline-engine
+
+---
+# ============================================
+# Roles - Orchestrator (highest privilege within app)
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: orchestrator
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: orchestrator
+rules:
+  # Read configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["researchflow-config"]
+    verbs: ["get", "watch"]
+  # Read secrets for database/redis credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["researchflow-secrets"]
+    verbs: ["get"]
+  # List pods for health checking workers
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Read service endpoints
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list"]
+
+---
+# ============================================
+# Roles - Worker (limited to job execution)
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: worker
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: worker
+rules:
+  # Read configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["researchflow-config"]
+    verbs: ["get", "watch"]
+  # Read secrets for database/redis credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["researchflow-secrets"]
+    verbs: ["get"]
+
+---
+# ============================================
+# Roles - Web (minimal - read-only config)
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: web
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: web
+rules:
+  # Read configuration only
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["researchflow-config"]
+    verbs: ["get"]
+
+---
+# ============================================
+# Roles - Guideline Engine
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: guideline-engine
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: guideline-engine
+rules:
+  # Read configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["researchflow-config"]
+    verbs: ["get", "watch"]
+  # Read secrets for database credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["researchflow-secrets"]
+    verbs: ["get"]
+
+---
+# ============================================
+# RoleBindings
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: orchestrator
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: orchestrator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: orchestrator
+subjects:
+  - kind: ServiceAccount
+    name: orchestrator
+    namespace: researchflow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: worker
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: worker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: worker
+subjects:
+  - kind: ServiceAccount
+    name: worker
+    namespace: researchflow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: web
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: web
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: web
+subjects:
+  - kind: ServiceAccount
+    name: web
+    namespace: researchflow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: guideline-engine
+  namespace: researchflow
+  labels:
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: guideline-engine
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: guideline-engine
+subjects:
+  - kind: ServiceAccount
+    name: guideline-engine
+    namespace: researchflow

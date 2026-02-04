@@ -1,0 +1,576 @@
+# ============================================
+# ResearchFlow - Production Docker Compose
+# ============================================
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# This configuration is hardened for production deployment with:
+# - TLS/SSL encryption for all services
+# - Resource limits and health checks
+# - Security-focused environment variables
+# - HIPAA-compliant data handling
+#
+# Linear Issue: ROS-62
+#
+# Optional monitoring (Prometheus, Grafana): docker-compose.monitoring.yml
+# ============================================
+
+services:
+  # ===================
+  # Database Migrations (runs once before other services)
+  # ===================
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      - PGHOST=postgres
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGDATABASE=${POSTGRES_DB}
+      - PGSSLMODE=require
+    volumes:
+      - ./migrations:/migrations:ro
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      sh -c '
+        echo "=== Running database migrations ===" &&
+        for f in /migrations/*.sql; do
+          echo "Applying migration: $$f" &&
+          psql -f "$$f" || echo "Warning: Migration $$f may have already been applied"
+        done &&
+        echo "=== Migrations complete ==="
+      '
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ===================
+  # Ollama - Local LLM (Qwen) with GPU
+  # ===================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: researchflow-ollama
+    restart: always
+    stop_grace_period: 60s
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_KEEP_ALIVE=5m
+      - OLLAMA_DEBUG=false
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      - OLLAMA_NUM_THREAD=${OLLAMA_NUM_THREAD:-8}
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+      - ollama-cache:/tmp/ollama-cache
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 12G
+        reservations:
+          cpus: '2'
+          memory: 8G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===================
+  # Orchestrator - Node.js API (Production)
+  # ===================
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+      target: production
+    ports:
+      - "3001:3001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # Database with SSL
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=require
+      # Redis with TLS
+      - REDIS_URL=rediss://:${REDIS_PASSWORD}@redis:6379
+      - REDIS_TLS_ENABLED=true
+      # Security
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      # PHI Governance (HIPAA)
+      - PHI_SCAN_ENABLED=true
+      - PHI_FAIL_CLOSED=true
+      - GOVERNANCE_MODE=LIVE
+      - WORKER_WS_URL=${WORKER_WS_URL:-ws://worker:8000}
+      - WORKER_URL=http://worker:8000
+      - WORKER_CALLBACK_URL=http://worker:8000
+      - ROS_API_URL=http://worker:8000
+      - OLLAMA_URL=http://ollama:11434
+      # Local AI Model (Qwen3-Coder via Ollama)
+      - LOCAL_MODEL_ENABLED=${LOCAL_MODEL_ENABLED:-true}
+      - LOCAL_MODEL_ENDPOINT=${LOCAL_MODEL_ENDPOINT:-http://ollama:11434}
+      - LOCAL_MODEL_NAME=${LOCAL_MODEL_NAME:-ai/qwen3-coder:latest}
+      - LOCAL_MODEL_PREFER_FOR_CODE=${LOCAL_MODEL_PREFER_FOR_CODE:-true}
+      - LOCAL_MODEL_HEALTH_CHECK_MS=${LOCAL_MODEL_HEALTH_CHECK_MS:-30000}
+      - LOCAL_MODEL_TIMEOUT_MS=${LOCAL_MODEL_TIMEOUT_MS:-120000}
+      # Insights Stream
+      - INSIGHTS_STREAM_NAME=ros:insights
+      - INSIGHTS_TLS_REQUIRED=true
+      - INSIGHTS_MAX_LEN=100000
+      # AI Providers (keys from .env.production)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Audit logging
+      - AUDIT_LOG_ENABLED=true
+      - AUDIT_LOG_LEVEL=info
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    volumes:
+      - shared-data:/data
+      - ./logs/orchestrator:/app/logs
+    networks:
+      - frontend  # Public API access
+      - backend   # Internal service communication
+    restart: always
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # ===================
+  # Worker - Python FastAPI (Production)
+  # ===================
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+      target: production
+    # SECURITY: Worker is internal service - no public port exposure
+    expose:
+      - "8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=require
+      - REDIS_URL=rediss://:${REDIS_PASSWORD}@redis:6379
+      - ARTIFACT_PATH=/data/artifacts
+      - ARTIFACTS_PATH=/data/artifacts
+      - LOG_PATH=/data/logs
+      - GOVERNANCE_MODE=LIVE
+      # PHI Governance
+      - PHI_SCAN_ENABLED=true
+      - PHI_FAIL_CLOSED=true
+      # AI Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # RAG / Chroma (include chromadb service for agents/rag)
+      - CHROMA_HOST=${CHROMA_HOST:-chromadb}
+      - CHROMA_PORT=${CHROMA_PORT:-8000}
+      - EMBEDDINGS_PROVIDER=${EMBEDDINGS_PROVIDER:-mock}
+      # Local LLM (Ollama)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      # Orchestrator callbacks
+      - ORCHESTRATOR_URL=http://orchestrator:3001
+      - AI_ROUTER_URL=http://orchestrator:3001/api/ai/extraction/generate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - shared-data:/data
+      - projects-data:/data/projects
+      - ./logs/worker:/app/logs
+    networks:
+      - backend
+    restart: always
+    stop_grace_period: 60s  # Allow time for job processing to complete
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 2G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # ===================
+  # Guideline Engine - Python FastAPI (Production)
+  # ===================
+  guideline-engine:
+    build:
+      context: ./packages/guideline-engine
+      dockerfile: Dockerfile
+    # SECURITY: Guideline engine is internal service - no public port exposure
+    expose:
+      - "8001"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=require
+      - AI_ROUTER_URL=http://orchestrator:3001/api/ai
+      - LOG_LEVEL=WARNING
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: always
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Web - React Frontend (Production Nginx)
+  # ===================
+  # CRITICAL: VITE_* variables are BAKED INTO the frontend at BUILD TIME
+  # For production, these MUST be empty strings (or unset) so the browser
+  # uses relative URLs (/api/...) which Nginx proxies to the backend.
+  # 
+  # NEVER set these to "localhost", "orchestrator:3001", or any Docker-internal
+  # hostname - the browser cannot resolve those addresses!
+  #
+  # Correct .env.production values:
+  #   VITE_API_BASE_URL=
+  #   VITE_API_URL=
+  #   VITE_WS_URL=
+  #   VITE_COLLAB_URL=
+  #   VITE_AGENT_WS_URL=
+  # ===================
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+      target: production
+      args:
+        # Empty defaults for production - enables relative URLs via Nginx proxy
+        - VITE_WS_URL=${VITE_WS_URL:-}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_API_URL=${VITE_API_URL:-}
+        - VITE_COLLAB_URL=${VITE_COLLAB_URL:-}
+        - VITE_AGENT_WS_URL=${VITE_AGENT_WS_URL:-}
+    ports:
+      - "443:443"
+      - "80:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    environment:
+      - VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+    volumes:
+      # TLS certificates + production nginx config
+      - ./infrastructure/docker/nginx/ssl/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - ./infrastructure/docker/nginx/ssl/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+      - ./infrastructure/docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    networks:
+      - frontend  # Public access for web UI
+      - backend   # Internal access to worker/guideline-engine via nginx proxy
+    restart: always
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # ===================
+  # Collab - Real-time Collaboration Server (Production)
+  # ===================
+  collab:
+    build:
+      context: .
+      dockerfile: services/collab/Dockerfile
+      target: production
+    ports:
+      - "1234:1234"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    environment:
+      - NODE_ENV=production
+      - PORT=1234
+      - HEALTH_PORT=1235
+      - HOST=0.0.0.0
+      - APP_MODE=LIVE
+      - REDIS_URL=rediss://:${REDIS_PASSWORD}@redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=require
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - frontend  # Public WebSocket access
+      - backend   # Internal DB/Redis access
+    restart: always
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:1235/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ===================
+  # PostgreSQL Database (Production with SSL)
+  # ===================
+  postgres:
+    image: pgvector/pgvector:pg16
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Enable SSL
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    command:
+      - "postgres"
+      - "-c"
+      - "ssl=on"
+      - "-c"
+      - "ssl_cert_file=/var/lib/postgresql/ssl/server.crt"
+      - "-c"
+      - "ssl_key_file=/var/lib/postgresql/ssl/server.key"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "log_statement=ddl"
+      - "-c"
+      - "log_min_duration_statement=1000"
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./certs/postgres:/var/lib/postgresql/ssl:ro
+    networks:
+      - backend
+    restart: always
+    stop_grace_period: 60s  # Allow time for connections to drain
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ===================
+  # Redis Cache (Production with TLS + AUTH)
+  # ===================
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --tls-port 6379
+      --port 0
+      --tls-cert-file /tls/redis.crt
+      --tls-key-file /tls/redis.key
+      --tls-ca-cert-file /tls/ca.crt
+      --tls-auth-clients no
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+      - ./certs/redis:/tls:ro
+    networks:
+      - backend
+    restart: always
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "redis-cli", "--tls", "--cert", "/tls/redis.crt", "--key", "/tls/redis.key", "--cacert", "/tls/ca.crt", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  shared-data:
+    driver: local
+  projects-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  ollama-models:
+    driver: local
+  ollama-cache:
+    driver: local
+
+# ===================
+# Networks
+# ===================
+networks:
+  frontend:
+    driver: bridge
+    # Public-facing network for web, orchestrator API
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/24
+  backend:
+    driver: bridge
+    internal: true
+    # SECURITY: Internal network - no external access
+    # Postgres, Redis, Worker, Guideline-engine only
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.1.0/24

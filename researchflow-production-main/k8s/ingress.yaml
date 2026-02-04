@@ -1,0 +1,224 @@
+# =============================================================================
+# ResearchFlow - Consolidated Ingress Configuration
+# =============================================================================
+# This file consolidates all ingress resources into a single configuration
+# to avoid routing conflicts and simplify management.
+#
+# Prerequisites:
+#   - nginx-ingress controller installed
+#   - cert-manager configured (see cert-manager.yaml)
+#
+# Usage:
+#   kubectl apply -f ingress.yaml
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: researchflow-ingress
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/name: researchflow
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+
+    # TLS configuration via cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # CORS configuration
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://researchflow.io,https://app.researchflow.io"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-connections: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-rpm: "1000"
+
+    # SSL/TLS hardening
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Proxy settings
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+
+    # WebSocket support for collab service
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - researchflow.io
+        - www.researchflow.io
+        - api.researchflow.io
+        - app.researchflow.io
+        - ws.researchflow.io
+      secretName: researchflow-tls-secret
+
+  rules:
+    # Main web application
+    - host: researchflow.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+
+    # www redirect to main domain
+    - host: www.researchflow.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+
+    # Web application subdomain
+    - host: app.researchflow.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+
+    # API endpoints
+    - host: api.researchflow.io
+      http:
+        paths:
+          # Health check endpoint (no auth)
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: 3001
+
+          # Main API routes
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: 3001
+
+          # AI routes
+          - path: /ai
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: 3001
+
+          # Auth routes
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: 3001
+
+          # Webhook endpoints
+          - path: /webhooks
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: 3001
+
+    # WebSocket for real-time collaboration
+    - host: ws.researchflow.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: collab
+                port:
+                  number: 1234
+
+---
+# Internal-only Ingress for monitoring (no external access)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: researchflow-monitoring-ingress
+  namespace: researchflow
+  labels:
+    app: researchflow
+    app.kubernetes.io/component: monitoring
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Restrict to internal network
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    # Basic auth for Prometheus/Grafana
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: monitoring-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "ResearchFlow Monitoring - Authentication Required"
+
+spec:
+  ingressClassName: nginx
+  rules:
+    # Internal monitoring access
+    - host: monitoring.internal.researchflow.io
+      http:
+        paths:
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
+
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+
+          - path: /alertmanager
+            pathType: Prefix
+            backend:
+              service:
+                name: alertmanager
+                port:
+                  number: 9093

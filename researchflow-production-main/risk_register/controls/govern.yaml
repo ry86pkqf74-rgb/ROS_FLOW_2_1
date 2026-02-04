@@ -1,0 +1,310 @@
+---
+# NIST AI RMF - Govern Function Controls
+# Establishes organizational structures, policies, and procedures for AI risk management
+# Phase 2 Implementation
+# Reference: https://www.nist.gov/itl/ai-risk-management-framework
+
+controls:
+  # =====================================================================
+  # GOVERNANCE STRUCTURE AND OVERSIGHT
+  # =====================================================================
+
+  - control_id: "GOVERN-001"
+    control_name: "AI Governance Framework"
+    objective: "Establish clear organizational structures and accountability for AI system management"
+    description: |
+      Implement comprehensive AI governance framework that defines:
+      - Organizational roles and responsibilities (Chief AI Officer, AI Ethics Board, etc.)
+      - Decision-making authority and escalation procedures
+      - Risk approval thresholds and governance requirements
+      - Cross-functional committee oversight
+      - Regular reporting and accountability mechanisms
+    implementation_steps:
+      - Create AI Ethics and Safety Committee with clinical, technical, and operational representatives
+      - Define RACI (Responsible, Accountable, Consulted, Informed) matrix for AI decisions
+      - Establish quarterly governance review meetings
+      - Implement AI risk approval workflow with appropriate authority levels
+      - Document all governance decisions and rationale
+    maturity_levels:
+      - Level 1: Informal governance, limited documentation
+      - Level 2: Defined roles, documented procedures, quarterly reviews
+      - Level 3: Formal committee structure, automated workflows, integrated with enterprise governance
+      - Level 4: Continuous monitoring, predictive governance adjustments, industry benchmarking
+    success_metrics:
+      - 100% of AI models have documented governance approval
+      - Governance review meetings held quarterly or per policy
+      - Average time from proposal to approval < 30 days for standard models
+      - Zero instances of unapproved model deployments
+    responsible_role: "Chief AI Officer"
+    related_risks:
+      - RIS-016
+      - RIS-018
+      - RIS-021
+
+  - control_id: "GOVERN-002"
+    control_name: "Data Governance and Stewardship"
+    objective: "Establish policies and procedures for data collection, management, and usage"
+    description: |
+      Implement data governance program including:
+      - Data ownership and stewardship roles
+      - Data collection and usage policies
+      - Data retention and disposal procedures
+      - Data access controls and approval processes
+      - Data quality standards and monitoring
+      - Documentation of data lineage and provenance
+    implementation_steps:
+      - Appoint data owners and stewards for each data source
+      - Create data management policies aligned with organizational needs
+      - Implement data catalog with metadata documentation
+      - Establish data access request and approval process
+      - Document all data transformations and lineage
+      - Create data retention schedule aligned with regulations
+    maturity_levels:
+      - Level 1: Informal data management, limited documentation
+      - Level 2: Named data stewards, documented policies, manual tracking
+      - Level 3: Automated data catalog, integrated access controls, quality monitoring
+      - Level 4: AI-driven data governance, predictive quality management, autonomous decision-making
+    success_metrics:
+      - 100% of data sources have identified stewards
+      - Data lineage documented for all model inputs
+      - Monthly data quality reports generated and reviewed
+      - Data access compliance audit score > 95%
+    responsible_role: "Chief Data Officer"
+    related_risks:
+      - RIS-005
+      - RIS-004
+      - RIS-009
+
+  - control_id: "GOVERN-003"
+    control_name: "AI System Documentation and Record-Keeping"
+    objective: "Maintain comprehensive documentation of AI systems for audit, compliance, and knowledge retention"
+    description: |
+      Establish documentation standards and systems including:
+      - Model cards and system documentation
+      - Design and decision documentation
+      - Training data documentation
+      - Model performance baselines
+      - Change logs and version history
+      - Audit trails and compliance evidence
+      - Incident reports and remediation records
+    implementation_steps:
+      - Create model card template with required fields
+      - Implement documentation management system (e.g., version control)
+      - Require documentation completion before model deployment
+      - Establish documentation review and approval process
+      - Implement automated audit logging for all system changes
+      - Create incident response and documentation procedures
+      - Schedule documentation reviews and updates (quarterly minimum)
+    maturity_levels:
+      - Level 1: Limited documentation, stored ad-hoc
+      - Level 2: Standardized templates, centralized storage, manual review
+      - Level 3: Automated collection, versioned storage, regular updates
+      - Level 4: AI-assisted documentation, predictive completeness monitoring, autonomous updates
+    success_metrics:
+      - 100% of AI models have current model cards
+      - Documentation updated within 30 days of significant changes
+      - Documentation review completion rate > 95%
+      - Audit trail completeness score > 99%
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-018
+      - RIS-017
+      - RIS-019
+
+  # =====================================================================
+  # POLICY AND PROCEDURE DEVELOPMENT
+  # =====================================================================
+
+  - control_id: "GOVERN-004"
+    control_name: "AI Risk Management Policies"
+    objective: "Establish and maintain policies addressing AI-specific risks"
+    description: |
+      Develop comprehensive AI risk management policies covering:
+      - AI system development and deployment standards
+      - Risk assessment and mitigation procedures
+      - Model validation and testing requirements
+      - Monitoring and performance management
+      - Incident response and escalation
+      - Third-party and vendor management
+      - Bias and fairness requirements
+      - Explainability and interpretability standards
+    implementation_steps:
+      - Conduct gap analysis against NIST AI RMF framework
+      - Draft policies aligned with organizational strategy and regulatory requirements
+      - Obtain executive and board approval
+      - Distribute policies to all relevant staff
+      - Implement training programs on policy compliance
+      - Establish policy compliance monitoring
+      - Schedule regular policy reviews and updates (annually minimum)
+    maturity_levels:
+      - Level 1: Policies exist but not formal or comprehensive
+      - Level 2: Formal policies written, distributed, basic training
+      - Level 3: Policies integrated with operations, compliance monitoring, training tracked
+      - Level 4: Policies dynamically updated based on metrics, integrated with business processes
+    success_metrics:
+      - Policies cover all identified AI risk categories
+      - 100% of relevant staff complete policy training
+      - Policy compliance audit score > 95%
+      - Zero instances of policy violations in incident reviews
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-016
+      - RIS-009
+      - RIS-021
+
+  - control_id: "GOVERN-005"
+    control_name: "Security and Privacy Controls"
+    objective: "Implement technical and administrative controls to protect AI systems and data"
+    description: |
+      Establish security and privacy framework including:
+      - Access controls (authentication, authorization, role-based access)
+      - Encryption standards (data at rest, in transit, in use)
+      - Data anonymization and de-identification procedures
+      - Network security and segmentation
+      - Vulnerability management and patch procedures
+      - Security monitoring and incident response
+      - Privacy impact assessments
+      - Audit logging and monitoring
+    implementation_steps:
+      - Conduct security risk assessment
+      - Implement multi-factor authentication for all system access
+      - Enforce encryption standards per HIPAA requirements
+      - Establish network segmentation for sensitive systems
+      - Implement continuous vulnerability scanning
+      - Deploy security monitoring and SIEM tools
+      - Create incident response playbooks
+      - Conduct regular security training for all staff
+    maturity_levels:
+      - Level 1: Basic security controls, limited monitoring
+      - Level 2: Standard controls implemented, manual monitoring, documented procedures
+      - Level 3: Automated controls, continuous monitoring, integrated threat detection
+      - Level 4: Predictive security, autonomous response, AI-driven threat detection
+    success_metrics:
+      - All data encrypted per security standards
+      - Security audit pass rate > 95%
+      - Mean time to detect (MTTD) < 1 hour
+      - Mean time to respond (MTTR) < 4 hours for critical issues
+      - Zero confirmed security breaches in past 12 months
+    responsible_role: "Chief Information Security Officer"
+    related_risks:
+      - RIS-007
+      - RIS-008
+      - RIS-009
+
+  - control_id: "GOVERN-006"
+    control_name: "Compliance and Audit Program"
+    objective: "Establish mechanisms for assessing and demonstrating compliance with requirements"
+    description: |
+      Implement comprehensive compliance program including:
+      - Regulatory requirement mapping (HIPAA, GDPR, FDA, etc.)
+      - Regular compliance assessments and audits
+      - External audit management
+      - Compliance metrics and reporting
+      - Remediation tracking
+      - Board-level compliance reporting
+      - Regulatory liaison and communication
+    implementation_steps:
+      - Document all applicable regulatory requirements
+      - Map requirements to controls and policies
+      - Establish baseline compliance assessment
+      - Schedule regular internal and external audits
+      - Create compliance dashboard with key metrics
+      - Implement remediation tracking system
+      - Establish regulatory update process
+      - Create compliance training curriculum
+    maturity_levels:
+      - Level 1: Ad-hoc compliance efforts, limited documentation
+      - Level 2: Formal compliance program, regular assessments, documented procedures
+      - Level 3: Integrated compliance monitoring, automated reporting, proactive updates
+      - Level 4: Predictive compliance management, continuous monitoring, autonomous remediation
+    success_metrics:
+      - Internal compliance audit score > 95%
+      - External audit findings: zero critical, <3 major per year
+      - Compliance dashboard updated monthly
+      - Regulatory requirements mapped to 100% of controls
+      - Remediation completion time < 30 days for high-priority items
+    responsible_role: "Chief Compliance Officer"
+    related_risks:
+      - RIS-016
+      - RIS-018
+      - RIS-004
+
+  # =====================================================================
+  # RISK MANAGEMENT AND OVERSIGHT
+  # =====================================================================
+
+  - control_id: "GOVERN-007"
+    control_name: "Security Threat Assessment and Management"
+    objective: "Identify, assess, and manage security threats to AI systems"
+    description: |
+      Establish threat assessment program including:
+      - Threat modeling and identification
+      - Vulnerability assessments
+      - Adversarial testing
+      - Red team exercises
+      - Threat intelligence monitoring
+      - Risk ranking and prioritization
+      - Remediation planning and tracking
+      - Lessons learned documentation
+    implementation_steps:
+      - Conduct threat modeling for each AI system
+      - Implement vulnerability scanning tools
+      - Establish adversarial testing procedures
+      - Conduct annual red team exercises
+      - Subscribe to threat intelligence feeds
+      - Create risk prioritization matrix
+      - Establish remediation procedures with SLAs
+      - Document and share lessons learned
+    maturity_levels:
+      - Level 1: Informal threat assessment, limited documentation
+      - Level 2: Formal threat identification, documented procedures, manual prioritization
+      - Level 3: Automated threat detection, continuous monitoring, integrated response
+      - Level 4: Predictive threat modeling, autonomous response, threat anticipation
+    success_metrics:
+      - All critical vulnerabilities remediated within 30 days
+      - Red team exercises conducted annually with documented findings
+      - Threat intelligence monitoring coverage > 95%
+      - Zero day exploits prevented: 100%
+    responsible_role: "Chief Information Security Officer"
+    related_risks:
+      - RIS-008
+      - RIS-020
+      - RIS-007
+
+  - control_id: "GOVERN-008"
+    control_name: "Stakeholder Communication and Engagement"
+    objective: "Ensure transparent communication about AI systems with all stakeholders"
+    description: |
+      Establish communication framework including:
+      - Clinician communication and feedback mechanisms
+      - Patient communication about AI use
+      - Transparency reports and disclosures
+      - Incident communication procedures
+      - Feedback loops and improvement processes
+      - Stakeholder engagement in governance
+      - Training and education programs
+      - Regular communication cadence
+    implementation_steps:
+      - Create stakeholder communication plan
+      - Establish feedback collection mechanisms
+      - Develop transparency documentation for patients and clinicians
+      - Create training curriculum for system users
+      - Establish incident notification procedures
+      - Create feedback review and implementation process
+      - Schedule regular stakeholder engagement sessions
+      - Measure stakeholder satisfaction and understanding
+    maturity_levels:
+      - Level 1: Limited stakeholder communication
+      - Level 2: Regular communication, documented procedures, feedback collection
+      - Level 3: Integrated feedback loops, automated communication, continuous engagement
+      - Level 4: AI-driven personalization, predictive communication needs, autonomous engagement
+    success_metrics:
+      - Clinician training completion rate > 95%
+      - Stakeholder satisfaction score > 4/5
+      - Feedback response time < 7 days
+      - Communication coverage: 100% of affected stakeholders
+    responsible_role: "Clinical Operations Manager"
+    related_risks:
+      - RIS-021
+      - RIS-022
+      - RIS-018

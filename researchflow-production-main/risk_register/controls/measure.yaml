@@ -1,0 +1,353 @@
+---
+# NIST AI RMF - Measure Function Controls
+# Tests, validates, and monitors AI systems to characterize and remediate impacts
+# Phase 2 Implementation
+# Reference: https://www.nist.gov/itl/ai-risk-management-framework
+
+controls:
+  # =====================================================================
+  # VALIDATION AND TESTING
+  # =====================================================================
+
+  - control_id: "MEASURE-001"
+    control_name: "Model Validation and Verification"
+    objective: "Systematically validate and verify AI model performance and safety"
+    description: |
+      Establish validation framework including:
+      - Validation study design and protocol
+      - Test data preparation and validation
+      - Cross-validation and hold-out testing
+      - Performance metric calculation and verification
+      - Comparison against baselines and controls
+      - Clinical validation with appropriate studies
+      - Sensitivity analysis and robustness testing
+      - Documentation of validation results and findings
+    implementation_steps:
+      - Design validation study protocol
+      - Prepare independent validation dataset
+      - Implement cross-validation procedure
+      - Calculate performance metrics across validation sets
+      - Conduct comparison analysis with baselines
+      - Perform sensitivity analysis for key parameters
+      - Document validation results comprehensively
+      - Maintain validation data and reproducibility
+    maturity_levels:
+      - Level 1: Basic validation, limited documentation
+      - Level 2: Systematic validation protocol, documented results, cross-validation
+      - Level 3: Comprehensive validation, sensitivity analysis, ongoing monitoring
+      - Level 4: Continuous validation, automated testing, predictive validation
+    success_metrics:
+      - Model performance meets success criteria on validation set
+      - Cross-validation results consistent (< 5% variance)
+      - Validation documentation complete and reviewed
+      - Sensitivity analysis identifies key parameters
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-010
+      - RIS-011
+      - RIS-019
+
+  - control_id: "MEASURE-002"
+    control_name: "Clinical Validation and Prospective Testing"
+    objective: "Establish clinical evidence of safety and effectiveness"
+    description: |
+      Implement clinical validation including:
+      - Prospective study design and approval
+      - Clinical data collection and management
+      - Clinical outcome measurement
+      - Comparative effectiveness analysis
+      - Safety monitoring and adverse event tracking
+      - Publication and regulatory submission
+      - Post-market surveillance planning
+      - Long-term outcome tracking
+    implementation_steps:
+      - Develop clinical study protocol with IRB approval
+      - Establish clinical data collection procedures
+      - Implement safety monitoring procedures
+      - Conduct interim and final analysis
+      - Compare effectiveness against standard of care
+      - Document all clinical evidence
+      - Plan regulatory submissions if needed
+      - Establish post-market surveillance procedures
+    maturity_levels:
+      - Level 1: Limited clinical evidence
+      - Level 2: Prospective study completed, documented results, safety monitoring
+      - Level 3: Comprehensive clinical validation, regulatory alignment, ongoing surveillance
+      - Level 4: Real-world evidence integration, continuous outcome monitoring
+    success_metrics:
+      - Clinical study protocol approved by ethics board
+      - Adequate sample size for statistical power
+      - Primary and secondary outcomes met
+      - Safety profile acceptable per protocol
+    responsible_role: "Chief Medical Officer"
+    related_risks:
+      - RIS-019
+      - RIS-001
+      - RIS-003
+
+  - control_id: "MEASURE-003"
+    control_name: "Fairness and Bias Testing"
+    objective: "Test and measure fairness across demographic groups"
+    description: |
+      Establish fairness testing framework including:
+      - Fairness metric definition and selection
+      - Baseline fairness measurement
+      - Testing across demographic groups
+      - Disparity quantification and documentation
+      - Bias mitigation effectiveness testing
+      - Adversarial testing against fairness
+      - Regular testing schedule and procedures
+      - Results documentation and reporting
+    implementation_steps:
+      - Select fairness metrics per use case (demographic parity, equalized odds, etc.)
+      - Establish baseline fairness measurements
+      - Conduct stratified analysis across demographics
+      - Quantify disparities and document findings
+      - Test bias mitigation techniques
+      - Conduct adversarial robustness testing
+      - Establish regular testing cadence
+      - Create fairness testing dashboard
+    maturity_levels:
+      - Level 1: Limited fairness testing, informal procedures
+      - Level 2: Systematic fairness testing, documented metrics, stratified analysis
+      - Level 3: Continuous fairness monitoring, automated testing, alerts
+      - Level 4: Predictive fairness modeling, autonomous bias detection
+    success_metrics:
+      - Fairness metrics computed for all demographic groups
+      - Disparities < acceptable thresholds per policy
+      - Testing results documented and reviewed quarterly
+      - Zero fairness-related regulatory findings
+    responsible_role: "ML Engineering Lead"
+    related_risks:
+      - RIS-001
+      - RIS-002
+      - RIS-003
+
+  - control_id: "MEASURE-004"
+    control_name: "Explainability and Interpretability Evaluation"
+    objective: "Evaluate and validate model explanations"
+    description: |
+      Establish explainability validation framework including:
+      - Explanation method selection and validation
+      - Explanation accuracy measurement
+      - Clinical expert validation
+      - User comprehension testing
+      - Explanation completeness assessment
+      - Known limitation documentation
+      - Ongoing explanation quality monitoring
+    implementation_steps:
+      - Select and implement explanation methods
+      - Validate explanation accuracy against ground truth
+      - Conduct clinical expert review of explanations
+      - Test user understanding of explanations
+      - Measure explanation completeness
+      - Document explanation limitations
+      - Create explanation quality metrics
+      - Monitor and report on explanation quality
+    maturity_levels:
+      - Level 1: Limited explanation validation
+      - Level 2: Explanation methods validated, expert review, user testing
+      - Level 3: Continuous quality monitoring, integrated feedback, improvements
+      - Level 4: Adaptive explanations, personalized clarity, autonomous optimization
+    success_metrics:
+      - Explanation accuracy score > 90%
+      - Clinical expert agreement > 85%
+      - User comprehension score > 80%
+      - Explanation completeness assessment positive
+    responsible_role: "Clinical AI Specialist"
+    related_risks:
+      - RIS-017
+      - RIS-019
+      - RIS-022
+
+  # =====================================================================
+  # PERFORMANCE MONITORING
+  # =====================================================================
+
+  - control_id: "MEASURE-005"
+    control_name: "Inference and Prediction Monitoring"
+    objective: "Monitor model performance and behavior in production"
+    description: |
+      Establish production monitoring framework including:
+      - Real-time prediction monitoring
+      - Performance metric tracking
+      - Output distribution monitoring
+      - Anomaly detection procedures
+      - Alert and escalation procedures
+      - Monitoring dashboard and reporting
+      - Root cause analysis processes
+      - Remediation procedures
+    implementation_steps:
+      - Implement model inference logging
+      - Track key performance metrics continuously
+      - Monitor output distributions and patterns
+      - Set up anomaly detection algorithms
+      - Create monitoring dashboards
+      - Establish alert thresholds and procedures
+      - Implement escalation workflows
+      - Document performance incidents and responses
+    maturity_levels:
+      - Level 1: Limited monitoring, manual checks
+      - Level 2: Automated monitoring, dashboards, alert procedures
+      - Level 3: Comprehensive monitoring, anomaly detection, automated alerts
+      - Level 4: Predictive monitoring, autonomous response, continuous optimization
+    success_metrics:
+      - All performance metrics tracked continuously
+      - Anomaly detection sensitivity > 95%
+      - Average detection time < 1 hour
+      - Dashboards updated in real-time
+    responsible_role: "ML Operations Manager"
+    related_risks:
+      - RIS-010
+      - RIS-011
+      - RIS-015
+
+  - control_id: "MEASURE-006"
+    control_name: "Data Drift and Distribution Monitoring"
+    objective: "Detect and monitor changes in data distributions"
+    description: |
+      Establish drift detection framework including:
+      - Baseline data distribution documentation
+      - Statistical drift metrics and thresholds
+      - Real-time drift detection algorithms
+      - Alert and escalation procedures
+      - Root cause analysis processes
+      - Mitigation and response procedures
+      - Dashboard and reporting mechanisms
+    implementation_steps:
+      - Establish baseline data distributions
+      - Select drift detection metrics (KL divergence, Kolmogorov-Smirnov test, etc.)
+      - Implement automated drift detection
+      - Set up alert thresholds and escalation
+      - Create drift monitoring dashboard
+      - Establish root cause analysis procedures
+      - Document drift incidents and responses
+      - Implement retraining triggers based on drift
+    maturity_levels:
+      - Level 1: Periodic manual drift checks
+      - Level 2: Automated drift detection, alerts, documented procedures
+      - Level 3: Continuous monitoring, predictive drift, automated triggers
+      - Level 4: Autonomous drift management, predictive retraining
+    success_metrics:
+      - Drift detection implemented for all key features
+      - Detection accuracy > 95%
+      - Average detection time < 1 day
+      - Retraining triggered within SLA after drift detection
+    responsible_role: "ML Operations Manager"
+    related_risks:
+      - RIS-006
+      - RIS-004
+      - RIS-010
+
+  - control_id: "MEASURE-007"
+    control_name: "Regression and Degradation Testing"
+    objective: "Detect model performance degradation over time"
+    description: |
+      Establish degradation monitoring framework including:
+      - Baseline performance documentation
+      - Performance degradation thresholds
+      - Trend analysis and detection
+      - Root cause identification procedures
+      - Retraining decision procedures
+      - Rollback procedures if needed
+      - Dashboard and reporting
+    implementation_steps:
+      - Establish performance baselines for all metrics
+      - Define acceptable degradation thresholds
+      - Implement trend analysis algorithms
+      - Set up automated alerts for degradation
+      - Create root cause analysis procedures
+      - Establish retraining triggers and procedures
+      - Document all degradation incidents
+      - Maintain performance trend dashboards
+    maturity_levels:
+      - Level 1: Manual performance checks, limited trends
+      - Level 2: Automated monitoring, threshold alerts, documented procedures
+      - Level 3: Continuous trend analysis, predictive degradation, automated response
+      - Level 4: Autonomous degradation management, predictive updates
+    success_metrics:
+      - Degradation detected before user impact
+      - Alert precision > 95% (low false positive rate)
+      - Average detection time < 1 week
+      - Retraining completed within SLA
+    responsible_role: "ML Operations Manager"
+    related_risks:
+      - RIS-010
+      - RIS-012
+      - RIS-011
+
+  - control_id: "MEASURE-008"
+    control_name: "Infrastructure and System Monitoring"
+    objective: "Monitor system health and infrastructure performance"
+    description: |
+      Establish infrastructure monitoring including:
+      - Infrastructure component monitoring
+      - Latency and response time tracking
+      - Resource utilization monitoring
+      - Error rate monitoring
+      - Uptime and availability tracking
+      - Capacity planning and forecasting
+      - Alert and escalation procedures
+      - Incident response procedures
+    implementation_steps:
+      - Implement infrastructure monitoring tools
+      - Track latency, resource usage, errors
+      - Set up SLO-based alerting
+      - Create infrastructure dashboards
+      - Establish capacity planning procedures
+      - Implement auto-scaling policies
+      - Create incident response playbooks
+      - Document all infrastructure incidents
+    maturity_levels:
+      - Level 1: Basic monitoring, manual response
+      - Level 2: Automated monitoring, alerts, documented procedures
+      - Level 3: Comprehensive monitoring, predictive scaling, autonomous response
+      - Level 4: Predictive infrastructure management, autonomous optimization
+    success_metrics:
+      - System uptime > 99.9%
+      - P99 latency < SLO threshold
+      - Alert response time < 15 minutes
+      - Capacity planning accuracy > 90%
+    responsible_role: "Infrastructure Lead"
+    related_risks:
+      - RIS-013
+      - RIS-014
+      - RIS-015
+
+  - control_id: "MEASURE-009"
+    control_name: "Clinician Behavior and Reliance Monitoring"
+    objective: "Monitor how clinicians interact with and rely on AI systems"
+    description: |
+      Establish clinician interaction monitoring including:
+      - Usage pattern tracking
+      - Override rate monitoring
+      - Time-to-decision tracking
+      - Outcome analysis by user acceptance
+      - Inappropriate use detection
+      - Bias in user overrides
+      - Feedback and incident reporting
+      - Regular user behavior analysis
+    implementation_steps:
+      - Implement usage logging and tracking
+      - Monitor clinician override rates
+      - Track time spent on recommendations
+      - Analyze outcomes by user acceptance
+      - Detect anomalous usage patterns
+      - Analyze for bias in overrides
+      - Create usage dashboards
+      - Conduct periodic behavior analysis
+    maturity_levels:
+      - Level 1: Limited usage tracking
+      - Level 2: Automated tracking, override monitoring, regular analysis
+      - Level 3: Comprehensive analysis, anomaly detection, personalized feedback
+      - Level 4: Predictive behavior modeling, autonomous interventions
+    success_metrics:
+      - Override rate tracked monthly
+      - Usage patterns analyzed quarterly
+      - Inappropriate use incidents < 1%
+      - Clinician satisfaction score > 4/5
+    responsible_role: "Clinical AI Specialist"
+    related_risks:
+      - RIS-021
+      - RIS-022
+      - RIS-003

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ResearchFlow k6 Load Test Report</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; }
+    .section { margin: 24px 0; }
+    .placeholder { background: #f4f4f5; border: 1px dashed #a1a1aa; padding: 24px; border-radius: 8px; color: #71717a; }
+    code { background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    ul { line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h1>ResearchFlow k6 Load Test Report</h1>
+  <p>Upload k6 HTML report or paste summary here. Generate with:</p>
+  <pre><code>k6 run ... --out html=reports/summary.html</code></pre>
+
+  <div class="section">
+    <h2>Metrics</h2>
+    <div class="placeholder">
+      Replace this block with k6 HTML output or paste key metrics: http_req_duration (p95), http_req_failed, ai_response_time, stage_transition_time, manuscript_generation_time.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Thresholds</h2>
+    <ul>
+      <li>http_req_duration: p(95) &lt; 5000 ms</li>
+      <li>http_req_failed: rate &lt; 0.01</li>
+      <li>ai_response_time: p(95) &lt; 30000 ms</li>
+      <li>stage_transition_time: p(95) &lt; 3000 ms</li>
+      <li>manuscript_generation_time: p(95) &lt; 60000 ms</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -1,0 +1,320 @@
+{
+  "name": "ResearchFlow: Monitoring Dashboard (ROS-75)",
+  "description": "Scheduled monitoring workflow that fetches system health, drift detection, FAVES compliance, and safety events. Updates Notion dashboard and sends Slack alerts for critical issues.",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": null,
+              "triggerAtMinute": null,
+              "repeatInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (Every 15 min)",
+      "type": "n8n-nodes-base.cronTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.baseUrl || 'http://localhost:3001' }}/api/monitoring/health",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ $json.apiToken || $env.MONITORING_API_TOKEN }}"
+          }
+        },
+        "returnFullResponse": true
+      },
+      "id": "http-health",
+      "name": "Fetch Health Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [300, 150]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.baseUrl || 'http://localhost:3001' }}/api/monitoring/drift",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ $json.apiToken || $env.MONITORING_API_TOKEN }}"
+          }
+        },
+        "returnFullResponse": true
+      },
+      "id": "http-drift",
+      "name": "Fetch Drift Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.baseUrl || 'http://localhost:3001' }}/api/faves/stats",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ $json.apiToken || $env.MONITORING_API_TOKEN }}"
+          }
+        },
+        "returnFullResponse": true
+      },
+      "id": "http-faves",
+      "name": "Fetch FAVES Scores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [300, 450]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.baseUrl || 'http://localhost:3001' }}/api/monitoring/safety-events",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ $json.apiToken || $env.MONITORING_API_TOKEN }}"
+          },
+          "qs": {
+            "limit": "10",
+            "sortBy": "timestamp",
+            "order": "DESC"
+          }
+        },
+        "returnFullResponse": true
+      },
+      "id": "http-safety-events",
+      "name": "Fetch Safety Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [300, 600]
+    },
+    {
+      "parameters": {
+        "expression": "={\n  health: $nodes['Fetch Health Status'].json.body,\n  drift: $nodes['Fetch Drift Alerts'].json.body,\n  faves: $nodes['Fetch FAVES Scores'].json.body,\n  safetyEvents: $nodes['Fetch Safety Events'].json.body,\n  timestamp: new Date().toISOString(),\n  hasCriticalIssue: ($nodes['Fetch Health Status'].json.body?.status === 'critical') || ($nodes['Fetch Drift Alerts'].json.body?.criticalAlerts?.length > 0) || ($nodes['Fetch FAVES Scores'].json.body?.failedGates?.length > 0)\n}"
+      },
+      "id": "merge-metrics",
+      "name": "Aggregate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "databaseId": "{{ $env.NOTION_MONITORING_DB_ID }}",
+        "pageId": "={{ $json.pageId || $env.NOTION_MONITORING_PAGE_ID }}",
+        "properties": {
+          "Title": "Monitoring Dashboard - {{ new Date().toLocaleString() }}",
+          "Status": "={{ $json.health?.status === 'healthy' ? '🟢' : ($json.health?.status === 'warning' ? '🟡' : '🔴') }}",
+          "Health": "={{ `${$json.health?.uptime}% | ${$json.health?.activeServices}/${$json.health?.totalServices} services` }}",
+          "Drift Detection": "={{ `${$json.drift?.detectedDrifts?.length || 0} drifts | ${$json.drift?.criticalAlerts?.length || 0} critical` }}",
+          "FAVES Score": "={{ `Passed: ${$json.faves?.passedGates || 0} | Failed: ${$json.faves?.failedGates?.length || 0}` }}",
+          "Safety Events": "={{ $json.safetyEvents?.events?.length || 0 }}",
+          "Last Updated": "={{ new Date($json.timestamp).toISOString() }}"
+        }
+      },
+      "id": "notion-update",
+      "name": "Update Notion Dashboard",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [800, 200],
+      "credentials": {
+        "notionApi": {
+          "id": "notion-cred",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasCriticalIssue }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-critical",
+      "name": "Is Critical Issue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "expression": "={\n  title: 'Critical Monitoring Alert',\n  blocks: [\n    {\n      type: 'header',\n      text: {\n        type: 'mrkdwn',\n        text: '🚨 ResearchFlow - Critical System Alert'\n      }\n    },\n    {\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*Status:* ${$json.health?.status === 'critical' ? '🔴 CRITICAL' : '⚠️ WARNING'}\n*Timestamp:* ${new Date($json.timestamp).toLocaleString()}`\n      }\n    },\n    {\n      type: 'divider'\n    },\n    ...(($json.health?.status === 'critical') ? [{\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*System Health:* CRITICAL\n• Uptime: ${$json.health?.uptime}%\n• Services Down: ${$json.health?.totalServices - $json.health?.activeServices}\n• Details: ${$json.health?.details || 'See dashboard'}`\n      }\n    }] : []),\n    ...(($json.drift?.criticalAlerts?.length > 0) ? [{\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*Drift Detection:* ${$json.drift?.criticalAlerts?.length} CRITICAL ALERTS\n${$json.drift?.criticalAlerts?.slice(0, 3)?.map((d) => `• ${d.modelId}: ${d.severity} - ${d.description}`).join('\\n')}`\n      }\n    }] : []),\n    ...(($json.faves?.failedGates?.length > 0) ? [{\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: `*FAVES Compliance:* ${$json.faves?.failedGates?.length} GATES FAILED\n${$json.faves?.failedGates?.slice(0, 3)?.map((f) => `• ${f.dimension}: ${f.reason}`).join('\\n')}`\n      }\n    }] : []),\n    {\n      type: 'actions',\n      elements: [\n        {\n          type: 'button',\n          text: {\n            type: 'plain_text',\n            text: 'View Dashboard'\n          },\n          url: `${$env.DASHBOARD_URL}/monitoring`\n        },\n        {\n          type: 'button',\n          text: {\n            type: 'plain_text',\n            text: 'View Notion'\n          },\n          url: `https://notion.so/${$env.NOTION_MONITORING_PAGE_ID}`\n        }\n      ]\n    }\n  ]\n}"
+      },
+      "id": "format-slack-alert",
+      "name": "Format Slack Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [950, 350]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "={{ $env.SLACK_WEBHOOK_CRITICAL }}",
+        "text": "Critical monitoring alert from ResearchFlow",
+        "otherOptions": {
+          "blocks": "={{ $json.blocks }}"
+        }
+      },
+      "id": "slack-alert",
+      "name": "Send Critical Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1150, 350]
+    },
+    {
+      "parameters": {
+        "expression": "={\n  code: $json.body?.statusCode || 200,\n  status: $json.body?.statusCode >= 400 ? 'error' : 'success',\n  message: $json.body?.message || 'Monitoring check completed'\n}"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [950, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "error"
+            }
+          ]
+        }
+      },
+      "id": "check-error",
+      "name": "Has Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 550]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "={{ $env.SLACK_WEBHOOK_MONITORING }}",
+        "text": "Monitoring workflow error",
+        "otherOptions": {
+          "blocks": [
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*⚠️ Monitoring Dashboard Error*\n*Error:* {{ $json.message }}\n*Code:* {{ $json.code }}\n*Time:* {{ new Date().toISOString() }}"
+              }
+            }
+          ]
+        }
+      },
+      "id": "slack-error",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1250, 550]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, timestamp: $json.timestamp, healthStatus: $json.health?.status, hasCriticalIssue: $json.hasCriticalIssue, metricsCollected: { health: true, drift: true, faves: true, safetyEvents: true } }) }}"
+      },
+      "id": "complete",
+      "name": "Workflow Complete",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Every 15 min)": {
+      "main": [
+        [
+          { "node": "Fetch Health Status", "type": "main", "index": 0 },
+          { "node": "Fetch Drift Alerts", "type": "main", "index": 0 },
+          { "node": "Fetch FAVES Scores", "type": "main", "index": 0 },
+          { "node": "Fetch Safety Events", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Health Status": {
+      "main": [[{ "node": "Aggregate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Fetch Drift Alerts": {
+      "main": [[{ "node": "Aggregate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Fetch FAVES Scores": {
+      "main": [[{ "node": "Aggregate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Fetch Safety Events": {
+      "main": [[{ "node": "Aggregate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Metrics": {
+      "main": [
+        [
+          { "node": "Update Notion Dashboard", "type": "main", "index": 0 },
+          { "node": "Is Critical Issue?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update Notion Dashboard": {
+      "main": [[{ "node": "Error Handler", "type": "main", "index": 0 }]]
+    },
+    "Is Critical Issue?": {
+      "main": [
+        [{ "node": "Format Slack Alert", "type": "main", "index": 0 }],
+        [{ "node": "Error Handler", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Slack Alert": {
+      "main": [[{ "node": "Send Critical Slack Alert", "type": "main", "index": 0 }]]
+    },
+    "Send Critical Slack Alert": {
+      "main": [[{ "node": "Error Handler", "type": "main", "index": 0 }]]
+    },
+    "Error Handler": {
+      "main": [[{ "node": "Has Error?", "type": "main", "index": 0 }]]
+    },
+    "Has Error?": {
+      "main": [
+        [{ "node": "Send Error Alert", "type": "main", "index": 0 }],
+        [{ "node": "Workflow Complete", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Error Alert": {
+      "main": [[{ "node": "Workflow Complete", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "{{ $env.ERROR_WORKFLOW_ID }}",
+    "saveManualExecutions": true,
+    "callerPolicy": "any"
+  },
+  "tags": [
+    { "name": "ResearchFlow" },
+    { "name": "Monitoring" },
+    { "name": "ROS-75" },
+    { "name": "Dashboard" }
+  ],
+  "staticData": {
+    "baseUrl": "http://localhost:3001",
+    "notionPageId": "{{ $env.NOTION_MONITORING_PAGE_ID }}",
+    "slackChannels": {
+      "critical": "{{ $env.SLACK_CHANNEL_CRITICAL }}",
+      "monitoring": "{{ $env.SLACK_CHANNEL_MONITORING }}"
+    }
+  }
+}

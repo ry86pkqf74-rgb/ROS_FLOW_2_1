@@ -1,0 +1,7 @@
+{
+  "http_req_duration": ["p(95)<5000"],
+  "http_req_failed": ["rate<0.01"],
+  "ai_response_time": ["p(95)<30000"],
+  "stage_transition_time": ["p(95)<3000"],
+  "manuscript_generation_time": ["p(95)<60000"]
+}

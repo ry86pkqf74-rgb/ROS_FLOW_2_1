@@ -1,0 +1,60 @@
+# ResearchFlow Development Rules
+
+## Git Workflow (MANDATORY)
+After EACH logical unit of work, you MUST:
+1. `git status` - Check changes
+2. `git add -A` - Stage all changes
+3. `git commit -m "type(scope): description"` - Commit with conventional message
+4. `git push origin main` - Push to main
+
+Commit after: each file creation, each major function, before switching files, before delegating to agents.
+
+## Conventional Commits
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `refactor:` - Code restructuring
+- `test:` - Adding tests
+- `docs:` - Documentation
+- `chore:` - Maintenance
+
+## Available AI Models (Use Strategically)
+| Model | Use For |
+|-------|---------|
+| Claude | Complex reasoning, architecture, compliance |
+| Mercury | Fast autocomplete, quick edits |
+| Grok | Real-time data, external APIs, current docs |
+| GPT-4 | Code generation, refactoring |
+
+## Available Agents (Delegate When Appropriate)
+1. **Improve Test Coverage** - After new code, coverage < 80%
+2. **Code Security Review** - Auth, crypto, user input
+3. **Refactor Hotspot Files** - File > 300 lines
+4. **Triage GitHub Issues** - Categorize issues
+5. **GitHub Issue Agent** - Create/update issues
+6. **Open PR with Fix** - Submit changes
+7. **Snyk Continuous AI** - Dependency changes
+8. **Snyk Code Scan** - Before security-sensitive commits
+9. **Create/Update Changelog** - After feature completion
+10. **Sentry Continuous AI** - Error handling code
+11. **Lighthouse Best Practice** - Frontend performance
+12. **Modularize React Components** - Component > 150 lines
+
+## Agent Delegation Checkpoints
+**Before coding:** Run Snyk Code Scan
+**After new code:** Delegate to Test Coverage + Security Review
+**After feature:** Delegate to Changelog agent
+**Frontend work:** Delegate to Lighthouse + Modularize React
+
+## ResearchFlow-Specific Rules
+- All AI calls MUST route through `packages/ai-router/` (never direct API calls)
+- PHI scan required BEFORE any external AI call
+- Log all actions to audit trail via `self.audit_log()`
+- Inherit from `BaseStageAgent` for workflow stages
+- Keep stage files under 250 lines
+
+## Verification Before Commit
+```bash
+# No direct AI imports (security violation)
+grep -r "from anthropic\|from openai" services/worker/
+# Should return empty
+```

@@ -1,0 +1,67 @@
+{
+  "name": "@researchflow/ui",
+  "version": "1.0.0",
+  "description": "React component library for ResearchFlow",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./primitives": {
+      "import": "./dist/primitives/index.mjs",
+      "require": "./dist/primitives/index.js"
+    },
+    "./governance": {
+      "import": "./dist/governance/index.mjs",
+      "require": "./dist/governance/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external react",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --external react --watch",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@researchflow/design-tokens": "workspace:*",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.1",
+    "lucide-react": "^0.312.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "react",
+    "components",
+    "design-system",
+    "researchflow",
+    "ui"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ry86pkqf74-rgb/researchflow-production.git",
+    "directory": "packages/ui"
+  }
+}

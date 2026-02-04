@@ -1,0 +1,6 @@
+ResearchFlow has been deployed to {{ .Release.Namespace }}.
+
+1. Get the application URL:
+  kubectl --namespace {{ .Release.Namespace }} get svc {{ include "researchflow.name" . }}
+
+2. Create the researchflow-secrets secret (DATABASE_URL, REDIS_URL, API keys, JWT keys) before pods will run. See docs/deployment/SECRETS.md.

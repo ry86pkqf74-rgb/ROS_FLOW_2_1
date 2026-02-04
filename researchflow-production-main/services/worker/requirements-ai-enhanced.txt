@@ -1,0 +1,78 @@
+# AI Enhanced Requirements for ResearchFlow
+# Full AI functionality with sentence-transformers, transformers, and torch
+
+# Core AI/ML Stack
+sentence-transformers>=2.2.2
+transformers>=4.21.0,<5.0.0
+torch>=2.0.0,<3.0.0
+tokenizers>=0.13.0,<1.0.0
+accelerate>=0.20.0
+
+# Advanced NLP and Embeddings
+sentence-transformers>=2.2.2
+datasets>=2.12.0
+evaluate>=0.4.0
+tokenizers>=0.13.0
+
+# Model optimization and performance
+safetensors>=0.3.0
+optimum>=1.9.0
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# Vector databases and search
+faiss-cpu>=1.7.4  # Use faiss-gpu for GPU support
+hnswlib>=0.7.0
+chromadb>=0.4.22
+
+# Text processing and analysis
+nltk>=3.8.1
+spacy>=3.7.0
+scikit-learn>=1.3.0
+gensim>=4.3.0
+
+# Additional ML utilities
+numpy>=1.21.0,<2.0.0
+scipy>=1.9.0,<2.0.0
+pandas>=1.5.0,<3.0.0
+matplotlib>=3.5.0,<4.0.0
+seaborn>=0.11.0,<1.0.0
+
+# For CUDA support (uncomment if using GPU)
+# torch>=2.0.0+cu118
+# torchvision>=0.15.0+cu118
+# torchaudio>=2.0.0+cu118
+
+# Model specific dependencies
+# For clinical/biomedical models
+# scispacy>=0.5.1
+# For computer vision models  
+# timm>=0.9.0
+# pillow>=9.0.0
+
+# Production deployment
+uvicorn>=0.22.0
+fastapi>=0.100.0
+pydantic>=2.0.0
+
+# Memory and performance optimization
+psutil>=5.9.0
+memory-profiler>=0.61.0
+
+# Installation Notes:
+# 1. For GPU support, install PyTorch with CUDA:
+#    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# 
+# 2. For clinical NLP models:
+#    pip install scispacy
+#    python -m spacy download en_core_web_sm
+#
+# 3. For sentence-transformers models (downloaded automatically on first use):
+#    - all-MiniLM-L6-v2 (lightweight, fast)
+#    - all-mpnet-base-v2 (better quality)
+#    - sentence-transformers/all-distilroberta-v1
+#
+# 4. For medical/clinical models:
+#    - emilyalsentzer/Bio_ClinicalBERT
+#    - microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext
+#    - allenai/scibert_scivocab_uncased

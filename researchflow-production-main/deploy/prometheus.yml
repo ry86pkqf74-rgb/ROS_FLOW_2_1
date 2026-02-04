@@ -1,0 +1,104 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+    application: researchflow-ai
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+rule_files:
+  - '/etc/prometheus/alert-rules.yml'
+
+scrape_configs:
+  # Ollama LLM Server
+  - job_name: 'ollama'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ['localhost:11434']
+        labels:
+          service: 'ollama'
+          ai_component: 'llm_inference'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'ollama_.*'
+        action: keep
+
+  # Triton Inference Server
+  - job_name: 'triton'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:8002']
+        labels:
+          service: 'triton'
+          ai_component: 'model_inference'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'nv_gpu_utilization|nv_inference_.*'
+        action: keep
+
+  # FAISS Vector Database
+  - job_name: 'faiss'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:5000']
+        labels:
+          service: 'faiss'
+          ai_component: 'vector_store'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'faiss_.*|vectordb_.*'
+        action: keep
+
+  # Redis Cache
+  - job_name: 'redis'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:6379']
+        labels:
+          service: 'redis'
+          component: 'cache'
+
+  # Docker Daemon
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:9323']
+        labels:
+          service: 'docker'
+          component: 'container_runtime'
+
+  # Node Exporter
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          service: 'node'
+          component: 'system'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_memory_.*|node_cpu_.*|node_disk_.*|node_network_.*'
+        action: keep
+
+  # cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8080']
+        labels:
+          service: 'cadvisor'
+          component: 'container_monitoring'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'container_memory_.*|container_cpu_.*|container_network_.*'
+        action: keep

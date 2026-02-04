@@ -1,0 +1,50 @@
+{
+  "audit_metadata": {
+    "timestamp": "2026-02-04T12:40:58Z",
+    "date": "20260204",
+    "project": "researchflow-production",
+    "git_sha": "e12e247b97cb974341fc8441479756865db2d3f4",
+    "git_branch": "main"
+  },
+  "audit_summary": {
+    "total_issues": 1,
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "secrets_detected": 260,
+    "exit_code": 2
+  },
+  "audit_components": {
+    "npm_audit": {
+      "enabled": true,
+      "report_file": "npm-audit-20260204.json"
+    },
+    "pip_audit": {
+      "enabled": true,
+      "report_file": "pip-audit-20260204.json"
+    },
+    "outdated_packages": {
+      "enabled": true,
+      "npm_report": "npm-outdated-20260204.json",
+      "pip_report": "pip-outdated-20260204.json"
+    },
+    "secret_scanning": {
+      "enabled": true,
+      "report_file": "secrets-found-20260204.json"
+    },
+    "license_check": {
+      "enabled": true,
+      "npm_report": "npm-licenses-20260204.json",
+      "pip_report": "pip-licenses-20260204.json"
+    }
+  },
+  "recommendations": [
+    "Review and remediate critical and high severity vulnerabilities",
+    "Update outdated packages to latest secure versions",
+    "Ensure no hardcoded secrets are present in codebase",
+    "Verify GPL/AGPL license compatibility for commercial use",
+    "Consider implementing pre-commit hooks for security scanning"
+  ],
+  "report_location": "/Users/ros/Documents/GitHub/researchflow-production/security-reports"
+}

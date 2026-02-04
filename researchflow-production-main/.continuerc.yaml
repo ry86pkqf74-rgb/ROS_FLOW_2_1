@@ -1,0 +1,88 @@
+# ResearchFlow Project-specific Continue Configuration
+# This file customizes Continue CLI behavior for this project
+# Full agent config: .continue/config.yaml
+
+# Project context
+allowAnonymousTelemetry: false
+
+# File patterns to include in context
+docs:
+  - path: "*.md"
+  - path: "docs/**/*.md"
+
+# Ignore patterns (beyond .gitignore)
+ignoreFiles:
+  - "**/node_modules/**"
+  - "**/__pycache__/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.next/**"
+  - "**/coverage/**"
+  - "**/*.pyc"
+  - "**/postgres-data/**"
+  - "**/redis-data/**"
+  - "**/*.log"
+  - "**/data/**"
+
+# Code style preferences for this project
+codeStyle:
+  typescript:
+    quotes: double
+    semi: true
+    tabWidth: 2
+  python:
+    lineLength: 100
+    quotes: double
+
+# Custom instructions for this codebase
+systemMessage: |
+  You are working on ResearchFlow, a healthcare research data platform.
+
+  Key technologies:
+  - Backend: Python FastAPI (services/worker), Node.js Express (services/orchestrator)
+  - Frontend: React 18 + TypeScript + Vite (services/web)
+  - Database: PostgreSQL with pgvector, Redis for caching
+  - Real-time: WebSocket collaboration server (services/collab)
+
+  Important modules:
+  - IRB compliance: services/worker/src/ros_irb/
+  - Workflow pipeline: services/web/src/components/sections/workflow-pipeline.tsx
+  - PHI scanning: services/worker/src/ros_irb/phi_scanner_enhanced.py
+
+  Follow existing code patterns and maintain consistency with the codebase.
+  Always consider PHI/HIPAA compliance when handling patient data.
+
+# ============================================================================
+# AGENT SHORTCUTS - Quick access to recommended agents
+# ============================================================================
+# Run these from terminal: cn agent <name> or use @agent in VS Code
+#
+# Code Quality:
+#   cn agent improve-test-coverage     - Add missing tests
+#   cn agent code-security-review      - OWASP security audit
+#   cn agent refactor-hotspot-files    - Refactoring suggestions
+#
+# GitHub Integration:
+#   cn agent triage-github-issues      - Auto-triage issues
+#   cn agent github-issue-agent        - Create structured issues
+#   cn agent open-pr-with-fix          - Generate fix PRs
+#
+# Security:
+#   cn agent snyk-continuous-ai        - Dependency scanning
+#   cn agent snyk-code-scan            - Static analysis
+#
+# Documentation:
+#   cn agent create-or-update-changelog - Update CHANGELOG.md
+#   cn agent update-agents-md           - Update AGENTS.md
+#
+# Performance:
+#   cn agent lighthouse-analyzer        - Frontend performance
+#   cn agent chrome-dev-tools           - Performance optimization
+#
+# Monitoring:
+#   cn agent sentry-continuous-ai       - Error tracking
+#   cn agent vercel-deployment-error    - Deployment analysis
+# ============================================================================
+
+# Reference to full config (run scripts/setup-continue-agents.sh to install)
+configFile: config/continue/config.yaml

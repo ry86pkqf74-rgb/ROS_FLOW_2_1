@@ -1,0 +1,239 @@
+# Composio Custom App Specification for ResearchFlow
+#
+# This file defines ResearchFlow as a custom Composio app/tool.
+# Upload this to Composio dashboard or use the SDK to register.
+#
+# Usage:
+#   composio apps add --from-spec composio_app_spec.yaml
+#
+# Or via Python SDK:
+#   from composio import Composio
+#   composio = Composio()
+#   composio.apps.create_from_spec("composio_app_spec.yaml")
+
+name: researchflow
+display_name: ResearchFlow
+description: AI-powered research workflow automation platform for healthcare and clinical research
+version: "1.0.0"
+category: AI/ML
+logo_url: https://researchflow.dev/logo.png
+
+# Authentication
+auth:
+  type: bearer_token
+  header_name: Authorization
+  header_prefix: "Bearer "
+  fields:
+    - name: access_token
+      display_name: Access Token
+      description: ResearchFlow API access token (get via /api/auth/login)
+      required: true
+      type: string
+
+# Base configuration
+base_url: "${RF_BASE_URL:-http://localhost:3001}"
+
+# Actions/Tools
+actions:
+  # Chat action
+  - name: chat
+    display_name: AI Chat
+    description: Send a message to ResearchFlow AI and get a response
+    method: POST
+    endpoint: /api/ai/chat
+    request_body:
+      type: json
+      schema:
+        type: object
+        required:
+          - messages
+        properties:
+          messages:
+            type: array
+            items:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [user, assistant, system]
+                content:
+                  type: string
+          model:
+            type: string
+            description: Model to use (auto, gpt-4o, claude-opus-4-20250805)
+            default: auto
+          temperature:
+            type: number
+            minimum: 0
+            maximum: 2
+            default: 0.7
+    response:
+      type: json
+      schema:
+        type: object
+        properties:
+          content:
+            type: string
+          model:
+            type: string
+          usage:
+            type: object
+
+  # Invoke specific task
+  - name: invoke_task
+    display_name: Invoke AI Task
+    description: Execute a specific AI task type (protocol_reasoning, hypothesis_critique, etc.)
+    method: POST
+    endpoint: /api/ai/invoke
+    request_body:
+      type: json
+      schema:
+        type: object
+        required:
+          - taskType
+          - input
+        properties:
+          taskType:
+            type: string
+            enum:
+              - protocol_reasoning
+              - hypothesis_critique
+              - literature_synthesis
+              - data_interpretation
+              - complex_synthesis
+              - manuscript_generate
+            description: Type of AI task to execute
+          input:
+            type: object
+            description: Task-specific input data
+          researchId:
+            type: string
+            description: Research project ID for context
+    response:
+      type: json
+
+  # Create workflow
+  - name: create_workflow
+    display_name: Create Workflow
+    description: Create a new research workflow
+    method: POST
+    endpoint: /api/workflows
+    request_body:
+      type: json
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            description: Workflow name
+          description:
+            type: string
+            description: Workflow description
+          templateKey:
+            type: string
+            enum: [custom, literature_review, clinical_trial, data_analysis]
+            default: custom
+          definition:
+            type: object
+            description: Workflow step definitions
+    response:
+      type: json
+
+  # List workflows
+  - name: list_workflows
+    display_name: List Workflows
+    description: Get all workflows for the current user
+    method: GET
+    endpoint: /api/workflows
+    response:
+      type: json
+      schema:
+        type: object
+        properties:
+          workflows:
+            type: array
+
+  # Get workflow
+  - name: get_workflow
+    display_name: Get Workflow
+    description: Get a specific workflow by ID
+    method: GET
+    endpoint: /api/workflows/{workflow_id}
+    path_params:
+      - name: workflow_id
+        type: string
+        required: true
+    response:
+      type: json
+
+  # Generate embeddings
+  - name: embeddings
+    display_name: Generate Embeddings
+    description: Generate vector embeddings for text
+    method: POST
+    endpoint: /api/ai/embeddings
+    request_body:
+      type: json
+      schema:
+        type: object
+        required:
+          - input
+        properties:
+          input:
+            type: string
+            description: Text to embed
+          model:
+            type: string
+            default: text-embedding-3-small
+    response:
+      type: json
+
+  # Health check
+  - name: health_check
+    display_name: Health Check
+    description: Check ResearchFlow service health
+    method: GET
+    endpoint: /health
+    auth_required: false
+    response:
+      type: json
+
+  # Get user info
+  - name: get_user
+    display_name: Get Current User
+    description: Get information about the authenticated user
+    method: GET
+    endpoint: /api/auth/user
+    response:
+      type: json
+      schema:
+        type: object
+        properties:
+          user:
+            type: object
+            properties:
+              id:
+                type: string
+              email:
+                type: string
+              role:
+                type: string
+
+# Triggers (webhooks - optional)
+triggers:
+  - name: workflow_completed
+    display_name: Workflow Completed
+    description: Triggered when a workflow completes
+    event_type: workflow.completed
+    payload_schema:
+      type: object
+      properties:
+        workflowId:
+          type: string
+        status:
+          type: string
+        completedAt:
+          type: string
+          format: date-time

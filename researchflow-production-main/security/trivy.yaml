@@ -1,0 +1,25 @@
+# Trivy configuration
+# Used by GitHub Actions workflow: .github/workflows/security-scan.yml
+
+severity:
+  - HIGH
+  - CRITICAL
+
+# Ignore vulnerabilities that do not yet have a fix.
+ignore-unfixed: true
+
+# Filesystem scanning settings
+scan:
+  # Trivy "fs" scan (repo)
+  type: fs
+
+# Secret scanning
+secret:
+  enabled: true
+
+# Vulnerability scanning
+vulnerability:
+  enabled: true
+
+# We keep this default; action specifies sarif.
+format: sarif

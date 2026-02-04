@@ -1,0 +1,69 @@
+# Enhanced PHI Detection Dependencies
+# Stage 5 PHI Guard Agent - Production-Grade Privacy Protection
+
+# Core Dependencies (Required)
+pandas>=1.5.0,<2.0.0
+numpy>=1.21.0,<2.0.0
+cryptography>=3.4.8,<42.0.0
+
+# ML Dependencies (Optional but Recommended)
+# SpaCy for general NER
+spacy>=3.4.0,<4.0.0
+# Transformers for advanced NER models
+transformers>=4.21.0,<5.0.0
+torch>=1.12.0,<3.0.0
+# Tokenizers for fast text processing
+tokenizers>=0.13.0,<1.0.0
+
+# Clinical/Biomedical NER (Optional)
+scispacy>=0.5.1,<1.0.0
+# Note: Clinical models need to be downloaded separately:
+# pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_ner_bc5cdr_md-0.5.1.tar.gz
+
+# Large Data Processing (Already in main requirements)
+# dask>=2022.7.0
+# pyarrow>=8.0.0
+
+# Testing Dependencies (Development)
+pytest>=7.0.0
+pytest-asyncio>=0.19.0
+pytest-mock>=3.8.0
+pytest-cov>=3.0.0
+
+# Performance Monitoring (Optional)
+psutil>=5.9.0,<6.0.0
+memory-profiler>=0.60.0,<1.0.0
+
+# Jupyter Notebooks for Analysis (Development)
+jupyter>=1.0.0,<2.0.0
+matplotlib>=3.5.0,<4.0.0
+seaborn>=0.11.0,<1.0.0
+
+# Installation Commands:
+# 
+# Basic Installation:
+# pip install -r requirements-phi-enhanced.txt
+#
+# ML Models:
+# python -m spacy download en_core_web_sm
+# python -m spacy download en_core_web_md  # Optional, better accuracy
+#
+# Clinical Models (Optional):
+# pip install scispacy
+# pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_ner_bc5cdr_md-0.5.1.tar.gz
+# pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_ner_bionlp13cg_md-0.5.1.tar.gz
+#
+# Biomedical Transformers (Optional):
+# # These will be downloaded automatically when first used
+# # - emilyalsentzer/Bio_ClinicalBERT
+# # - d4data/biomedical-ner-all
+# # - allenai/scibert_scivocab_uncased
+
+# Docker Installation:
+# FROM python:3.9-slim
+# COPY requirements-phi-enhanced.txt .
+# RUN pip install -r requirements-phi-enhanced.txt
+# RUN python -m spacy download en_core_web_sm
+# # Add clinical models if needed
+# RUN pip install scispacy && \
+#     pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_ner_bc5cdr_md-0.5.1.tar.gz

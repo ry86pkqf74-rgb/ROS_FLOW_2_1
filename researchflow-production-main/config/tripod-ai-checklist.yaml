@@ -1,0 +1,431 @@
+tripod_ai_checklist:
+  version: "1.0"
+  title: "TRIPOD+AI Checklist for AI/ML Model Reporting in Healthcare"
+  description: "Comprehensive checklist for transparent reporting of AI/ML diagnostic and prognostic models"
+  total_items: 27
+  
+  items:
+    # TITLE (1 item)
+    - id: T1
+      category: "Title"
+      subcategory: "Title and Keywords"
+      description: "Identify the study as developing/validating a multivariable prediction model, the target population, and the outcome predicted"
+      required: true
+      evidence_types:
+        - "Title page"
+        - "Keywords section"
+        - "Running title"
+      validation_rules:
+        - "Must include key terms: 'model', 'prediction' or 'prognostic' or 'diagnostic'"
+        - "Must identify target population"
+        - "Must identify predicted outcome"
+        - "Should include AI/ML terminology if applicable"
+
+    # ABSTRACT (1 item)
+    - id: A1
+      category: "Abstract"
+      subcategory: "Abstract Summary"
+      description: "Provide a structured abstract summarizing background, objectives, methods, results, and conclusions"
+      required: true
+      evidence_types:
+        - "Abstract section"
+        - "Summary paragraph"
+      validation_rules:
+        - "Must include background/rationale"
+        - "Must state objectives clearly"
+        - "Must summarize methods briefly"
+        - "Must include key results with performance metrics"
+        - "Must provide clear conclusions"
+
+    # INTRODUCTION (2 items)
+    - id: I1
+      category: "Introduction"
+      subcategory: "Background and Context"
+      description: "Explain the medical context and rationale for developing or validating the multivariable prediction model, including what is known and what remains unknown"
+      required: true
+      evidence_types:
+        - "Introduction section"
+        - "Background literature"
+        - "Systematic review references"
+      validation_rules:
+        - "Must establish clinical importance of the problem"
+        - "Must reference existing literature"
+        - "Must identify knowledge gaps"
+        - "Should discuss why AI/ML approach is warranted"
+
+    - id: I2
+      category: "Introduction"
+      subcategory: "Study Objectives"
+      description: "Specify the objectives, including whether the study aims to develop or validate a prediction model and identify any prespecified subgroup analyses"
+      required: true
+      evidence_types:
+        - "Objectives section"
+        - "Study protocol"
+        - "Primary aims"
+      validation_rules:
+        - "Must clearly state: development vs. validation"
+        - "Must specify primary outcome"
+        - "Should identify planned subgroup analyses"
+        - "Must be consistent with methods section"
+
+    # METHODS (8 items)
+    - id: M1
+      category: "Methods"
+      subcategory: "Source of Data"
+      description: "Describe the source of data for the derivation and validation datasets, including eligibility criteria, number of participants, and setting (e.g., cohort, case-control, RCT, registry)"
+      required: true
+      evidence_types:
+        - "Study design section"
+        - "Data source documentation"
+        - "Eligibility criteria"
+        - "Flow diagram"
+      validation_rules:
+        - "Must specify data source type"
+        - "Must define eligibility criteria"
+        - "Must report timeframe of data collection"
+        - "Must describe setting (healthcare facility, population)"
+        - "Should report derivation:validation split"
+
+    - id: M2
+      category: "Methods"
+      subcategory: "Participants"
+      description: "Report the number of participants and number of outcomes and covariates; complete case-by-case descriptions in an appendix or supplement"
+      required: true
+      evidence_types:
+        - "Study population table"
+        - "Inclusion/exclusion criteria"
+        - "Participant flow diagram"
+        - "Supplementary material"
+      validation_rules:
+        - "Must report N for derivation and validation sets"
+        - "Must report number of events/outcomes"
+        - "Must report number of predictor variables"
+        - "Must document demographic characteristics"
+        - "Must provide completeness assessment"
+
+    - id: M3
+      category: "Methods"
+      subcategory: "Outcome Definition"
+      description: "Clearly define the outcome that is predicted, including how and when the outcome was assessed, and whether the outcome assessor was blinded to the predictors"
+      required: true
+      evidence_types:
+        - "Outcome definition document"
+        - "Data dictionary"
+        - "Diagnostic criteria"
+        - "Validation procedures"
+      validation_rules:
+        - "Must specify outcome definition precisely"
+        - "Must describe assessment timing"
+        - "Must document assessment method"
+        - "Should document blinding procedures"
+        - "Should report outcome validation method"
+
+    - id: M4
+      category: "Methods"
+      subcategory: "Predictors and Data"
+      description: "Report all predictors analyzed, including their definition, source of measurement, units of measurement, and handling of categorical variables; report any selection procedures applied to choose final predictors"
+      required: true
+      evidence_types:
+        - "Predictor list"
+        - "Data dictionary"
+        - "Variable definitions"
+        - "Feature engineering documentation"
+      validation_rules:
+        - "Must list all candidate predictors"
+        - "Must define each predictor precisely"
+        - "Must report measurement units"
+        - "Must document categorical encoding"
+        - "Must describe variable selection/engineering process"
+        - "Should report feature importance or selection criteria"
+
+    - id: M5
+      category: "Methods"
+      subcategory: "Sample Size"
+      description: "Explain how the study size was arrived at, including the number of outcome events and number of predictors; report sample size calculations if performed"
+      required: true
+      evidence_types:
+        - "Sample size section"
+        - "Power calculation"
+        - "Statistical justification"
+        - "Events-to-variables ratio"
+      validation_rules:
+        - "Must report total sample size"
+        - "Must report number of outcome events"
+        - "Must report events-to-predictors ratio"
+        - "Should provide sample size justification"
+        - "Should report minimum expected prevalence"
+
+    - id: M6
+      category: "Methods"
+      subcategory: "Missing Data"
+      description: "Describe methods for handling missing data, including the amount of missing data for each variable"
+      required: true
+      evidence_types:
+        - "Missing data analysis"
+        - "Imputation methods description"
+        - "Missing data patterns table"
+        - "Sensitivity analysis"
+      validation_rules:
+        - "Must report percentage missing for each variable"
+        - "Must describe missing data mechanism assessment"
+        - "Must describe imputation method if used"
+        - "Should report sensitivity analyses"
+        - "Should report assumptions tested"
+
+    - id: M7
+      category: "Methods"
+      subcategory: "Statistical Analysis and Model Development"
+      description: "Describe the type of model, all model specifications including hyperparameters, the method for internal validation, and any external validation; report cross-validation procedures, regularization methods, and AI/ML algorithm specifications"
+      required: true
+      evidence_types:
+        - "Statistical analysis plan"
+        - "Model specification document"
+        - "Algorithm documentation"
+        - "Hyperparameter settings"
+        - "Validation strategy"
+        - "Code/supplementary materials"
+      validation_rules:
+        - "Must specify model type (logistic, Cox, random forest, neural network, etc.)"
+        - "Must report all hyperparameters"
+        - "Must describe validation approach (k-fold, holdout, etc.)"
+        - "Must report regularization methods"
+        - "Should describe cross-validation strategy"
+        - "Should report random seed for reproducibility"
+        - "Should include algorithm-specific parameters"
+
+    - id: M8
+      category: "Methods"
+      subcategory: "Statistical Analysis - Measures and Reporting"
+      description: "Specify all measures used to assess model performance and methods for computing confidence intervals"
+      required: true
+      evidence_types:
+        - "Performance metrics section"
+        - "Statistical methods"
+        - "Confidence interval calculations"
+      validation_rules:
+        - "Must report discrimination metrics (AUC-ROC or equivalent)"
+        - "Must report calibration metrics (calibration slope, intercept)"
+        - "Must report decision curve analysis if applicable"
+        - "Should report sensitivity, specificity"
+        - "Should report predictive values"
+        - "Should report 95% confidence intervals"
+        - "Should specify metric computation method"
+
+    # RESULTS (4 items)
+    - id: R1
+      category: "Results"
+      subcategory: "Participants Flow"
+      description: "Report the number of participants in the derivation and validation datasets, including the number excluded after data collection, with reasons"
+      required: true
+      evidence_types:
+        - "Flow diagram"
+        - "Participant numbers table"
+        - "Exclusion reasons documentation"
+      validation_rules:
+        - "Must report final sample sizes"
+        - "Must document exclusions with reasons"
+        - "Must report number of events"
+        - "Should display flow diagram"
+        - "Should report retention rates if applicable"
+
+    - id: R2
+      category: "Results"
+      subcategory: "Model Development Dataset"
+      description: "Report the number of participants and outcome events in the model development dataset, stratified as appropriate"
+      required: true
+      evidence_types:
+        - "Descriptive statistics table"
+        - "Population characteristics"
+        - "Event rate reporting"
+      validation_rules:
+        - "Must report N and event count"
+        - "Must provide demographic breakdown"
+        - "Should report outcome prevalence"
+        - "Should include descriptive statistics by group"
+
+    - id: R3
+      category: "Results"
+      subcategory: "Model Specification and Estimates"
+      description: "Present the full prediction model with all coefficients, intercept, average outcome, and other relevant parameters; report the number of parameters estimated"
+      required: true
+      evidence_types:
+        - "Model coefficients table"
+        - "Parameter estimates"
+        - "Algorithm specifications"
+        - "Supplementary code/model file"
+      validation_rules:
+        - "Must report all model coefficients or feature importance"
+        - "Must specify number of parameters"
+        - "Should report baseline/intercept"
+        - "Should report feature transformations"
+        - "Should provide model equation or algorithm details"
+        - "Must enable model reproducibility"
+
+    - id: R4
+      category: "Results"
+      subcategory: "Model Performance"
+      description: "Report the model's performance on both the derivation dataset and internal or external validation dataset, including measures of calibration and discrimination; report net benefit and decision curve analysis if applicable"
+      required: true
+      evidence_types:
+        - "Performance metrics table"
+        - "Calibration plots"
+        - "ROC/discrimination curves"
+        - "Decision curve analysis"
+        - "Confusion matrices"
+      validation_rules:
+        - "Must report performance on development data"
+        - "Must report performance on validation data"
+        - "Must report discrimination (AUC-ROC or equivalent)"
+        - "Must report calibration metrics"
+        - "Should report sensitivity/specificity"
+        - "Should report confidence intervals"
+        - "Should include calibration plots"
+        - "Should include decision curves if applicable"
+
+    # DISCUSSION (3 items)
+    - id: D1
+      category: "Discussion"
+      subcategory: "Limitations"
+      description: "Discuss limitations and potential sources of bias, including data source, participants, outcome assessment, predictors, and analysis; discuss generalizability and potential for clinical implementation; report assessment of model overfitting and external validation results"
+      required: true
+      evidence_types:
+        - "Limitations section"
+        - "Bias assessment"
+        - "Generalizability discussion"
+        - "Overfitting analysis"
+      validation_rules:
+        - "Must discuss potential sources of bias"
+        - "Must address generalizability"
+        - "Should discuss data limitations"
+        - "Should discuss outcome measurement limitations"
+        - "Should discuss predictor availability"
+        - "Should address clinical applicability"
+        - "Should discuss external validation results"
+
+    - id: D2
+      category: "Discussion"
+      subcategory: "Interpretation"
+      description: "Provide an interpretation of the results consistent with current knowledge and discuss clinical relevance; compare model performance to relevant alternative approaches"
+      required: true
+      evidence_types:
+        - "Discussion section"
+        - "Comparison to literature"
+        - "Clinical significance discussion"
+      validation_rules:
+        - "Must compare to existing literature"
+        - "Must discuss clinical relevance"
+        - "Should compare performance to alternative models"
+        - "Should discuss implications for clinical practice"
+        - "Should address practical feasibility"
+
+    - id: D3
+      category: "Discussion"
+      subcategory: "Implications and Recommendations"
+      description: "Discuss implications for clinical care, including recommendations for implementation and use; discuss need for prospective validation; suggest areas for further research"
+      required: true
+      evidence_types:
+        - "Implications section"
+        - "Recommendations for use"
+        - "Future research discussion"
+      validation_rules:
+        - "Must discuss implementation pathway"
+        - "Must address further validation needs"
+        - "Should provide clear recommendations"
+        - "Should identify research gaps"
+        - "Should discuss cost-effectiveness considerations"
+
+    # OTHER (2 items)
+    - id: O1
+      category: "Other"
+      subcategory: "Supplementary Materials"
+      description: "Provide as supplementary material the prediction model (including coefficients or other relevant parameters), corresponding code and documentation (including data preprocessing, model training, and validation); report model performance on any additional datasets"
+      required: true
+      evidence_types:
+        - "Supplementary appendix"
+        - "Code repository"
+        - "Model documentation"
+        - "Data preprocessing scripts"
+        - "Validation results"
+      validation_rules:
+        - "Must provide complete model specification"
+        - "Must include reproducible code"
+        - "Should include data dictionary"
+        - "Should include preprocessing steps"
+        - "Should include model training code"
+        - "Should document software versions"
+        - "Should provide access to model/code"
+
+    - id: O2
+      category: "Other"
+      subcategory: "Funding and Conflicts"
+      description: "Report source of funding, conflicts of interest, and contributions of researchers to the study"
+      required: true
+      evidence_types:
+        - "Funding statement"
+        - "Declaration of interests"
+        - "Author contributions"
+      validation_rules:
+        - "Must disclose funding source"
+        - "Must declare conflicts of interest"
+        - "Should specify author contributions"
+        - "Should mention approval from ethics board if applicable"
+
+  # Additional AI/ML specific guidance
+  ai_ml_specific_items:
+    - id: AIM1
+      category: "AI/ML Methods"
+      description: "Algorithm selection and justification"
+      guidance: "Justify choice of algorithm type; compare to simpler baseline models"
+      validation: "Must explain why AI/ML approach was selected over traditional statistical methods"
+
+    - id: AIM2
+      category: "AI/ML Methods"
+      description: "Hyperparameter tuning"
+      guidance: "Document all hyperparameter optimization procedures and final values"
+      validation: "Must report tuning methodology and selected hyperparameters"
+
+    - id: AIM3
+      category: "AI/ML Methods"
+      description: "Feature engineering and selection"
+      guidance: "Document all feature transformations, interactions, and selection procedures"
+      validation: "Must justify feature engineering decisions and report selection criteria"
+
+    - id: AIM4
+      category: "AI/ML Methods"
+      description: "Training and validation split"
+      guidance: "Clearly document derivation/validation/test set split strategy"
+      validation: "Must report exact split proportions and stratification methods"
+
+    - id: AIM5
+      category: "AI/ML Methods"
+      description: "Reproducibility and code availability"
+      guidance: "Provide code for model development, training, and validation"
+      validation: "Code should be version-controlled and include environment specifications"
+
+  # Reporting quality assessment
+  quality_metrics:
+    - metric: "Completeness"
+      description: "Percentage of checklist items addressed"
+      target: "100%"
+    
+    - metric: "Transparency"
+      description: "All methodological decisions documented and justified"
+      target: "Complete"
+    
+    - metric: "Reproducibility"
+      description: "Sufficient detail to reproduce results"
+      target: "Independent verification possible"
+    
+    - metric: "Clinical Relevance"
+      description: "Clear implications for clinical practice"
+      target: "Explicit recommendations provided"
+
+  # Implementation recommendations
+  implementation:
+    version_control: "Use git for code and model versioning"
+    documentation: "Create detailed README and methodology documents"
+    testing: "Include unit tests and validation scripts"
+    validation: "Perform prospective validation before clinical implementation"
+    monitoring: "Implement model performance monitoring post-deployment"
+    ethics: "Obtain ethics approval and assess bias/fairness"
+    accessibility: "Ensure model and code are accessible and documented"

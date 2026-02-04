@@ -1,0 +1,298 @@
+openapi: 3.0.3
+info:
+  title: ResearchFlow Bridge Services API
+  version: 1.0.0
+  description: |
+    Bridge endpoints exposing TypeScript services to downstream workflow stages.
+
+servers:
+  - url: /
+
+paths:
+  /api/services/health:
+    get:
+      summary: Service registry health
+      description: Returns a list of available bridge services.
+      responses:
+        '200':
+          description: Health response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  services:
+                    type: array
+                    items:
+                      type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/services/{serviceName}/{methodName}:
+    post:
+      summary: Invoke a service method
+      description: |
+        Dynamic dispatcher that invokes a registered service method.
+        The request body is forwarded as the single argument to the method.
+      parameters:
+        - in: path
+          name: serviceName
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: methodName
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Successful invocation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    additionalProperties: true
+        '404':
+          description: Service or method not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+
+components:
+  schemas:
+    ComplianceScanInput:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        regimes:
+          type: array
+          items:
+            type: string
+            enum: [HIPAA, IRB, GDPR]
+        context:
+          type: object
+          additionalProperties: true
+
+    ComplianceScanResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+        regimes:
+          type: array
+          items:
+            type: string
+            enum: [HIPAA, IRB, GDPR]
+        summary:
+          type: object
+          properties:
+            findings: { type: integer }
+            critical: { type: integer }
+            warnings: { type: integer }
+            info: { type: integer }
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              regime: { type: string, enum: [HIPAA, IRB, GDPR] }
+              severity: { type: string, enum: [info, warning, critical] }
+              title: { type: string }
+              description: { type: string }
+              confidence: { type: number }
+              snippet: { type: string }
+              offsets:
+                type: object
+                properties:
+                  start: { type: integer }
+                  end: { type: integer }
+              remediation: { type: string }
+
+    FinalPhiScanInput:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        strict:
+          type: boolean
+
+    FinalPhiScanResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        hasPhi: { type: boolean }
+        riskLevel:
+          type: string
+          enum: [NONE, LOW, MEDIUM, HIGH, CRITICAL]
+        identifiers:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              match: { type: string }
+              confidence: { type: number }
+              offsets:
+                type: object
+                properties:
+                  start: { type: integer }
+                  end: { type: integer }
+        redactedPreview: { type: string }
+
+    ArchiveProjectInput:
+      type: object
+      required: [projectId]
+      properties:
+        projectId: { type: string }
+        reason: { type: string }
+        requestedBy: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+
+    ArchiveProjectResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        projectId: { type: string }
+        status: { type: string, enum: [ARCHIVED, NOOP] }
+        message: { type: string }
+
+    RestoreProjectInput:
+      type: object
+      required: [projectId]
+      properties:
+        projectId: { type: string }
+        requestedBy: { type: string }
+
+    RestoreProjectResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        projectId: { type: string }
+        status: { type: string, enum: [RESTORED, NOOP] }
+        message: { type: string }
+
+    ImpactLookupInput:
+      type: object
+      properties:
+        doi: { type: string }
+        title: { type: string }
+        author: { type: string }
+        limit: { type: integer }
+
+    ImpactLookupResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        query:
+          $ref: '#/components/schemas/ImpactLookupInput'
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              source: { type: string }
+              citations: { type: integer }
+              influentialCitations: { type: integer }
+              year: { type: integer }
+              venue: { type: string }
+              url: { type: string }
+              raw:
+                type: object
+                additionalProperties: true
+        summary:
+          type: object
+          properties:
+            citations: { type: integer }
+            influentialCitations: { type: integer }
+
+    PublicationPrepInput:
+      type: object
+      required: [title, manuscriptText]
+      properties:
+        title: { type: string }
+        abstract: { type: string }
+        manuscriptText: { type: string }
+        journal: { type: string }
+        authors:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              email: { type: string }
+              affiliation: { type: string }
+              orcid: { type: string }
+        keywords:
+          type: array
+          items: { type: string }
+        coverLetter: { type: string }
+
+    PublicationPrepResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        timestamp: { type: string, format: date-time }
+        journal: { type: string }
+        checklist:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              status: { type: string, enum: [PASS, WARN, FAIL] }
+              title: { type: string }
+              details: { type: string }
+        package:
+          type: object
+          properties:
+            title: { type: string }
+            hasAbstract: { type: boolean }
+            wordCount: { type: integer }
+            authorsCount: { type: integer }
+            keywordsCount: { type: integer }
+            artifacts:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  mime: { type: string }
+                  description: { type: string }

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ResearchFlow Accessibility Report (WCAG 2.1 AA)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f5f5f5; }
+    .pass { color: green; }
+    .fail { color: #c00; }
+    .meta { color: #666; font-size: 0.9rem; margin-top: 1rem; }
+    #placeholder { color: #666; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>ResearchFlow Accessibility Report (WCAG 2.1 AA)</h1>
+  <p>Summary of automated axe-core scans. Thresholds: 0 critical, 0 serious.</p>
+  <div id="content"></div>
+  <div id="placeholder">Load a11y-results.json to view report. Run: <code>npm run test:a11y</code></div>
+  <div class="meta" id="meta"></div>
+
+  <script>
+    (function () {
+      const content = document.getElementById('content');
+      const placeholder = document.getElementById('placeholder');
+      const meta = document.getElementById('meta');
+      const jsonPath = 'a11y-results.json';
+      fetch(jsonPath)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          placeholder.textContent = '';
+          if (!data || !data.pages || !data.pages.length) {
+            content.innerHTML = '<p>No results in a11y-results.json.</p>';
+            return;
+          }
+          let table = '<table><thead><tr><th>Page</th><th>Path</th><th>Violations</th><th>Critical</th><th>Serious</th><th>Status</th></tr></thead><tbody>';
+          data.pages.forEach(function (p) {
+            const pass = p.critical === 0 && p.serious === 0;
+            const status = pass ? '<span class="pass">Pass</span>' : '<span class="fail">Fail</span>';
+            table += '<tr><td>' + escapeHtml(p.page) + '</td><td>' + escapeHtml(p.path) + '</td><td>' + p.violations + '</td><td>' + p.critical + '</td><td>' + p.serious + '</td><td>' + status + '</td></tr>';
+          });
+          table += '</tbody></table>';
+          content.innerHTML = table;
+          meta.textContent = 'Run: ' + (data.run || '') + ' (UTC)';
+        })
+        .catch(function () {
+          placeholder.textContent = 'Could not load a11y-results.json. Run the accessibility suite first.';
+        });
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+    })();
+  </script>
+</body>
+</html>

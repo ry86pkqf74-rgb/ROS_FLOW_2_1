@@ -1,0 +1,57 @@
+config:
+  target: "{{ $processEnvironment.BASE_URL || 'http://localhost:3000' }}"
+  phases:
+    - duration: 120
+      arrivalRate: 1
+      rampTo: 50
+      name: "ramp-up"
+    - duration: 300
+      arrivalRate: 50
+      name: "sustained"
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 0
+      name: "ramp-down"
+  defaults:
+    headers:
+      Content-Type: application/json
+      # Set AUTH_TOKEN in CI to enable authenticated requests
+      Authorization: "Bearer {{ $processEnvironment.AUTH_TOKEN || '' }}"
+
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Workflow creation endpoint"
+    flow:
+      - post:
+          url: "{{ $processEnvironment.WORKFLOW_CREATE_PATH || '/api/workflows' }}"
+          json:
+            name: "artillery-load-{{ $randomString() }}"
+            description: "artillery load test workflow"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.id"
+              as: workflowId
+
+  - name: "Stage execution endpoint"
+    flow:
+      - post:
+          url: "{{ $processEnvironment.STAGE_EXEC_PATH || '/api/stages/execute' }}"
+          json:
+            workflowId: "{{ workflowId || $processEnvironment.WORKFLOW_ID || null }}"
+            stageId: "{{ $processEnvironment.STAGE_ID || null }}"
+          expect:
+            - statusCode: 200
+
+  - name: "WebSocket connection"
+    engine: ws
+    flow:
+      - connect:
+          url: "{{ $processEnvironment.WS_URL || ( ($processEnvironment.BASE_URL || 'http://localhost:3000') | replace('http','ws') ) }}{{ $processEnvironment.WS_PATH || '/ws' }}"
+          headers:
+            Authorization: "Bearer {{ $processEnvironment.AUTH_TOKEN || '' }}"
+      - send: "{\"type\":\"ping\",\"ts\":{{ $timestamp }} }"
+      - think: 1
+      - close: {}
