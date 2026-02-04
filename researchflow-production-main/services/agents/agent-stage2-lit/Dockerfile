@@ -15,9 +15,6 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY services/agents/agent-stage2-lit/app /app/app
 COPY services/agents/agent-stage2-lit/agent /app/agent
 
-# Pull in existing worker agent logic (Milestone 1 shortcut)
-COPY services/worker/agents /app/worker_agents
-
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

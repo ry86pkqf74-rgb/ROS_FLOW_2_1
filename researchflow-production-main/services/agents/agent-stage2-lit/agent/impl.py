@@ -1,8 +1,8 @@
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
-# Worker agent logic copied into image
-from worker_agents.analysis.lit_search_agent import LitSearchAgent  # type: ignore
+# Use our pure Entrez client instead of worker agents
+from agent.pubmed_client import PubMedClient
 
 
 def _as_str_list(x: Any, max_items: int) -> List[str]:
@@ -207,10 +207,10 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
             "usage": {"duration_ms": int((time.time() - started) * 1000)},
         }
 
-    agent = LitSearchAgent()
+    client = PubMedClient()
     papers = []
     try:
-        papers = await agent.search_pubmed(query=norm["pubmed_query"], max_results=norm["max_results"])
+        papers = await client.search_pubmed(query=norm["pubmed_query"], max_results=norm["max_results"])
     except Exception as e:
         return {
             "status": "degraded",
@@ -219,21 +219,12 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "normalized_inputs": norm,
                 "pubmed_query": norm["pubmed_query"],
                 "papers": [],
-                "warning": f"LitSearchAgent search failed: {e}",
+                "warning": f"PubMed search failed: {e}",
             },
             "artifacts": [],
             "provenance": {"databases_used": ["pubmed"]},
             "usage": {"duration_ms": int((time.time() - started) * 1000)},
         }
-
-    out_papers = []
-    for p in papers or []:
-        if hasattr(p, "model_dump"):
-            out_papers.append(p.model_dump())
-        elif hasattr(p, "__dict__"):
-            out_papers.append(p.__dict__)
-        else:
-            out_papers.append({"value": str(p)})
 
     duration_ms = int((time.time() - started) * 1000)
     return {
@@ -242,8 +233,8 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         "outputs": {
             "normalized_inputs": norm,
             "pubmed_query": norm["pubmed_query"],
-            "papers": out_papers,
-            "count": len(out_papers),
+            "papers": papers,
+            "count": len(papers),
         },
         "artifacts": [],
         "provenance": {"databases_used": ["pubmed"]},

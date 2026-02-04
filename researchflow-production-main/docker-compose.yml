@@ -578,6 +578,8 @@ services:
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
       - OLLAMA_URL=http://ollama:11434
       - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
+      - NCBI_API_KEY=${NCBI_API_KEY}
+      - NCBI_EMAIL=${NCBI_EMAIL:-researchflow@example.com}
       - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
       - PYTHONUNBUFFERED=1
     expose:
@@ -588,7 +590,8 @@ services:
       ollama:
         condition: service_healthy
     networks:
-      - backend  # Internal network only
+      - backend  # Internal network for service discovery
+      - frontend  # External network for NCBI API access
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
