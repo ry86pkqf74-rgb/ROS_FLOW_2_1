@@ -150,6 +150,7 @@ import cumulativeDataRouter from "./src/routes/cumulative-data";
 import bridgeRouter from "./src/routes/bridge";
 // Phase 1: Critical workflow and compliance routes
 import workflowStagesRouter from "./src/routes/workflow-stages";
+import workflowStagesExecuteRouter from "./src/routes/workflow/stages";
 import checklistsRouter from "./src/routes/checklists";
 import phiScannerRouter from "./src/routes/phi-scanner";
 import monitoringRouter from "./src/routes/monitoring";
@@ -1094,6 +1095,7 @@ export async function registerRoutes(
 
 // Phase 1: Critical workflow and compliance routes
 app.use("/api/workflow", workflowStagesRouter);
+app.use("/api/workflow/stages", workflowStagesExecuteRouter);  // BullMQ stage execution (Stage 2+)
 app.use("/api/checklists", checklistsRouter);
 app.use("/api/phi", phiScannerRouter);
 app.use("/api/monitoring", monitoringRouter);

@@ -140,7 +140,10 @@ export class SecurityEnhancementMiddleware {
       }
 
       // Layer 3: JWT Authentication (for protected routes)
-      if (this.config.enableJWTSecurity && this.requiresAuthentication(req)) {
+      // Skip when mock auth is enabled in development (handled by route-level requireAuth)
+      const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+      const allowMock = process.env.ALLOW_MOCK_AUTH === 'true';
+      if (this.config.enableJWTSecurity && this.requiresAuthentication(req) && !(isDev && allowMock)) {
         const authResult = await this.authenticateJWT(req);
         if (!authResult.valid) {
           return res.status(401).json({
