@@ -1,0 +1,172 @@
+name: ResearchFlow AI Agents
+version: "1.0"
+
+# ============================================================================
+# MODELS CONFIGURATION - Using Continue.dev Free Trial (native billing)
+# ============================================================================
+models:
+  # --- ANTHROPIC (via Continue.dev) ---
+  - name: Claude Opus 4.5
+    provider: free-trial
+    model: anthropic/claude-opus-4-5
+    contextLength: 16000
+    maxTokens: 2000
+
+  - name: Claude Sonnet 4.5
+    provider: free-trial
+    model: anthropic/claude-sonnet-4-5
+    contextLength: 16000
+    maxTokens: 2000
+
+  - name: Claude 4 Sonnet
+    provider: free-trial
+    model: anthropic/claude-4-sonnet
+    contextLength: 16000
+    maxTokens: 2000
+
+  # --- OPENAI (via Continue.dev) ---
+  - name: GPT-4o
+    provider: free-trial
+    model: openai/gpt-4o
+    contextLength: 16000
+    maxTokens: 2000
+
+  - name: GPT-4o Mini
+    provider: free-trial
+    model: openai/gpt-4o-mini
+    contextLength: 16000
+    maxTokens: 2000
+
+  # --- GOOGLE (via Continue.dev) ---
+  - name: Gemini 2.5 Flash
+    provider: free-trial
+    model: gemini/gemini-2.5-flash
+    contextLength: 16000
+    maxTokens: 2000
+
+  # --- MISTRAL (via Continue.dev) ---
+  - name: Codestral
+    provider: free-trial
+    model: mistral/codestral
+    contextLength: 16000
+    maxTokens: 2000
+
+  # --- SPECIALIZED MODELS (via Continue.dev) ---
+  - name: Relace Instant Apply
+    provider: free-trial
+    model: relace/instant-apply
+    contextLength: 8000
+    maxTokens: 1500
+
+  - name: Morph v2
+    provider: free-trial
+    model: morphllm/morph-v2
+    contextLength: 8000
+    maxTokens: 1500
+
+  - name: Mercury Coder
+    provider: free-trial
+    model: inception/mercury-coder
+    contextLength: 8000
+    maxTokens: 1500
+
+  # --- YOUR OWN API KEYS (backup/fallback) ---
+  - name: Grok (Own Key)
+    provider: openai
+    model: grok-4-latest
+    apiBase: https://api.x.ai/v1
+    apiKey: xai-EtmFUR0LK8JOshMMuqHCJ4pIJEHye6ysTz5PjpGhiBwSVCWmd7xFhgMzk8Q5iLUb8vuieCvV7HuIfu7t
+    contextLength: 16000
+    maxTokens: 2000
+
+# ============================================================================
+# CONTEXT PROVIDERS (optimized for lower token usage)
+# ============================================================================
+contextProviders:
+  - name: codebase
+    params:
+      nRetrieve: 10
+      nFinal: 5
+      useReranking: true
+
+  - name: terminal
+    params:
+      maxLines: 30
+
+  - name: git
+    params:
+      depth: 10
+
+# ============================================================================
+# MCP SERVERS
+# ============================================================================
+mcpServers:
+  - name: composio
+    command: npx
+    args:
+      - -y
+      - "@composio/mcp"
+    env:
+      COMPOSIO_API_KEY: ak_vlkOAmmKJXq1rCub6OVE
+
+# ============================================================================
+# CUSTOM SLASH COMMANDS (shortened prompts for token efficiency)
+# ============================================================================
+slashCommands:
+  - name: phi-check
+    description: Check for PHI exposure
+    prompt: Review code for PHI exposure risks. Check for hardcoded identifiers, sensitive logging, unencrypted transmission.
+
+  - name: test-route
+    description: Generate route tests
+    prompt: Generate Jest tests for this Express route covering auth, validation, and errors.
+
+  - name: docker-check
+    description: Verify Docker config
+    prompt: Review Docker config for security, resource limits, and health checks.
+
+  - name: rbac-audit
+    description: Audit RBAC
+    prompt: Audit RBAC implementation for privilege escalation and unprotected routes.
+
+# ============================================================================
+# RULES (condensed for token efficiency)
+# ============================================================================
+rules:
+  - name: HIPAA
+    rule: Consider HIPAA compliance. Never log PHI, ensure encryption, maintain audit trails.
+
+  - name: Architecture
+    rule: "Microservices: orchestrator (Node), worker (Python), web (React), collab (WebSocket)."
+
+  - name: Style
+    rule: "TS: strict mode. Python: PEP 8 + types. React: functional + hooks. Add docstrings."
+
+  - name: ModelRouting
+    rule: "Route tasks: Opus=architecture/security, Sonnet=coding, Codestral/Mercury=fast code, GPT-4o Mini=simple tasks, Gemini=vision."
+
+  - name: ParallelTasks
+    rule: "Split independent subtasks across models. Code gen→Codestral. Quick edits→Relace/Morph. Drafts→Mini, review→Opus."
+
+# ============================================================================
+# TAB AUTOCOMPLETE MODEL (fast, specialized)
+# ============================================================================
+tabAutocompleteModel:
+  provider: free-trial
+  model: mistral/codestral
+  contextLength: 4000
+  maxTokens: 500
+
+# ============================================================================
+# EMBEDDINGS MODEL (for codebase search)
+# ============================================================================
+embeddingsProvider:
+  provider: free-trial
+  model: openai/text-embedding-3-small
+
+# ============================================================================
+# RERANKER (for better search results)
+# ============================================================================
+reranker:
+  provider: free-trial
+  model: voyage-rerank-2
