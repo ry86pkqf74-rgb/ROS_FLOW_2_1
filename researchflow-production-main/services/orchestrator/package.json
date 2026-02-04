@@ -38,6 +38,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.39.3",
+    "drizzle-zod": "^0.7.1",
     "express": "^4.22.1",
     "express-rate-limit": "^7.0.0",
     "helmet": "^7.0.0",
