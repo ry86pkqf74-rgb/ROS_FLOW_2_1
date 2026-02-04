@@ -3,10 +3,37 @@
  *
  * BullMQ worker for processing workflow stage execution jobs.
  * Handles communication with the Python worker service.
+ * Stage 2 uses the new AI router -> agent architecture.
  */
 
 import { Worker, Job } from 'bullmq';
 import { EventEmitter } from 'events';
+import { getAgentClient } from '../../clients/agentClient';
+
+// TaskContract for AI router/agent communication (inline types for Step 3)
+interface TaskContract {
+  request_id: string;
+  task_type: string;
+  workflow_id: string;
+  user_id: string;
+  mode: 'LIVE' | 'DEMO';
+  risk_tier?: string;
+  domain_id?: string;
+  inputs: {
+    research_question: string;
+    context?: Record<string, any>;
+  };
+  budgets?: {
+    max_time_ms?: number;
+    max_tokens?: number;
+  };
+}
+
+interface DispatchPlan {
+  agent_url: string;
+  agent_id: string;
+  routing_strategy: string;
+}
 
 // Job data interface
 export interface StageJobData {
@@ -47,6 +74,11 @@ function parseRedisUrl(url: string) {
 
 const connection = parseRedisUrl(REDIS_URL);
 
+// Check if stage uses new router -> agent architecture
+function isMigratedStage(stage: number): boolean {
+  return stage === 2;
+}
+
 // Worker instance
 let workflowStagesWorker: Worker<StageJobData> | null = null;
 
@@ -70,59 +102,144 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
         // Update job progress
         await job.updateProgress(10);
 
-        // Call worker service for stage execution
-        const workerUrl = process.env.WORKER_URL || 'http://worker:8000';
-        const endpoint = `${workerUrl}/api/workflow/stages/${job.data.stage}/execute`;
+        // Check if this stage uses new router -> agent architecture
+        if (isMigratedStage(job.data.stage)) {
+          // NEW PATH: Stage 2 uses router -> agent
+          console.log(`[Stage Worker] Using router -> agent for stage ${job.data.stage}`);
+          
+          const orchestratorInternalUrl = process.env.ORCHESTRATOR_INTERNAL_URL || 'http://orchestrator:3001';
+          const routerEndpoint = `${orchestratorInternalUrl}/api/ai/router/dispatch`;
 
-        console.log(`[Stage Worker] Calling ${endpoint}`);
+          await job.updateProgress(20);
 
-        await job.updateProgress(20);
-
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Request-ID': job.data.job_id,
-          },
-          body: JSON.stringify({
+          // Build TaskContract
+          const taskContract: TaskContract = {
+            request_id: job.data.job_id,
+            task_type: 'STAGE_2_LITERATURE_REVIEW',
             workflow_id: job.data.workflow_id,
-            research_question: job.data.research_question,
             user_id: job.data.user_id,
+            mode: (process.env.WORKFLOW_MODE as 'LIVE' | 'DEMO') || 'DEMO',
+            risk_tier: process.env.DEFAULT_RISK_TIER,
+            domain_id: process.env.DEFAULT_DOMAIN_ID,
+            inputs: {
+              research_question: job.data.research_question,
+            },
+            budgets: {
+              max_time_ms: 300000, // 5 minutes default
+              max_tokens: 100000,
+            },
+          };
+
+          // Call router dispatch to get agent_url
+          console.log(`[Stage Worker] Calling router dispatch: ${routerEndpoint}`);
+          const dispatchResponse = await fetch(routerEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Request-ID': job.data.job_id,
+            },
+            body: JSON.stringify(taskContract),
+          });
+
+          if (!dispatchResponse.ok) {
+            const errorText = await dispatchResponse.text();
+            throw new Error(`Router dispatch failed (${dispatchResponse.status}): ${errorText}`);
+          }
+
+          const dispatchPlan: DispatchPlan = await dispatchResponse.json();
+          console.log(`[Stage Worker] Routed to agent: ${dispatchPlan.agent_id} at ${dispatchPlan.agent_url}`);
+
+          // Call agent via AgentClient.postSync
+          const agentClient = getAgentClient();
+          const agentResponse = await agentClient.postSync(
+            dispatchPlan.agent_url,
+            '/agents/run/sync',
+            taskContract
+          );
+
+          await job.updateProgress(80);
+
+          if (!agentResponse.success) {
+            throw new Error(`Agent execution failed: ${agentResponse.error || 'Unknown error'}`);
+          }
+
+          await job.updateProgress(100);
+
+          const workerResult: StageWorkerResult = {
+            success: true,
+            stage: job.data.stage,
+            workflow_id: job.data.workflow_id,
             job_id: job.data.job_id,
-          }),
-        });
+            duration_ms: Date.now() - startTime,
+            results: agentResponse.data,
+          };
 
-        await job.updateProgress(80);
+          // Emit completion event
+          stageJobEvents.emit(`job:${job.data.job_id}:completed`, workerResult);
+          stageJobEvents.emit('stage:completed', {
+            stage: job.data.stage,
+            job_id: job.data.job_id,
+            workflow_id: job.data.workflow_id,
+          });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Worker service failed (${response.status}): ${errorText}`);
+          console.log(`[Stage Worker] Completed stage ${job.data.stage} job ${job.data.job_id} in ${workerResult.duration_ms}ms`);
+
+          return workerResult;
+        } else {
+          // LEGACY PATH: All other stages use worker service
+          const workerUrl = process.env.WORKER_URL || 'http://worker:8000';
+          const endpoint = `${workerUrl}/api/workflow/stages/${job.data.stage}/execute`;
+
+          console.log(`[Stage Worker] Calling ${endpoint}`);
+
+          await job.updateProgress(20);
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Request-ID': job.data.job_id,
+            },
+            body: JSON.stringify({
+              workflow_id: job.data.workflow_id,
+              research_question: job.data.research_question,
+              user_id: job.data.user_id,
+              job_id: job.data.job_id,
+            }),
+          });
+
+          await job.updateProgress(80);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Worker service failed (${response.status}): ${errorText}`);
+          }
+
+          const result = await response.json();
+
+          await job.updateProgress(100);
+
+          const workerResult: StageWorkerResult = {
+            success: true,
+            stage: job.data.stage,
+            workflow_id: job.data.workflow_id,
+            job_id: job.data.job_id,
+            duration_ms: Date.now() - startTime,
+            ...result,
+          };
+
+          // Emit completion event
+          stageJobEvents.emit(`job:${job.data.job_id}:completed`, workerResult);
+          stageJobEvents.emit('stage:completed', {
+            stage: job.data.stage,
+            job_id: job.data.job_id,
+            workflow_id: job.data.workflow_id,
+          });
+
+          console.log(`[Stage Worker] Completed stage ${job.data.stage} job ${job.data.job_id} in ${workerResult.duration_ms}ms`);
+
+          return workerResult;
         }
-
-        const result = await response.json();
-
-        await job.updateProgress(100);
-
-        const workerResult: StageWorkerResult = {
-          success: true,
-          stage: job.data.stage,
-          workflow_id: job.data.workflow_id,
-          job_id: job.data.job_id,
-          duration_ms: Date.now() - startTime,
-          ...result,
-        };
-
-        // Emit completion event
-        stageJobEvents.emit(`job:${job.data.job_id}:completed`, workerResult);
-        stageJobEvents.emit('stage:completed', {
-          stage: job.data.stage,
-          job_id: job.data.job_id,
-          workflow_id: job.data.workflow_id,
-        });
-
-        console.log(`[Stage Worker] Completed stage ${job.data.stage} job ${job.data.job_id} in ${workerResult.duration_ms}ms`);
-
-        return workerResult;
 
       } catch (error) {
         const duration = Date.now() - startTime;
