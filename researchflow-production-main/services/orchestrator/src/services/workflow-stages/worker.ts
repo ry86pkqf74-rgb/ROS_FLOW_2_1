@@ -8,7 +8,8 @@
 
 import { Worker, Job } from 'bullmq';
 import { EventEmitter } from 'events';
-import { getAgentClient } from '../../clients/agentClient';
+import { getAgentClient, type SSEStreamEvent } from '../../clients/agentClient';
+import { pushEvent } from '../sse-event-store';
 import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('workflow-stages-worker');
@@ -176,19 +177,45 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
           const dispatchPlan: DispatchPlan = await dispatchResponse.json();
           console.log(`[Stage Worker] Routed to agent: ${dispatchPlan.agent_id} at ${dispatchPlan.agent_url}`);
 
-          // Call agent via AgentClient.postSync
+          // Call agent via AgentClient.postStream (SSE)
           const agentClient = getAgentClient();
-          const agentResponse = await agentClient.postSync(
+          const agentResponse = await agentClient.postStream(
             dispatchPlan.agent_url,
-            '/agents/run/sync',
-            taskContract
+            '/agents/run/stream',
+            taskContract,
+            async (event: SSEStreamEvent) => {
+              // Persist each SSE event to Redis for replay
+              await pushEvent(job.data.job_id, {
+                event: event.event,
+                data: event.data,
+              });
+              // Map agent progress events to BullMQ progress (20-80 range)
+              if (event.event === 'progress' && typeof event.data === 'object' && event.data !== null) {
+                const pct = (event.data as Record<string, unknown>).percent;
+                if (typeof pct === 'number') {
+                  const mapped = Math.round(20 + (pct / 100) * 60);
+                  await job.updateProgress(Math.min(mapped, 80));
+                }
+              }
+            },
+            { streamTimeout: taskContract.budgets?.max_time_ms || 300000 }
           );
 
           await job.updateProgress(80);
 
           if (!agentResponse.success) {
+            await pushEvent(job.data.job_id, {
+              event: 'error',
+              data: { error: agentResponse.error },
+            });
             throw new Error(`Agent execution failed: ${agentResponse.error || 'Unknown error'}`);
           }
+
+          // Store final complete event for stream subscribers
+          await pushEvent(job.data.job_id, {
+            event: 'complete',
+            data: { success: true, duration_ms: agentResponse.latencyMs },
+          });
 
           await job.updateProgress(100);
 
@@ -198,7 +225,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             workflow_id: job.data.workflow_id,
             job_id: job.data.job_id,
             duration_ms: Date.now() - startTime,
-            results: agentResponse.data,
+            results: agentResponse.data as Record<string, any>,
           };
 
           // Emit completion event

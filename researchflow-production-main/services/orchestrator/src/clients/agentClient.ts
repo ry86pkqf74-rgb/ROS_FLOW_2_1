@@ -73,6 +73,26 @@ export interface AgentClientOptions {
 }
 
 /**
+ * Parsed SSE event from an agent stream
+ */
+export interface SSEStreamEvent {
+  event?: string;
+  data: unknown;
+  id?: string;
+  raw?: string;
+}
+
+/**
+ * Options for streaming requests
+ */
+export interface StreamOptions extends RequestOptions {
+  /** Overall stream timeout in ms (default: 300 000 = 5 min) */
+  streamTimeout?: number;
+  /** Idle timeout between events in ms (default: 60 000 = 1 min) */
+  idleTimeout?: number;
+}
+
+/**
  * Circuit Breaker implementation
  */
 class CircuitBreaker {
@@ -292,6 +312,48 @@ function validateAgentUrl(urlString: string): void {
 }
 
 /**
+ * Parse SSE events from a text buffer.
+ * Returns parsed events and any remaining incomplete text.
+ */
+function parseSSEBuffer(buffer: string): { events: SSEStreamEvent[]; remainder: string } {
+  const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const blocks = normalized.split('\n\n');
+  const remainder = blocks.pop() || '';
+  const events: SSEStreamEvent[] = [];
+
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+
+    const evt: SSEStreamEvent = { data: null };
+    const dataLines: string[] = [];
+
+    for (const line of block.split('\n')) {
+      if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart());
+      } else if (line.startsWith('event:')) {
+        evt.event = line.slice(6).trimStart();
+      } else if (line.startsWith('id:')) {
+        evt.id = line.slice(3).trimStart();
+      }
+      // Lines starting with ':' are SSE comments — ignored
+    }
+
+    if (dataLines.length > 0) {
+      const rawData = dataLines.join('\n');
+      evt.raw = rawData;
+      try {
+        evt.data = JSON.parse(rawData);
+      } catch {
+        evt.data = rawData;
+      }
+      events.push(evt);
+    }
+  }
+
+  return { events, remainder };
+}
+
+/**
  * Agent Client
  */
 class AgentClient {
@@ -393,6 +455,153 @@ class AgentClient {
   }
 
   /**
+   * Internal: streaming request to agent SSE endpoint.
+   * PHI Safety: Never logs request or response bodies.
+   */
+  private async makeStreamRequest(
+    agentBaseUrl: string,
+    path: string,
+    body: unknown,
+    onEvent: (event: SSEStreamEvent) => void | Promise<void>,
+    options: StreamOptions = {}
+  ): Promise<AgentResponse<unknown>> {
+    const {
+      headers = {},
+      streamTimeout = parseInt(process.env.AGENT_STREAM_TIMEOUT || '300000', 10),
+      idleTimeout = 60000,
+    } = options;
+    const startTime = Date.now();
+    let eventCount = 0;
+    let finalData: unknown = undefined;
+
+    const fullUrl = `${agentBaseUrl}${path}`;
+    try {
+      validateAgentUrl(fullUrl);
+    } catch (error) {
+      console.error(`[AgentClient] URL validation failed: ${error instanceof Error ? error.message : 'Invalid URL'}`);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'URL validation failed',
+        statusCode: 400,
+        latencyMs: Date.now() - startTime,
+      };
+    }
+
+    const controller = new AbortController();
+    const overallTimer = setTimeout(() => controller.abort(), streamTimeout);
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function resetIdleTimer(): void {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => controller.abort(), idleTimeout);
+    }
+
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...headers,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const latencyMs = Date.now() - startTime;
+        console.log(`[AgentClient] STREAM ${path} -> ${response.status} (${latencyMs}ms)`);
+        return {
+          success: false,
+          error: `Agent returned ${response.status}`,
+          statusCode: response.status,
+          latencyMs,
+        };
+      }
+
+      if (!response.body) {
+        return {
+          success: false,
+          error: 'No response body for SSE stream',
+          statusCode: response.status,
+          latencyMs: Date.now() - startTime,
+        };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reader = (response.body as any).getReader() as { read(): Promise<{ done: boolean; value?: Uint8Array }> };
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      resetIdleTimer();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        resetIdleTimer();
+        buffer += decoder.decode(value, { stream: true });
+
+        const { events, remainder } = parseSSEBuffer(buffer);
+        buffer = remainder;
+
+        for (const evt of events) {
+          eventCount++;
+          if (evt.event === 'done' || evt.event === 'complete') {
+            finalData = evt.data;
+          }
+          await onEvent(evt);
+        }
+      }
+
+      // Flush any remaining buffer content
+      if (buffer.trim()) {
+        const { events } = parseSSEBuffer(buffer + '\n\n');
+        for (const evt of events) {
+          eventCount++;
+          if (evt.event === 'done' || evt.event === 'complete') {
+            finalData = evt.data;
+          }
+          await onEvent(evt);
+        }
+      }
+
+      const latencyMs = Date.now() - startTime;
+      console.log(`[AgentClient] STREAM ${path} -> 200 (${latencyMs}ms, ${eventCount} events)`);
+
+      return {
+        success: true,
+        data: finalData,
+        statusCode: response.status,
+        latencyMs,
+      };
+    } catch (error) {
+      const latencyMs = Date.now() - startTime;
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`[AgentClient] STREAM ${path} -> TIMEOUT (${latencyMs}ms, ${eventCount} events)`);
+        return {
+          success: false,
+          error: `Stream timeout after ${latencyMs}ms`,
+          statusCode: 408,
+          latencyMs,
+        };
+      }
+
+      console.error(`[AgentClient] STREAM ${path} -> ERROR: ${error instanceof Error ? error.name : 'Unknown'} (${latencyMs}ms)`);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        statusCode: 0,
+        latencyMs,
+      };
+    } finally {
+      clearTimeout(overallTimer);
+      if (idleTimer) clearTimeout(idleTimer);
+    }
+  }
+
+  /**
    * POST request to agent with circuit breaker protection
    * Named "postSync" to distinguish from future streaming operations
    *
@@ -429,6 +638,58 @@ class AgentClient {
 
         // PHI-safe: no request/response details in error
         console.warn(`[AgentClient] Circuit open for agent, blocked request to ${path}`);
+
+        return {
+          success: false,
+          error: `Service temporarily unavailable (circuit open). Retry after ${error.retryAfter?.toISOString() || 'unknown'}`,
+          statusCode: 503,
+          latencyMs: 0,
+        };
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * POST to agent SSE endpoint with circuit breaker protection.
+   * Parses SSE events and calls onEvent for each one.
+   * PHI Safety: Never logs request or response bodies.
+   *
+   * @param agentBaseUrl - Base URL of the agent service
+   * @param path - Endpoint path (e.g., '/agents/run/stream')
+   * @param body - Request body (JSON stringified)
+   * @param onEvent - Callback for each parsed SSE event
+   * @param options - Stream timeout and header options
+   */
+  async postStream(
+    agentBaseUrl: string,
+    path: string,
+    body: unknown,
+    onEvent: (event: SSEStreamEvent) => void | Promise<void>,
+    options: StreamOptions = {}
+  ): Promise<AgentResponse<unknown>> {
+    const streamFn = () => this.makeStreamRequest(agentBaseUrl, path, body, onEvent, options);
+
+    if (!CIRCUIT_BREAKER_ENABLED) {
+      return streamFn();
+    }
+
+    try {
+      return await this.circuitBreaker.execute(streamFn);
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        await logAction({
+          eventType: 'CIRCUIT_BREAKER',
+          action: 'STREAM_REQUEST_BLOCKED',
+          resourceType: 'agent',
+          resourceId: path,
+          details: {
+            service: error.serviceName,
+            retryAfter: error.retryAfter?.toISOString(),
+          },
+        });
+
+        console.warn(`[AgentClient] Circuit open for agent, blocked stream to ${path}`);
 
         return {
           success: false,
