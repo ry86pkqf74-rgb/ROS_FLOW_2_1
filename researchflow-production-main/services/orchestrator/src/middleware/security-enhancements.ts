@@ -35,6 +35,7 @@ interface TokenPayload {
 
 interface SecurityRequest extends Request {
   user?: TokenPayload;
+  auth?: { authenticated: boolean; isServiceToken?: boolean; userId?: string; role?: string };
   rateLimitInfo?: {
     limit: number;
     remaining: number;
@@ -99,11 +100,18 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Apply layered security protections
+   * Apply layered security protections.
+   * For allowlisted service-token requests we only skip rate limiting and threat
+   * logging; DDoS, headers, and body/size limits still apply.
    */
   private async applySecurityLayers(req: SecurityRequest, res: Response, next: NextFunction) {
     try {
-      // Layer 1: DDoS Protection
+      const isServiceToken = req.auth?.isServiceToken === true;
+      if (isServiceToken) {
+        req.securityContext!.authenticated = true;
+      }
+
+      // Layer 1: DDoS Protection (always run)
       if (this.config.enableDDoSProtection) {
         const ddosResult = this.checkDDoSProtection(req);
         if (ddosResult.blocked) {
@@ -116,8 +124,8 @@ export class SecurityEnhancementMiddleware {
         }
       }
 
-      // Layer 2: Rate Limiting
-      if (this.config.enableRateLimiting) {
+      // Layer 2: Rate Limiting (skip only for allowlisted service-token requests)
+      if (this.config.enableRateLimiting && !isServiceToken) {
         const rateLimitResult = this.applyRateLimit(req);
         if (rateLimitResult.limited) {
           req.securityContext!.rateLimited = true;
@@ -139,11 +147,15 @@ export class SecurityEnhancementMiddleware {
         }
       }
 
-      // Layer 3: JWT Authentication (for protected routes)
-      // Skip when mock auth is enabled in development (handled by route-level requireAuth)
+      // Layer 3: JWT Authentication (skip for allowlisted service-token; already authenticated)
       const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
       const allowMock = process.env.ALLOW_MOCK_AUTH === 'true';
-      if (this.config.enableJWTSecurity && this.requiresAuthentication(req) && !(isDev && allowMock)) {
+      if (
+        !isServiceToken &&
+        this.config.enableJWTSecurity &&
+        this.requiresAuthentication(req) &&
+        !(isDev && allowMock)
+      ) {
         const authResult = await this.authenticateJWT(req);
         if (!authResult.valid) {
           return res.status(401).json({
@@ -513,9 +525,12 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Log security events
+   * Log security events. Skip verbose logging for internal service calls unless VERBOSE_INTERNAL_LOGS.
    */
   private logSecurityEvent(req: SecurityRequest): void {
+    if (req.auth?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
+      return;
+    }
     if (req.securityContext?.threatLevel !== 'low') {
       this.logger.warn('Security event detected', {
         ip: req.ip,

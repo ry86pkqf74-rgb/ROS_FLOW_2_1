@@ -37,10 +37,19 @@ async function initializeRedisClient() {
   }
 }
 
+/** Request with optional auth context set by service-auth middleware */
+interface RequestWithAuth extends Request {
+  auth?: { isServiceToken?: boolean; userId?: string };
+}
+
 /**
- * Custom key generator that uses user ID if authenticated, IP otherwise
+ * Custom key generator that uses user ID if authenticated, service ID for service token, IP otherwise
  */
 function keyGenerator(req: Request): string {
+  const reqWithAuth = req as RequestWithAuth;
+  if (reqWithAuth.auth?.isServiceToken === true) {
+    return `service:${reqWithAuth.auth.userId ?? 'internal'}`;
+  }
   // Use authenticated user ID if available
   if (req.user && typeof req.user === 'object' && 'id' in req.user) {
     return `user:${(req.user as any).id}`;
@@ -57,9 +66,12 @@ function keyGenerator(req: Request): string {
 }
 
 /**
- * Skip function for health check endpoints
+ * Skip function for health check endpoints and internal service token calls
  */
 function skip(req: Request): boolean {
+  if ((req as RequestWithAuth).auth?.isServiceToken === true) {
+    return true;
+  }
   const skipPaths = ['/health', '/api/health', '/health/ready', '/api/health/ready', '/metrics', '/api/metrics'];
   return skipPaths.includes(req.path);
 }
@@ -229,6 +241,7 @@ export async function createPerUserLimiter() {
     },
     skip: (req: Request) => {
       if (skip(req)) return true;
+      if ((req as RequestWithAuth).auth?.isServiceToken === true) return true;
       return !(req.user && typeof req.user === 'object' && 'id' in req.user);
     },
     store,
@@ -273,6 +286,7 @@ export async function createPerIpLimiter() {
     keyGenerator: (req: Request) => `ip:${getClientIp(req)}`,
     skip: (req: Request) => {
       if (skip(req)) return true;
+      if ((req as RequestWithAuth).auth?.isServiceToken === true) return true;
       return !!(req.user && typeof req.user === 'object' && 'id' in req.user);
     },
     store,

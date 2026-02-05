@@ -1,0 +1,17 @@
+You are a code reviewer. Review this FastAPI literature retrieval agent (agent-lit-retrieval).
+
+Service: POST /agents/run/sync returns papers from PubMed or DEMO fixtures; POST /agents/run/stream is an SSE stub. Code lives in app/main.py, app/retrieval.py, app/schemas.py, app/pubmed_client.py.
+
+Give exactly 2 concrete improvements. For each: (1) one-line title, (2) 1-2 sentence rationale, (3) code snippet only (no explanation). Focus on: input validation, error handling, or request_id propagation in logs. Output format:
+
+IMPROVEMENT 1: <title>
+<rationale>
+```python
+<code>
+```
+
+IMPROVEMENT 2: <title>
+<rationale>
+```python
+<code>
+```

@@ -8,13 +8,21 @@
  * - PHI-compliant model selection
  */
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { logAction } from '../services/audit-service';
 import { requirePermission } from '../middleware/rbac';
 import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
+
+/** Allow ANALYZE permission or allowlisted service token (dispatch only). */
+function requireAnalyzeOrServiceToken(req: Request, res: Response, next: NextFunction): void {
+  if ((req as { auth?: { isServiceToken?: boolean } }).auth?.isServiceToken === true) {
+    return next();
+  }
+  requirePermission('ANALYZE')(req, res, next);
+}
 
 // Model tier definitions
 const MODEL_TIERS = {
@@ -168,7 +176,7 @@ router.get(
  */
 router.post(
   '/dispatch',
-  requirePermission('ANALYZE'),
+  requireAnalyzeOrServiceToken,
   asyncHandler(async (req: Request, res: Response) => {
     // Debug: Log auth header presence and user context (dev only, PHI-safe, blocked in production)
     if (process.env.DEBUG_INTERNAL_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
@@ -205,17 +213,20 @@ router.post(
     const { task_type, request_id, workflow_id, user_id, mode, risk_tier, domain_id, inputs, budgets } =
       validation.data;
 
-    // Milestone 1: Only support STAGE_2_LITERATURE_REVIEW
-    if (task_type !== 'STAGE_2_LITERATURE_REVIEW') {
+    // Map task_type to agent service name
+    const TASK_TYPE_TO_AGENT: Record<string, string> = {
+      STAGE_2_LITERATURE_REVIEW: 'agent-stage2-lit',
+      LIT_RETRIEVAL: 'agent-lit-retrieval',
+    };
+    const agent_name = TASK_TYPE_TO_AGENT[task_type];
+    if (!agent_name) {
       return res.status(400).json({
         error: 'UNSUPPORTED_TASK_TYPE',
-        message: `Task type "${task_type}" not supported in Milestone 1. Only "STAGE_2_LITERATURE_REVIEW" is available.`,
-        supportedTypes: ['STAGE_2_LITERATURE_REVIEW'],
+        message: `Task type "${task_type}" is not supported.`,
+        supportedTypes: Object.keys(TASK_TYPE_TO_AGENT),
       });
     }
 
-    // Map to agent
-    const agent_name = 'agent-stage2-lit';
     const agent_url = AGENT_ENDPOINTS[agent_name];
 
     if (!agent_url) {

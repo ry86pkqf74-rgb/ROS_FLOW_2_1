@@ -172,7 +172,7 @@ services:
       - INFERENCE_POLICY=local_only
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -607,6 +607,32 @@ services:
         reservations:
           cpus: '0.5'
           memory: 1G
+
+  # ===================
+  # Agent Literature Retrieval (deterministic PubMed)
+  # ===================
+  agent-lit-retrieval:
+    build:
+      context: .
+      dockerfile: services/agents/agent-lit-retrieval/Dockerfile
+    container_name: researchflow-agent-lit-retrieval
+    restart: unless-stopped
+    environment:
+      - NCBI_API_KEY=${NCBI_API_KEY}
+      - NCBI_EMAIL=${NCBI_EMAIL:-researchflow@example.com}
+      - LIT_RETRIEVAL_DEMO=${LIT_RETRIEVAL_DEMO:-}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ===================
   # Vector Database for RAG (Phase 2)
