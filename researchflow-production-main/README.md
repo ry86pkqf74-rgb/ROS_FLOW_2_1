@@ -83,6 +83,20 @@ export WORKER_SERVICE_TOKEN=$(npx tsx tools/dev/generate-worker-service-token.ts
 
 **Note:** This uses a dev-only HS256 JWT signed with `development-secret-key-not-for-production`. For production, implement proper service principal authentication with RS256 or API keys.
 
+#### Stage 2 smoke test (Literature Review E2E)
+
+A deterministic smoke test verifies Stage 2 (Literature Review) end-to-end without manual `curl`:
+
+```bash
+./tools/dev/smoke-stage2.sh
+```
+
+The script: checks required env vars (`WORKER_SERVICE_TOKEN`, `DATABASE_URL`, `REDIS_URL`), restarts orchestrator/worker/agent, calls `POST /api/workflow/stages/2/execute` (full E2E: execute → BullMQ → worker → router → agent), polls job status until completed or timeout (default 120s), and prints orchestrator/worker logs. Optional helper to tail logs:
+
+```bash
+./tools/dev/tail-logs.sh
+```
+
 For a production-like local run: `./scripts/deploy-local.sh` (uses `docker-compose.prod.yml`; see [docs/deployment/](docs/deployment/)).
 
 **Important:** After setting up `.env`, restart orchestrator to pick up the new `WORKER_SERVICE_TOKEN`:
