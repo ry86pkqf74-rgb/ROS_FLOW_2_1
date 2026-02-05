@@ -342,6 +342,18 @@ app.use((req, res, next) => {
     await registerRoutes(httpServer, app);
     log("Routes registered");
 
+    // Initialize Workflow Stages Worker (BullMQ)
+    try {
+      const { initWorkflowStagesWorker } = await import("./src/services/workflow-stages/worker.js");
+      initWorkflowStagesWorker();
+      log("Workflow stages worker initialized");
+    } catch (error) {
+      logger.error("Failed to initialize workflow stages worker", {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      log("Continuing without workflow stage job processing");
+    }
+
     // Initialize governance mode from database
     try {
       const { governanceConfigService } = await import("./src/services/governance-config.service.js");
@@ -430,6 +442,15 @@ app.use((req, res, next) => {
         
         // Close Redis client for rate limiting
         await closeRedisClient();
+
+        // Shutdown Workflow Stages Worker
+        try {
+          const { shutdownWorkflowStagesWorker } = await import("./src/services/workflow-stages/worker.js");
+          await shutdownWorkflowStagesWorker();
+          log("Workflow stages worker shut down");
+        } catch (error) {
+          log(`Error shutting down workflow stages worker: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        }
 
         log('Phase 3 services stopped successfully');
         

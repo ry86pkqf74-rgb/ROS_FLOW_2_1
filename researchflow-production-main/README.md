@@ -60,10 +60,35 @@ git clone https://github.com/ry86pkqf74-rgb/researchflow-production.git
 cd researchflow-production
 cp .env.example .env
 # Edit .env with API keys (e.g. ANTHROPIC_API_KEY, OPENAI_API_KEY) if using AI features
+
+# Generate internal service token (dev only - requires ALLOW_MOCK_AUTH=true)
+npx tsx tools/dev/generate-worker-service-token.ts >> .env.tmp
+echo "WORKER_SERVICE_TOKEN=$(cat .env.tmp)" >> .env
+rm .env.tmp
+
 docker compose up -d
 ```
 
+#### Internal Service Authentication (Development)
+
+The BullMQ worker (Stage 2) requires a service token to authenticate with the orchestrator's AI router. In development with `ALLOW_MOCK_AUTH=true` and `AUTH_ALLOW_STATELESS_JWT=true`:
+
+```bash
+# Generate and add to .env
+echo "WORKER_SERVICE_TOKEN=$(npx tsx tools/dev/generate-worker-service-token.ts)" >> .env
+
+# Or export for current shell session
+export WORKER_SERVICE_TOKEN=$(npx tsx tools/dev/generate-worker-service-token.ts)
+```
+
+**Note:** This uses a dev-only HS256 JWT signed with `development-secret-key-not-for-production`. For production, implement proper service principal authentication with RS256 or API keys.
+
 For a production-like local run: `./scripts/deploy-local.sh` (uses `docker-compose.prod.yml`; see [docs/deployment/](docs/deployment/)).
+
+**Important:** After setting up `.env`, restart orchestrator to pick up the new `WORKER_SERVICE_TOKEN`:
+```bash
+docker compose up -d --build orchestrator
+```
 
 **Access:**
 

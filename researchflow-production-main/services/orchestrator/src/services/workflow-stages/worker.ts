@@ -9,6 +9,9 @@
 import { Worker, Job } from 'bullmq';
 import { EventEmitter } from 'events';
 import { getAgentClient } from '../../clients/agentClient';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('workflow-stages-worker');
 
 // TaskContract for AI router/agent communication (inline types for Step 3)
 interface TaskContract {
@@ -74,9 +77,29 @@ function parseRedisUrl(url: string) {
 
 const connection = parseRedisUrl(REDIS_URL);
 
+// Helper to mask IDs for logging (show last 6 chars only)
+function maskId(id: string | undefined): string {
+  if (!id || id.length <= 6) return '***';
+  return `***${id.slice(-6)}`;
+}
+
 // Check if stage uses new router -> agent architecture
 function isMigratedStage(stage: number): boolean {
   return stage === 2;
+}
+
+// Get internal service auth token (optional for migrated stages)
+// Returns empty string if not configured (internal routing may not require it)
+function getServiceToken(): string {
+  const token = process.env.WORKER_SERVICE_TOKEN;
+  if (!token) {
+    logger.warn(
+      'WORKER_SERVICE_TOKEN not set; internal auth will be skipped. ' +
+      'May be required depending on internal auth configuration.'
+    );
+    return '';
+  }
+  return token;
 }
 
 // Worker instance
@@ -130,12 +153,16 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             },
           };
 
+          // Get service token for internal auth
+          const serviceToken = getServiceToken();
+
           // Call router dispatch to get agent_url
           console.log(`[Stage Worker] Calling router dispatch: ${routerEndpoint}`);
           const dispatchResponse = await fetch(routerEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceToken}`,
               'X-Request-ID': job.data.job_id,
             },
             body: JSON.stringify(taskContract),

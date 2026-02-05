@@ -575,14 +575,40 @@ export const requireAuth: RequestHandler = (req: Request, res: Response, next: N
  */
 export const optionalAuth: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
+  
+  // Debug: Log auth processing (dev only, PHI-safe, blocked in production)
+  const debugAuth = process.env.DEBUG_INTERNAL_AUTH === 'true' && process.env.NODE_ENV !== 'production';
+  if (debugAuth) {
+    console.log('[DEBUG optionalAuth] Entry', {
+      sawAuthHeader: !!(authHeader && authHeader.startsWith('Bearer ')),
+      headerLength: authHeader?.length || 0,
+    });
+  }
+  
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const payload = verifyAccessToken(token);
+    
+    if (debugAuth) {
+      console.log('[DEBUG optionalAuth] Token verified', {
+        payloadValid: !!payload,
+        payloadSub: payload?.sub,
+        payloadRole: payload?.role,
+      });
+    }
+    
     if (payload) {
       const userData = getUserById(payload.sub);
       if (userData) {
         (req as any).user = userData.user;
         (req as any).jwtPayload = payload;
+        
+        if (debugAuth) {
+          console.log('[DEBUG optionalAuth] Set user from store', {
+            userId: userData.user.id,
+            role: userData.user.role,
+          });
+        }
       } else {
         const allowStatelessFallback = process.env.AUTH_ALLOW_STATELESS_JWT === 'true';
         if (allowStatelessFallback) {
@@ -596,10 +622,28 @@ export const optionalAuth: RequestHandler = (req: Request, res: Response, next: 
             updatedAt: new Date(payload.iat * 1000).toISOString()
           } as User;
           (req as any).jwtPayload = payload;
+          
+          if (debugAuth) {
+            console.log('[DEBUG optionalAuth] Set stateless user', {
+              userId: payload.sub,
+              role: payload.role,
+              stateless: true,
+            });
+          }
         }
       }
+    } else if (debugAuth) {
+      console.log('[DEBUG optionalAuth] Token verification failed');
     }
   }
+  
+  if (debugAuth) {
+    console.log('[DEBUG optionalAuth] Exit', {
+      userSet: !!(req as any).user,
+      userRole: (req as any).user?.role,
+    });
+  }
+  
   next();
 };
 

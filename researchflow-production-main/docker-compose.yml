@@ -171,6 +171,7 @@ services:
       # Agentic Orchestration (Step 5)
       - INFERENCE_POLICY=local_only
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
+      - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
       - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000

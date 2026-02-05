@@ -170,6 +170,20 @@ router.post(
   '/dispatch',
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
+    // Debug: Log auth header presence and user context (dev only, PHI-safe, blocked in production)
+    if (process.env.DEBUG_INTERNAL_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
+      const hasAuthHeader = typeof req.headers.authorization === 'string' && req.headers.authorization.startsWith('Bearer ');
+      console.log('[DEBUG /api/ai/router/dispatch]', {
+        path: req.path,
+        method: req.method,
+        hasAuthHeader,
+        authHeaderLength: hasAuthHeader ? req.headers.authorization?.length : 0,
+        hasReqUser: Boolean((req as any).user),
+        reqUserId: (req as any).user?.id,
+        reqUserRole: (req as any).user?.role,
+      });
+    }
+
     const user = req.user;
 
     if (!user) {
