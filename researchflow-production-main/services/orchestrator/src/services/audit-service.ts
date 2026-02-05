@@ -4,6 +4,28 @@ import { auditLogs } from '@researchflow/core/schema';
 import { desc } from 'drizzle-orm';
 import { and, eq } from 'drizzle-orm';
 
+// NOTE: Audit logging must be best-effort and MUST NOT break primary request flows.
+// In dev/service-auth flows we may have stateless JWT identities that are not present
+// in the users table, which can cause FK violations (23503). We swallow those.
+
+function isPgForeignKeyViolation(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  // pg uses `code` (string) for SQLSTATE.
+  // 23503 = foreign_key_violation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const code = (err as any).code;
+  return code === '23503';
+}
+
+function safeAuditWarn(message: string, err: unknown): void {
+  // Never log request bodies / PHI here.
+  if (isPgForeignKeyViolation(err)) {
+    console.warn(`[audit] ${message} (fk_violation_23503)`);
+    return;
+  }
+  console.warn(`[audit] ${message}`);
+}
+
 interface AuditLogEntry {
   eventType: string;
   userId?: string;
@@ -21,37 +43,42 @@ interface AuditLogEntry {
  * Log an auditable action with hash chaining for tamper detection
  */
 export async function logAction(entry: AuditLogEntry): Promise<void> {
-  if (!db) {
-    throw new Error('Database not initialized');
-  }
+  try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
 
-  // Get the most recent audit log entry for hash chaining
-  const [previousEntry] = await db
-    .select()
-    .from(auditLogs)
-    .orderBy(desc(auditLogs.id))
-    .limit(1);
+    // Get the most recent audit log entry for hash chaining
+    const [previousEntry] = await db
+      .select()
+      .from(auditLogs)
+      .orderBy(desc(auditLogs.id))
+      .limit(1);
 
   const previousHash = previousEntry?.entryHash || 'GENESIS';
 
-  // Create hash of current entry
-  const entryData = JSON.stringify({
-    ...entry,
-    previousHash,
-    timestamp: new Date().toISOString()
-  });
+    // Create hash of current entry
+    const entryData = JSON.stringify({
+      ...entry,
+      previousHash,
+      timestamp: new Date().toISOString()
+    });
 
-  const entryHash = createHash('sha256')
-    .update(entryData)
-    .digest('hex');
+    const entryHash = createHash('sha256')
+      .update(entryData)
+      .digest('hex');
 
-  // Insert audit log with hash chain
-  await db.insert(auditLogs).values({
-    ...entry,
-    previousHash,
-    entryHash,
-    details: entry.details ? entry.details : undefined
-  } as any);
+    // Insert audit log with hash chain
+    await db.insert(auditLogs).values({
+      ...entry,
+      previousHash,
+      entryHash,
+      details: entry.details ? entry.details : undefined
+    } as any);
+  } catch (err) {
+    safeAuditWarn('logAction failed', err);
+    return;
+  }
 }
 
 /**
@@ -158,50 +185,55 @@ export async function logAuthEvent(entry: {
   failureReason?: string;
   details?: Record<string, any>;
 }): Promise<void> {
-  if (!db) {
-    throw new Error('Database not initialized');
-  }
+  try {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
 
-  // Get the most recent audit log entry for hash chaining
-  const [previousEntry] = await db
-    .select()
-    .from(auditLogs)
-    .orderBy(desc(auditLogs.id))
-    .limit(1);
+    // Get the most recent audit log entry for hash chaining
+    const [previousEntry] = await db
+      .select()
+      .from(auditLogs)
+      .orderBy(desc(auditLogs.id))
+      .limit(1);
 
   const previousHash = previousEntry?.entryHash || 'GENESIS';
 
-  // Prepare entry data for hashing
-  const timestamp = new Date().toISOString();
-  const auditDetails = {
-    ...entry.details,
-    success: entry.success,
-    ...(entry.failureReason && { failureReason: entry.failureReason })
-  };
+    // Prepare entry data for hashing
+    const timestamp = new Date().toISOString();
+    const auditDetails = {
+      ...entry.details,
+      success: entry.success,
+      ...(entry.failureReason && { failureReason: entry.failureReason })
+    };
 
-  const entryData = JSON.stringify({
-    eventType: entry.eventType,
-    userId: entry.userId,
-    ipAddress: entry.ipAddress,
-    userAgent: entry.userAgent,
-    details: auditDetails,
-    previousHash,
-    timestamp
-  });
+    const entryData = JSON.stringify({
+      eventType: entry.eventType,
+      userId: entry.userId,
+      ipAddress: entry.ipAddress,
+      userAgent: entry.userAgent,
+      details: auditDetails,
+      previousHash,
+      timestamp
+    });
 
-  const entryHash = createHash('sha256')
-    .update(entryData)
-    .digest('hex');
+    const entryHash = createHash('sha256')
+      .update(entryData)
+      .digest('hex');
 
-  // Insert auth event into audit logs
-  await db.insert(auditLogs).values({
-    eventType: entry.eventType,
-    userId: entry.userId,
-    action: entry.success ? 'SUCCESS' : 'FAILURE',
-    ipAddress: entry.ipAddress,
-    userAgent: entry.userAgent,
-    previousHash,
-    entryHash,
-    details: auditDetails
-  } as any);
+    // Insert auth event into audit logs
+    await db.insert(auditLogs).values({
+      eventType: entry.eventType,
+      userId: entry.userId,
+      action: entry.success ? 'SUCCESS' : 'FAILURE',
+      ipAddress: entry.ipAddress,
+      userAgent: entry.userAgent,
+      previousHash,
+      entryHash,
+      details: auditDetails
+    } as any);
+  } catch (err) {
+    safeAuditWarn('logAuthEvent failed', err);
+    return;
+  }
 }
