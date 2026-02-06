@@ -94,4 +94,4 @@ The conformance script treats the **last** SSE event as the terminal event and v
    pip install -r requirements.txt
    python3 -m pytest tests/test_contract.py::test_stream_terminal_event_has_request_id_task_type_status -v
    ```
-   This test fails if the stream ends with a terminal event missing `request_id`, `task_type`, or `status`.
+   This test fails if: the stream does not have exactly one terminal event, the last event is not terminal, or the terminal event is missing `request_id`, `task_type`, or `status`.

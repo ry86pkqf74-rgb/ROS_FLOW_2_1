@@ -112,9 +112,20 @@ def test_sync_rejects_wrong_task_type() -> None:
         assert detail.get("ok") is False
 
 
+TERMINAL_EVENT_TYPES = ("complete", "done", "final")
+
+
+def _is_terminal_event(ev: dict[str, Any]) -> bool:
+    """True if this SSE event is a terminal type (complete/done/final)."""
+    sse_type = ev.get("event")
+    data = ev.get("data") or {}
+    data_type = data.get("event") if isinstance(data, dict) else None
+    return (sse_type in TERMINAL_EVENT_TYPES) or (data_type in TERMINAL_EVENT_TYPES)
+
+
 def test_stream_terminal_event_has_request_id_task_type_status() -> None:
-    """Stream contract: last event must be terminal and include request_id, task_type, status.
-    Fails if a stream ends with a terminal event missing request_id (e.g. trailing 'complete' without fields).
+    """Stream contract: exactly one terminal event at end; it must include request_id, task_type, status.
+    Fails if a stream ends with a terminal event missing request_id or has more than one terminal event.
     """
     payload = {
         "request_id": "stream-contract-req",
@@ -125,11 +136,17 @@ def test_stream_terminal_event_has_request_id_task_type_status() -> None:
     assert r.status_code == 200
     events = _parse_sse_stream(r.text)
     assert len(events) >= 1, "stream must emit at least one event"
-    terminal = events[-1].get("data")
+
+    # Exactly one terminal event in the stream
+    terminal_count = sum(1 for e in events if _is_terminal_event(e))
+    assert terminal_count == 1, f"expected exactly one terminal event, got {terminal_count}"
+
+    # Last event is the terminal event
+    last = events[-1]
+    assert _is_terminal_event(last), "stream must end with a terminal event (complete, done, or final)"
+
+    terminal = last.get("data")
     assert isinstance(terminal, dict), "terminal event data must be a JSON object"
     assert terminal.get("request_id") == "stream-contract-req", "terminal event missing request_id"
     assert terminal.get("task_type") == "LIT_RETRIEVAL", "terminal event missing task_type"
     assert terminal.get("status") in ("ok", "success"), "terminal event missing status"
-    # Terminal type from SSE event line or from data.event (when only data: is sent)
-    sse_type = events[-1].get("event") or terminal.get("event")
-    assert sse_type in ("complete", "done", "final"), "stream must end with terminal event type"
