@@ -86,3 +86,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+
+  deploy:
+    name: Deploy to Hetzner
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            export IMAGE_TAG=sha-${{ github.sha }}
+            bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh
