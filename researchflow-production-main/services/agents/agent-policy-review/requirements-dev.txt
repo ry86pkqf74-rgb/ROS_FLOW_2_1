@@ -1,0 +1,2 @@
+# Test dependencies (contract tests only)
+pytest>=7.0.0

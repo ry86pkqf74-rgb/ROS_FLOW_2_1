@@ -1,0 +1,61 @@
+# Agent contract-check + stream terminal event invariant tests.
+# Runs on every PR; no Docker required. Fast feedback with cached dependencies.
+name: Contract check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  contract-check:
+    name: Contract & stream invariants
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            services/agents/agent-lit-retrieval/requirements.txt
+            services/agents/agent-policy-review/requirements.txt
+            services/agents/agent-policy-review/requirements-dev.txt
+
+      - name: Install shared test dependency (invariants)
+        run: pip install pytest
+
+      - name: Run contract invariant tests (no server)
+        run: |
+          pytest tests/contract -v --tb=short 2>&1 | tee /tmp/contract-invariants.log
+          echo "--- Contract invariant tests (expected vs actual on failure) ---"
+          cat /tmp/contract-invariants.log
+
+      - name: Install agent-lit-retrieval deps and run contract tests
+        run: |
+          cd services/agents/agent-lit-retrieval
+          pip install -r requirements.txt -q
+          pytest tests/test_contract.py -v --tb=short 2>&1 | tee /tmp/lit-retrieval-contract.log
+          echo "--- agent-lit-retrieval contract tests ---"
+          cat /tmp/lit-retrieval-contract.log
+
+      - name: Install agent-policy-review deps and run contract tests
+        run: |
+          cd services/agents/agent-policy-review
+          pip install -r requirements.txt -r requirements-dev.txt -q
+          pytest tests/test_contract.py -v --tb=short 2>&1 | tee /tmp/policy-review-contract.log
+          echo "--- agent-policy-review contract tests ---"
+          cat /tmp/policy-review-contract.log
+
+      - name: Contract check failed summary
+        if: failure()
+        run: |
+          echo "::error::Contract check failed. See logs above for which agent/task failed and expected vs actual."
+          echo "Invariants: tests/contract/test_agent_invariants.py"
+          echo "agent-lit-retrieval: services/agents/agent-lit-retrieval/tests/test_contract.py"
+          echo "agent-policy-review: services/agents/agent-policy-review/tests/test_contract.py"
