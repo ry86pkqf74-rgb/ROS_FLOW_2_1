@@ -63,18 +63,14 @@ async def run_stream(payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], 
     # Execute agent task
     outputs = await _execute_task(payload)
     
-    # Emit final event
+    # Emit single terminal event (request_id, task_type, status required by contract)
     yield {
         "type": "final",
-        "status": "ok",
         "request_id": request_id,
-        "outputs": outputs,
-    }
-    
-    # Emit complete event
-    yield {
-        "type": "complete",
+        "task_type": task_type,
+        "status": "ok",
         "success": True,
+        "outputs": outputs,
         "duration_ms": 0,
     }
     

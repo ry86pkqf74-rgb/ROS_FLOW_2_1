@@ -8,11 +8,17 @@
 
 import { Worker, Job } from 'bullmq';
 import { EventEmitter } from 'events';
-import { getAgentClient, type SSEStreamEvent } from '../../clients/agentClient';
+import { getAgentClient } from '../../clients/agentClient';
 import { pushEvent, setDone } from '../sse-event-store';
 import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('workflow-stages-worker');
+
+// Migrated stages -> task types (single source of truth)
+const MIGRATED_STAGE_TO_TASK_TYPE: Record<number, string> = {
+  2: 'STAGE_2_LITERATURE_REVIEW',
+  9: 'POLICY_REVIEW',
+};
 
 // TaskContract for AI router/agent communication (inline types for Step 3)
 interface TaskContract {
@@ -43,9 +49,18 @@ interface DispatchPlan {
 export interface StageJobData {
   stage: number;
   job_id: string;
+  request_id?: string;
   workflow_id: string;
   research_question: string;
   user_id: string;
+  mode?: 'LIVE' | 'DEMO';
+  risk_tier?: string;
+  domain_id?: string;
+  inputs?: Record<string, any>;
+  budgets?: {
+    max_time_ms?: number;
+    max_tokens?: number;
+  };
   timestamp: string;
 }
 
@@ -78,15 +93,14 @@ function parseRedisUrl(url: string) {
 
 const connection = parseRedisUrl(REDIS_URL);
 
-// Helper to mask IDs for logging (show last 6 chars only)
-function maskId(id: string | undefined): string {
-  if (!id || id.length <= 6) return '***';
-  return `***${id.slice(-6)}`;
+// Helper to resolve request_id
+function resolveRequestId(jobData: StageJobData): string {
+  return jobData.request_id || jobData.job_id || `stage-${jobData.stage}-${jobData.workflow_id}`;
 }
 
 // Check if stage uses new router -> agent architecture
 function isMigratedStage(stage: number): boolean {
-  return stage === 2;
+  return Object.prototype.hasOwnProperty.call(MIGRATED_STAGE_TO_TASK_TYPE, stage);
 }
 
 // Get internal service auth token (optional for migrated stages)
@@ -120,7 +134,8 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
     'workflow-stages',
     async (job: Job<StageJobData>) => {
       const startTime = Date.now();
-      console.log(`[Stage Worker] Processing stage ${job.data.stage} job ${job.data.job_id}`);
+      const requestId = resolveRequestId(job.data);
+      console.log(`[Stage Worker] Processing stage ${job.data.stage} request_id ${requestId}`);
 
       try {
         // Update job progress
@@ -128,27 +143,30 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
 
         // Check if this stage uses new router -> agent architecture
         if (isMigratedStage(job.data.stage)) {
-          // NEW PATH: Stage 2 uses router -> agent
-          console.log(`[Stage Worker] Using router -> agent for stage ${job.data.stage}`);
+          // NEW PATH: Migrated stages use router -> agent
+          console.log(`[Stage Worker] Using router -> agent for stage ${job.data.stage} request_id ${requestId}`);
           
           const orchestratorInternalUrl = process.env.ORCHESTRATOR_INTERNAL_URL || 'http://orchestrator:3001';
           const routerEndpoint = `${orchestratorInternalUrl}/api/ai/router/dispatch`;
 
           await job.updateProgress(20);
 
+          const taskType = MIGRATED_STAGE_TO_TASK_TYPE[job.data.stage];
+
           // Build TaskContract
           const taskContract: TaskContract = {
-            request_id: job.data.job_id,
-            task_type: 'STAGE_2_LITERATURE_REVIEW',
+            request_id: requestId,
+            task_type: taskType,
             workflow_id: job.data.workflow_id,
             user_id: job.data.user_id,
-            mode: (process.env.WORKFLOW_MODE as 'LIVE' | 'DEMO') || 'DEMO',
-            risk_tier: process.env.DEFAULT_RISK_TIER,
-            domain_id: process.env.DEFAULT_DOMAIN_ID,
+            mode: job.data.mode || 'DEMO',
+            risk_tier: job.data.risk_tier || 'NON_SENSITIVE',
+            domain_id: job.data.domain_id || 'clinical',
             inputs: {
+              ...(job.data.inputs ?? {}),
               research_question: job.data.research_question,
             },
-            budgets: {
+            budgets: job.data.budgets || {
               max_time_ms: 300000, // 5 minutes default
               max_tokens: 100000,
             },
@@ -158,13 +176,13 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
           const serviceToken = getServiceToken();
 
           // Call router dispatch to get agent_url
-          console.log(`[Stage Worker] Calling router dispatch: ${routerEndpoint}`);
+          console.log(`[Stage Worker] Dispatching router for stage ${job.data.stage} request_id ${requestId}`);
           const dispatchResponse = await fetch(routerEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${serviceToken}`,
-              'X-Request-ID': job.data.job_id,
+              'X-Request-ID': requestId,
             },
             body: JSON.stringify(taskContract),
           });
@@ -175,30 +193,15 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
           }
 
           const dispatchPlan: DispatchPlan = await dispatchResponse.json();
-          console.log(`[Stage Worker] Routed to agent: ${dispatchPlan.agent_id} at ${dispatchPlan.agent_url}`);
+          console.log(`[Stage Worker] Routed to agent for stage ${job.data.stage} request_id ${requestId}`);
 
-          // Call agent via AgentClient.postStream (SSE)
+          // Call agent via AgentClient.postSync (sync-only)
           const agentClient = getAgentClient();
-          const agentResponse = await agentClient.postStream(
+          const agentResponse = await agentClient.postSync(
             dispatchPlan.agent_url,
-            '/agents/run/stream',
+            '/agents/run/sync',
             taskContract,
-            async (event: SSEStreamEvent) => {
-              // Persist each SSE event to Redis for replay
-              await pushEvent(job.data.job_id, {
-                event: event.event,
-                data: event.data,
-              });
-              // Map agent progress events to BullMQ progress (20-80 range)
-              if (event.event === 'progress' && typeof event.data === 'object' && event.data !== null) {
-                const pct = (event.data as Record<string, unknown>).percent;
-                if (typeof pct === 'number') {
-                  const mapped = Math.round(20 + (pct / 100) * 60);
-                  await job.updateProgress(Math.min(mapped, 80));
-                }
-              }
-            },
-            { streamTimeout: taskContract.budgets?.max_time_ms || 300000 }
+            { headers: { 'X-Request-ID': requestId } }
           );
 
           await job.updateProgress(80);
@@ -238,7 +241,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             workflow_id: job.data.workflow_id,
           });
 
-          console.log(`[Stage Worker] Completed stage ${job.data.stage} job ${job.data.job_id} in ${workerResult.duration_ms}ms`);
+          console.log(`[Stage Worker] Completed stage ${job.data.stage} request_id ${requestId} duration_ms ${workerResult.duration_ms}`);
 
           return workerResult;
         } else {
@@ -246,7 +249,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
           const workerUrl = process.env.WORKER_URL || 'http://worker:8000';
           const endpoint = `${workerUrl}/api/workflow/stages/${job.data.stage}/execute`;
 
-          console.log(`[Stage Worker] Calling ${endpoint}`);
+          console.log(`[Stage Worker] Calling worker for stage ${job.data.stage} request_id ${requestId}`);
 
           await job.updateProgress(20);
 
@@ -254,7 +257,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
-              'X-Request-ID': job.data.job_id,
+              'X-Request-ID': requestId,
             },
             body: JSON.stringify({
               workflow_id: job.data.workflow_id,
@@ -292,7 +295,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             workflow_id: job.data.workflow_id,
           });
 
-          console.log(`[Stage Worker] Completed stage ${job.data.stage} job ${job.data.job_id} in ${workerResult.duration_ms}ms`);
+          console.log(`[Stage Worker] Completed stage ${job.data.stage} request_id ${requestId} duration_ms ${workerResult.duration_ms}`);
 
           return workerResult;
         }
@@ -310,7 +313,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             // best-effort
           }
         }
-        console.error(`[Stage Worker] Stage ${job.data.stage} job ${job.data.job_id} failed after ${duration}ms:`, error);
+        console.error(`[Stage Worker] Stage ${job.data.stage} request_id ${requestId} failed duration_ms ${duration} status error`);
 
         const errorResult: StageWorkerResult = {
           success: false,
@@ -341,19 +344,19 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
 
   // Event handlers
   workflowStagesWorker.on('completed', (job) => {
-    console.log(`[Stage Worker] Job ${job.id} completed`);
+    console.log('[Stage Worker] Job completed status success');
   });
 
   workflowStagesWorker.on('failed', (job, err) => {
-    console.error(`[Stage Worker] Job ${job?.id} failed:`, err.message);
+    console.error('[Stage Worker] Job failed status error');
   });
 
   workflowStagesWorker.on('error', (error) => {
-    console.error('[Stage Worker] Worker error:', error);
+    console.error('[Stage Worker] Worker error status error');
   });
 
   workflowStagesWorker.on('stalled', (jobId) => {
-    console.warn(`[Stage Worker] Job ${jobId} stalled`);
+    console.warn('[Stage Worker] Job stalled status warning');
   });
 
   console.log('[Workflow Stages Worker] Initialized with concurrency:', workflowStagesWorker.opts.concurrency);

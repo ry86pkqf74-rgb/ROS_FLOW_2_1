@@ -90,7 +90,13 @@ async def run_stream(task: AgentTask) -> Response:
             task.inputs, mode=task.mode or None, demo_override=demo, timeout_seconds=RETRIEVAL_TIMEOUT
         )
         yield b"data: " + json.dumps(
-            {"event": "final", "request_id": task.request_id, "outputs": {"count": len(papers)}}
+            {
+                "event": "final",
+                "request_id": task.request_id,
+                "task_type": task.task_type,
+                "status": "ok",
+                "outputs": {"count": len(papers), "papers": papers},
+            }
         ).encode() + b"\n\n"
 
     return StreamingResponse(gen(), media_type="text/event-stream")

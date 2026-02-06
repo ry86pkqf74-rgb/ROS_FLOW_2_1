@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Agent contract conformance check. Hits /agents/run/sync and /agents/run/stream
-for each base URL in AGENT_CONTRACT_URLS and validates response/event shape.
+for each target in AGENT_CONTRACT_TARGETS and validates response/event shape.
 
 Usage:
-  AGENT_CONTRACT_URLS=http://localhost:8000,http://localhost:8001 python3 scripts/check-agent-contract.py
+  AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py
 
-Requires: AGENT_CONTRACT_URLS (comma-separated agent base URLs). Exits 2 if unset.
+Requires: AGENT_CONTRACT_TARGETS (comma-separated baseUrl=task_type). Exits 2 if unset.
 Uses Python stdlib only (no extra dependencies). PHI-safe: never prints request/response bodies on success.
 """
 
@@ -28,27 +28,44 @@ STREAM_FIRST_EVENT_TIMEOUT = 10
 HEADERS = {"Content-Type": "application/json"}
 
 
-def make_body(n: int = 1) -> bytes:
-    return json.dumps({
+def make_body(n: int, task_type: str) -> bytes:
+    inputs: dict = {}
+    if task_type == "LIT_RETRIEVAL":
+        raw = (os.environ.get("RESEARCH_QUESTION") or "test query").strip()
+        inputs["query"] = raw if raw else "test query"
+    body = {
         "request_id": f"contract-check-{n}",
-        "task_type": "CONTRACT_CHECK",
-        "inputs": {},
-    }).encode("utf-8")
+        "task_type": task_type,
+        "inputs": inputs,
+    }
+    return json.dumps(body).encode("utf-8")
 
 
-def get_agent_urls() -> list[str]:
-    raw = os.environ.get("AGENT_CONTRACT_URLS", "").strip()
+def get_agent_targets() -> list[tuple[str, str]]:
+    raw = os.environ.get("AGENT_CONTRACT_TARGETS", "").strip()
     if not raw:
-        print("Error: AGENT_CONTRACT_URLS is not set.", file=sys.stderr)
-        print("Example: AGENT_CONTRACT_URLS=http://localhost:8000,http://localhost:8001 python3 scripts/check-agent-contract.py", file=sys.stderr)
+        print("Error: AGENT_CONTRACT_TARGETS is not set.", file=sys.stderr)
+        print("Example: AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py", file=sys.stderr)
         sys.exit(2)
-    return [u.strip() for u in raw.split(",") if u.strip()]
+    out: list[tuple[str, str]] = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if "=" not in entry:
+            print("Error: AGENT_CONTRACT_TARGETS entries must be baseUrl=task_type.", file=sys.stderr)
+            sys.exit(2)
+        base, task_type = entry.split("=", 1)
+        out.append((base.strip(), task_type.strip()))
+    return out
 
 
 def has_success_indicator(obj: dict) -> bool:
     if obj.get("ok") is True:
         return True
     if obj.get("status") in ("ok", "success"):
+        return True
+    if obj.get("success") is True:
         return True
     return False
 
@@ -76,9 +93,9 @@ def validate_sync_response(data: dict, status_code: int) -> tuple[bool, str]:
     return True, ""
 
 
-def sync_check(base: str, n: int = 1) -> tuple[bool, str]:
+def sync_check(base: str, task_type: str, n: int = 1) -> tuple[bool, str]:
     url = base.rstrip("/") + "/agents/run/sync"
-    req = Request(url, data=make_body(n), headers=HEADERS, method="POST")
+    req = Request(url, data=make_body(n, task_type), headers=HEADERS, method="POST")
     try:
         with urlopen(req, timeout=SYNC_TIMEOUT) as resp:
             raw = resp.read().decode("utf-8")
@@ -111,7 +128,7 @@ def parse_sse_line(line: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def stream_check(base: str, n: int = 1) -> tuple[bool, str]:
+def stream_check(base: str, task_type: str, n: int = 1) -> tuple[bool, str]:
     from urllib.parse import urlparse
     parsed = urlparse(base.rstrip("/"))
     host = parsed.hostname or "localhost"
@@ -123,7 +140,7 @@ def stream_check(base: str, n: int = 1) -> tuple[bool, str]:
     else:
         conn = HTTPConnection(host, port, timeout=STREAM_OVERALL_TIMEOUT)
     try:
-        conn.request("POST", path or "/agents/run/stream", make_body(n), HEADERS)
+        conn.request("POST", path or "/agents/run/stream", make_body(n, task_type), HEADERS)
         resp: HTTPResponse = conn.getresponse()
         if resp.status != 200:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -172,21 +189,24 @@ def stream_check(base: str, n: int = 1) -> tuple[bool, str]:
         )
         if not has_rid:
             return False, "no event contained request_id"
-        terminal_names = ("complete", "done", "final")
-        terminal = None
-        for e in events:
-            if e.get("event") in terminal_names:
-                terminal = e.get("data")
-        if not terminal and events:
-            terminal = events[-1].get("data")
+        # Invariant: exactly one terminal event = the last event. It MUST include request_id, task_type, status.
+        terminal = events[-1].get("data") if events else None
         if not isinstance(terminal, dict):
             return False, "no terminal event with parsed JSON"
         if not (isinstance(terminal.get("request_id"), str) and terminal.get("request_id")):
             return False, "terminal event missing request_id"
+        if not (isinstance(terminal.get("task_type"), str) and terminal.get("task_type")):
+            return False, "terminal event missing task_type"
+        if not (isinstance(terminal.get("status"), str) and terminal.get("status")):
+            return False, "terminal event missing status"
         if not has_success_indicator(terminal):
             return False, "terminal event missing success indicator"
         if not has_outputs_or_data(terminal):
             return False, "terminal event missing outputs or data"
+        # Optional: last event should be a named terminal type to avoid ending on progress/started
+        terminal_names = ("complete", "done", "final")
+        if events and events[-1].get("event") not in terminal_names:
+            return False, "stream must end with a terminal event type (complete, done, or final)"
         return True, ""
     except HTTPException as e:
         return False, str(e)
@@ -197,11 +217,11 @@ def stream_check(base: str, n: int = 1) -> tuple[bool, str]:
 
 
 def main() -> int:
-    urls = get_agent_urls()
+    targets = get_agent_targets()
     results: list[tuple[str, bool, str, bool, str]] = []
-    for i, base in enumerate(urls, start=1):
-        sync_ok, sync_msg = sync_check(base, n=i)
-        stream_ok, stream_msg = stream_check(base, n=i)
+    for i, (base, task_type) in enumerate(targets, start=1):
+        sync_ok, sync_msg = sync_check(base, task_type, n=i)
+        stream_ok, stream_msg = stream_check(base, task_type, n=i)
         results.append((base, sync_ok, sync_msg, stream_ok, stream_msg))
     # Table
     print("Agent contract check summary")

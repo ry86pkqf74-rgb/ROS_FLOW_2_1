@@ -66,18 +66,14 @@ async def run_stream(payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], 
     # Execute policy check task
     outputs = await _execute_policy_check(inputs)
     
-    # Emit final event
+    # Emit final event (terminal: request_id, task_type, success indicator, outputs)
     yield {
         "type": "final",
-        "status": "ok",
         "request_id": request_id,
-        "outputs": outputs,
-    }
-    
-    # Emit complete event
-    yield {
-        "type": "complete",
+        "task_type": task_type,
+        "status": "ok",
         "success": True,
+        "outputs": outputs,
         "duration_ms": 0,
     }
     

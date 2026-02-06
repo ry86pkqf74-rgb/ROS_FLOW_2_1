@@ -48,16 +48,24 @@ Optional but recommended: `artifacts`, `provenance`, `usage`, `warnings`.
   - `data:` line(s) — UTF-8 JSON. Multiple `data:` lines are concatenated (newline-separated) into a single JSON value.
   - Empty line ends the event.
 
+### Stream invariant: single terminal event
+
+- **Exactly one terminal event per stream** — the **last** event in the stream is the terminal event.
+- Every terminal event **must** include: `request_id`, `task_type`, `status`, a success indicator, and `outputs` or `data`.
+- Do not emit a trailing event (e.g. a second `complete` without `request_id`) after the terminal event. Emit exactly one terminal event (e.g. `final`) with all required fields.
+
 ### Required fields by event type
 
 - **started:** `data` JSON should include `request_id`, and preferably `task_type`.
 - **progress:** `data` may include `percent`, `step`, etc. No strict shape.
 - **complete / done / final:** Terminal event. `data` JSON **must** include:
   - `request_id` (string, non-empty)
+  - `task_type` (string, non-empty)
+  - `status` (string, e.g. `"ok"` or `"success"`)
   - Success indicator: `ok === true` or `status` in `["ok","success"]` or `success === true`
   - `outputs` (object) or `data` (object) — so the orchestrator can persist the result.
 
-The orchestrator treats the last `complete`/`done`/`final` event (or end-of-stream) as the result payload.
+The conformance script treats the **last** SSE event as the terminal event and validates it has `request_id`, `task_type`, and `status`.
 
 ## PHI-safe logging rules
 
@@ -68,4 +76,22 @@ The orchestrator treats the last `complete`/`done`/`final` event (or end-of-stre
 ## Compatibility notes
 
 - The orchestrator expects the **terminal** SSE event to contain an **outputs-equivalent** (e.g. `outputs` or `data` object) so it can store the run result. Without it, stream results cannot be persisted.
-- Conformance script: `scripts/check-agent-contract.py` validates sync and stream shapes against this contract (env: `AGENT_CONTRACT_URLS`).
+- Conformance script: `scripts/check-agent-contract.py` validates sync and stream shapes against this contract.
+
+### Running the stream contract check locally
+
+1. **Script (requires running agents):**
+   ```bash
+   cd researchflow-production-main
+   export AGENT_CONTRACT_TARGETS="http://localhost:8000=LIT_RETRIEVAL,http://localhost:8001=POLICY_REVIEW"
+   python3 scripts/check-agent-contract.py
+   ```
+   Start the agent(s) first (e.g. `uvicorn app.main:app --port 8000` in each agent directory). Exit code 0 = pass, 1 = fail.
+
+2. **Unit test (agent-lit-retrieval):**
+   ```bash
+   cd researchflow-production-main/services/agents/agent-lit-retrieval
+   pip install -r requirements.txt
+   python3 -m pytest tests/test_contract.py::test_stream_terminal_event_has_request_id_task_type_status -v
+   ```
+   This test fails if the stream ends with a terminal event missing `request_id`, `task_type`, or `status`.
