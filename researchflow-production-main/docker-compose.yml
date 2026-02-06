@@ -52,6 +52,7 @@ services:
   # Ollama - Local LLM (Qwen) with GPU
   # ===================
   ollama:
+    profiles: ["local-llm"]
     image: ollama/ollama:latest
     container_name: researchflow-ollama
     restart: unless-stopped
@@ -86,10 +87,7 @@ services:
   # Orchestrator - Node.js API
   # ===================
   orchestrator:
-    build:
-      context: .
-      dockerfile: services/orchestrator/Dockerfile
-      target: development
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:${IMAGE_TAG:-main}
     ports:
       - "3001:3001"
     logging:
@@ -127,7 +125,7 @@ services:
       - AI_INTEGRATIONS_XAI_API_KEY=${XAI_API_KEY}
       - AI_INTEGRATIONS_MERCURY_API_KEY=${MERCURY_API_KEY}
       # Local AI Model (Qwen3-Coder via Ollama)
-      - LOCAL_MODEL_ENABLED=${LOCAL_MODEL_ENABLED:-true}
+      - LOCAL_MODEL_ENABLED=${LOCAL_MODEL_ENABLED:-false}
       - LOCAL_MODEL_ENDPOINT=${LOCAL_MODEL_ENDPOINT:-http://ollama:11434}
       - LOCAL_MODEL_NAME=${LOCAL_MODEL_NAME:-ai/qwen3-coder:latest}
       - LOCAL_MODEL_PREFER_FOR_CODE=${LOCAL_MODEL_PREFER_FOR_CODE:-true}
@@ -169,7 +167,7 @@ services:
       # Guideline Engine Proxy
       - GUIDELINE_ENGINE_URL=http://guideline-engine:8001
       # Agentic Orchestration (Step 5)
-      - INFERENCE_POLICY=local_only
+      - INFERENCE_POLICY=cloud
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
       - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000"}'
@@ -182,8 +180,6 @@ services:
       postgres:
         condition: service_started
       redis:
-        condition: service_started
-      ollama:
         condition: service_started
     volumes:
       - shared-data:/data
@@ -217,10 +213,7 @@ services:
   # Worker - Python FastAPI
   # ===================
   worker:
-    build:
-      context: ./services/worker
-      dockerfile: Dockerfile
-      target: development
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/worker:${IMAGE_TAG:-main}
     # SECURITY: Worker is internal service - no public port exposure
     expose:
       - "8000"
@@ -289,8 +282,6 @@ services:
         condition: service_healthy
       orchestrator:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
     volumes:
       - shared-data:/data
       - projects-data:/data/projects
@@ -312,9 +303,7 @@ services:
   # Guideline Engine - Python FastAPI (Clinical Scoring/Staging)
   # ===================
   guideline-engine:
-    build:
-      context: ./packages/guideline-engine
-      dockerfile: Dockerfile
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/guideline-engine:${IMAGE_TAG:-main}
     # SECURITY: Guideline engine is internal service - no public port exposure
     expose:
       - "8001"
@@ -355,17 +344,7 @@ services:
   # Web - React Frontend (Nginx)
   # ===================
   web:
-    build:
-      context: .
-      dockerfile: services/web/Dockerfile
-      target: production
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
-        - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:1234}
-        - VITE_COLLAB_URL=${VITE_COLLAB_URL:-ws://localhost:1234}
-        - VITE_AGENT_WS_URL=${VITE_AGENT_WS_URL:-ws://localhost:3001/api/agents/ws}
-        - NEXT_PUBLIC_ENABLE_CHAT_AGENTS=${NEXT_PUBLIC_ENABLE_CHAT_AGENTS:-true}
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/web:${IMAGE_TAG:-main}
     ports:
       - "5173:80"
     logging:
@@ -401,10 +380,7 @@ services:
   # Collab - Real-time Collaboration Server
   # ===================
   collab:
-    build:
-      context: .
-      dockerfile: services/collab/Dockerfile
-      target: development
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/collab:${IMAGE_TAG:-main}
     ports:
       - "1234:1234"
       - "1235:1235"
@@ -568,14 +544,12 @@ services:
   # Agent Stage 2 - Literature Review Agent (Step 5)
   # ===================
   agent-stage2-lit:
-    build:
-      context: .
-      dockerfile: services/agents/agent-stage2-lit/Dockerfile
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/agent-stage2-lit:${IMAGE_TAG:-main}
     container_name: researchflow-agent-stage2-lit
     restart: unless-stopped
     stop_grace_period: 30s
     environment:
-      - INFERENCE_POLICY=${INFERENCE_POLICY:-local_only}
+      - INFERENCE_POLICY=${INFERENCE_POLICY:-cloud}
       - VECTOR_BACKEND=${VECTOR_BACKEND:-chroma}
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -589,8 +563,6 @@ services:
       - "8000"
     depends_on:
       chromadb:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
     networks:
       - backend  # Internal network for service discovery
