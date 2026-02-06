@@ -172,7 +172,7 @@ services:
       - INFERENCE_POLICY=local_only
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -633,6 +633,37 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # ===================
+  # Agent Policy Review (governance & compliance)
+  # ===================
+  agent-policy-review:
+    build:
+      context: .
+      dockerfile: services/agents/agent-policy-review/Dockerfile
+    container_name: researchflow-agent-policy-review
+    restart: unless-stopped
+    environment:
+      - GOVERNANCE_MODE=${GOVERNANCE_MODE:-DEMO}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
 
   # ===================
   # Vector Database for RAG (Phase 2)

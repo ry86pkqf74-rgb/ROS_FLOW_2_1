@@ -9,7 +9,7 @@
 import { Worker, Job } from 'bullmq';
 import { EventEmitter } from 'events';
 import { getAgentClient, type SSEStreamEvent } from '../../clients/agentClient';
-import { pushEvent } from '../sse-event-store';
+import { pushEvent, setDone } from '../sse-event-store';
 import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('workflow-stages-worker');
@@ -208,6 +208,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
               event: 'error',
               data: { error: agentResponse.error },
             });
+            await setDone(job.data.job_id);
             throw new Error(`Agent execution failed: ${agentResponse.error || 'Unknown error'}`);
           }
 
@@ -216,6 +217,7 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
             event: 'complete',
             data: { success: true, duration_ms: agentResponse.latencyMs },
           });
+          await setDone(job.data.job_id);
 
           await job.updateProgress(100);
 
@@ -297,6 +299,17 @@ export function initWorkflowStagesWorker(): Worker<StageJobData> {
 
       } catch (error) {
         const duration = Date.now() - startTime;
+        if (isMigratedStage(job.data.stage)) {
+          try {
+            await pushEvent(job.data.job_id, {
+              event: 'error',
+              data: { error: error instanceof Error ? error.message : 'Unknown error' },
+            });
+            await setDone(job.data.job_id);
+          } catch (_) {
+            // best-effort
+          }
+        }
         console.error(`[Stage Worker] Stage ${job.data.stage} job ${job.data.job_id} failed after ${duration}ms:`, error);
 
         const errorResult: StageWorkerResult = {

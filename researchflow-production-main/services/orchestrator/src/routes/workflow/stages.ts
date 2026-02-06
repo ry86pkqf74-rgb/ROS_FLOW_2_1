@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth';
 import { Queue } from 'bullmq';
 import crypto from 'crypto';
-import { getEvents } from '../../services/sse-event-store';
+import { getEvents, isDone } from '../../services/sse-event-store';
 
 const router = Router();
 
@@ -214,13 +214,14 @@ router.get('/:stage/jobs/:job_id/status', requireAuth, async (req: Request, res:
 
 /**
  * GET /api/workflow/stages/:stage/jobs/:job_id/stream
- * SSE endpoint: replays stored events then streams new ones until job completes.
+ * SSE endpoint: replays stored events from Redis, then polls for new events
+ * until :done marker (Stage 2) or BullMQ terminal state or timeout.
  */
 router.get('/:stage/jobs/:job_id/stream', requireAuth, async (req: Request, res: Response) => {
   const stage = req.params.stage as string;
+  const stageNum = parseInt(stage, 10);
   const job_id = req.params.job_id as string;
 
-  // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -230,52 +231,76 @@ router.get('/:stage/jobs/:job_id/stream', requireAuth, async (req: Request, res:
   let closed = false;
   req.on('close', () => { closed = true; });
 
-  const MAX_DURATION_MS = 5 * 60 * 1000; // 5 min hard ceiling
   const POLL_INTERVAL_MS = 500;
+  const STREAM_TIMEOUT_MS = 120 * 1000; // 120s
   const startTime = Date.now();
   let lastSeq = 0;
 
   const queue = getWorkflowStagesQueue();
 
+  const writeEvent = (evt: { seq: number; event?: string; data: unknown }): void => {
+    if (closed) return;
+    res.write(`id: ${evt.seq}\nevent: ${evt.event || 'message'}\ndata: ${JSON.stringify(evt.data)}\n\n`);
+  };
+
   try {
-    while (!closed && (Date.now() - startTime) < MAX_DURATION_MS) {
-      // Fetch new events since lastSeq
+    // Replay all stored events immediately
+    const initial = await getEvents(job_id, 0);
+    for (const evt of initial) {
+      if (closed) break;
+      writeEvent(evt);
+      lastSeq = evt.seq + 1;
+    }
+
+    while (!closed && (Date.now() - startTime) < STREAM_TIMEOUT_MS) {
       const events = await getEvents(job_id, lastSeq);
 
-      for (const event of events) {
+      for (const evt of events) {
         if (closed) break;
-        res.write(`id: ${event.seq}\nevent: ${event.event || 'message'}\ndata: ${JSON.stringify(event.data)}\n\n`);
-        lastSeq = event.seq + 1;
+        writeEvent(evt);
+        lastSeq = evt.seq + 1;
       }
 
-      // Check if BullMQ job reached a terminal state
-      const job = await queue.getJob(job_id);
-      if (job) {
-        const state = await job.getState();
-        if (state === 'completed' || state === 'failed') {
-          // Drain any remaining events written between our check
+      // Stage 2: end when :done marker exists
+      if (stageNum === 2) {
+        if (await isDone(job_id)) {
           const remaining = await getEvents(job_id, lastSeq);
           for (const evt of remaining) {
             if (closed) break;
-            res.write(`id: ${evt.seq}\nevent: ${evt.event || 'message'}\ndata: ${JSON.stringify(evt.data)}\n\n`);
+            writeEvent(evt);
             lastSeq = evt.seq + 1;
           }
-          // Send terminal SSE event
           if (!closed) {
-            const payload = JSON.stringify({
-              job_id,
-              stage: parseInt(stage),
-              status: state,
-              result: job.returnvalue,
-              error: job.failedReason,
-            });
-            res.write(`event: ${state}\ndata: ${payload}\n\n`);
+            res.write(`event: done\ndata: ${JSON.stringify({ job_id, stage: stageNum })}\n\n`);
           }
           break;
         }
+      } else {
+        // Non–Stage 2: use BullMQ terminal state
+        const job = await queue.getJob(job_id);
+        if (job) {
+          const state = await job.getState();
+          if (state === 'completed' || state === 'failed') {
+            const remaining = await getEvents(job_id, lastSeq);
+            for (const evt of remaining) {
+              if (closed) break;
+              writeEvent(evt);
+              lastSeq = evt.seq + 1;
+            }
+            if (!closed) {
+              res.write(`event: ${state}\ndata: ${JSON.stringify({
+                job_id,
+                stage: stageNum,
+                status: state,
+                result: job.returnvalue,
+                error: job.failedReason,
+              })}\n\n`);
+            }
+            break;
+          }
+        }
       }
 
-      // Keepalive comment to prevent proxy/client timeout
       if (events.length === 0 && !closed) {
         res.write(': keepalive\n\n');
       }
@@ -284,8 +309,7 @@ router.get('/:stage/jobs/:job_id/stream', requireAuth, async (req: Request, res:
     }
   } catch (error) {
     if (!closed) {
-      const errPayload = JSON.stringify({ error: error instanceof Error ? error.message : 'Stream error' });
-      res.write(`event: error\ndata: ${errPayload}\n\n`);
+      res.write(`event: error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Stream error' })}\n\n`);
     }
   }
 

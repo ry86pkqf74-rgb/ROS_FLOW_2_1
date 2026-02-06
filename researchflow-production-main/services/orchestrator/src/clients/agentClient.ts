@@ -80,6 +80,20 @@ export interface SSEStreamEvent {
   data: unknown;
   id?: string;
   raw?: string;
+  retry?: number;
+}
+
+/**
+ * Stream event yielded by postStreamIterator (async iterator).
+ * Includes raw, data, event, id, retry, and ts for each SSE frame.
+ */
+export interface StreamEvent {
+  raw: string;
+  data?: unknown;
+  event?: string;
+  id?: string;
+  retry?: number;
+  ts: string;
 }
 
 /**
@@ -334,6 +348,9 @@ function parseSSEBuffer(buffer: string): { events: SSEStreamEvent[]; remainder: 
         evt.event = line.slice(6).trimStart();
       } else if (line.startsWith('id:')) {
         evt.id = line.slice(3).trimStart();
+      } else if (line.startsWith('retry:')) {
+        const n = parseInt(line.slice(6).trim(), 10);
+        if (!Number.isNaN(n)) evt.retry = n;
       }
       // Lines starting with ':' are SSE comments — ignored
     }
@@ -451,6 +468,111 @@ class AgentClient {
       };
     } finally {
       clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Internal: async generator that yields StreamEvent for each SSE frame.
+   * Uses same timeouts and Accept: text/event-stream as makeStreamRequest.
+   * PHI Safety: Never logs request or response bodies.
+   */
+  private async * _streamEvents(
+    agentBaseUrl: string,
+    path: string,
+    body: unknown,
+    options: StreamOptions = {}
+  ): AsyncGenerator<StreamEvent, void, unknown> {
+    const {
+      headers = {},
+      streamTimeout = parseInt(process.env.AGENT_STREAM_TIMEOUT || '300000', 10),
+      idleTimeout = 60000,
+    } = options;
+
+    const fullUrl = `${agentBaseUrl}${path}`;
+    try {
+      validateAgentUrl(fullUrl);
+    } catch (error) {
+      console.error(`[AgentClient] URL validation failed: ${error instanceof Error ? error.message : 'Invalid URL'}`);
+      throw error;
+    }
+
+    const controller = new AbortController();
+    const overallTimer = setTimeout(() => controller.abort(), streamTimeout);
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const resetIdleTimer = (): void => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => controller.abort(), idleTimeout);
+    };
+
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...headers,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        console.log(`[AgentClient] STREAM ${path} -> ${response.status}`);
+        throw new Error(`Agent returned ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body for SSE stream');
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reader = (response.body as any).getReader() as { read(): Promise<{ done: boolean; value?: Uint8Array }> };
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      resetIdleTimer();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        resetIdleTimer();
+        buffer += decoder.decode(value, { stream: true });
+
+        const { events, remainder } = parseSSEBuffer(buffer);
+        buffer = remainder;
+
+        for (const evt of events) {
+          const raw = evt.raw ?? (typeof evt.data === 'string' ? evt.data : JSON.stringify(evt.data));
+          yield {
+            raw,
+            data: evt.data,
+            event: evt.event,
+            id: evt.id,
+            retry: evt.retry,
+            ts: new Date().toISOString(),
+          };
+        }
+      }
+
+      if (buffer.trim()) {
+        const { events } = parseSSEBuffer(buffer + '\n\n');
+        for (const evt of events) {
+          const raw = evt.raw ?? (typeof evt.data === 'string' ? evt.data : JSON.stringify(evt.data));
+          yield {
+            raw,
+            data: evt.data,
+            event: evt.event,
+            id: evt.id,
+            retry: evt.retry,
+            ts: new Date().toISOString(),
+          };
+        }
+      }
+    } finally {
+      clearTimeout(overallTimer);
+      if (idleTimer) clearTimeout(idleTimer);
     }
   }
 
@@ -700,6 +822,50 @@ class AgentClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * POST to agent SSE endpoint; yields an async iterator of StreamEvent.
+   * Uses same timeouts and circuit breaker behavior as postSync/postStream.
+   * PHI Safety: Never logs request or response bodies.
+   *
+   * @param agentBaseUrl - Base URL of the agent service
+   * @param path - Endpoint path (e.g., '/agents/run/stream')
+   * @param body - Request body (JSON stringified)
+   * @param options - Stream timeout and header options
+   * @returns AsyncIterableIterator of StreamEvent
+   */
+  postStreamIterator(
+    agentBaseUrl: string,
+    path: string,
+    body: unknown,
+    options: StreamOptions = {}
+  ): AsyncIterableIterator<StreamEvent> {
+    const self = this;
+    let innerGen: AsyncGenerator<StreamEvent, void, unknown> | null = null;
+
+    async function* wrap(): AsyncGenerator<StreamEvent, void, unknown> {
+      innerGen = self._streamEvents(agentBaseUrl, path, body, options);
+      if (!CIRCUIT_BREAKER_ENABLED) {
+        yield* innerGen;
+        return;
+      }
+      let first = await self.circuitBreaker.execute(() => innerGen!.next());
+      if (first.done) return;
+      yield first.value;
+      try {
+        while (true) {
+          const next = await innerGen!.next();
+          if (next.done) break;
+          yield next.value;
+        }
+      } catch (err) {
+        self.circuitBreaker.recordFailure();
+        throw err;
+      }
+    }
+
+    return wrap();
   }
 
   /**

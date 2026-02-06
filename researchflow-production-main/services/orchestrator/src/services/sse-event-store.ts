@@ -11,7 +11,9 @@
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+/** Max events to keep per job (LTRIM -500 -1) */
 const MAX_EVENTS = parseInt(process.env.SSE_STORE_MAX_EVENTS || '500', 10);
+/** TTL for list and :done marker (1 hour) */
 const TTL_SECONDS = parseInt(process.env.SSE_STORE_TTL_SECONDS || '3600', 10);
 
 /** Stored SSE event with sequence metadata */
@@ -39,8 +41,14 @@ function getRedis(): Redis {
   return redis;
 }
 
+/** Redis list key for Stage 2 SSE events: stage2:sse:${job_id} */
 function jobKey(jobId: string): string {
-  return `sse:events:${jobId}`;
+  return `stage2:sse:${jobId}`;
+}
+
+/** Terminal marker key when job completes/fails: stage2:sse:${job_id}:done */
+function doneKey(jobId: string): string {
+  return `stage2:sse:${jobId}:done`;
 }
 
 /**
@@ -64,9 +72,7 @@ export async function pushEvent(
 
   const pipeline = r.pipeline();
   pipeline.rpush(key, JSON.stringify(stored));
-  if (len + 1 > MAX_EVENTS) {
-    pipeline.ltrim(key, -MAX_EVENTS, -1);
-  }
+  pipeline.ltrim(key, -MAX_EVENTS, -1);
   pipeline.expire(key, TTL_SECONDS);
   await pipeline.exec();
 
@@ -91,6 +97,26 @@ export async function getEvents(
 export async function getEventCount(jobId: string): Promise<number> {
   const r = getRedis();
   return r.llen(jobKey(jobId));
+}
+
+/**
+ * Set the terminal marker when job completes or fails.
+ * Key: stage2:sse:${job_id}:done, TTL 1 hour.
+ */
+export async function setDone(jobId: string): Promise<void> {
+  const r = getRedis();
+  const key = doneKey(jobId);
+  await r.set(key, '1', 'EX', TTL_SECONDS);
+}
+
+/**
+ * Check if the job has reached a terminal state (:done marker exists).
+ */
+export async function isDone(jobId: string): Promise<boolean> {
+  const r = getRedis();
+  const key = doneKey(jobId);
+  const v = await r.get(key);
+  return v !== null;
 }
 
 /**

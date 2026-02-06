@@ -1,0 +1,1 @@
+{"error":"UNSUPPORTED_TASK_TYPE","message":"Task type \"NOT_A_REAL_TASK\" is not supported. Allowed values: STAGE_2_LITERATURE_REVIEW, LIT_RETRIEVAL, POLICY_REVIEW","supportedTypes":["STAGE_2_LITERATURE_REVIEW","LIT_RETRIEVAL","POLICY_REVIEW"]}

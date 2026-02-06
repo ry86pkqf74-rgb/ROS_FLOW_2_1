@@ -109,7 +109,7 @@ const CostEstimateSchema = z.object({
 });
 
 const DispatchRequestSchema = z.object({
-  task_type: z.string(),
+  task_type: z.string().min(1),
   request_id: z.string().min(1),
   workflow_id: z.string().optional(),
   user_id: z.string().optional(),
@@ -122,17 +122,21 @@ const DispatchRequestSchema = z.object({
 
 // Parse AGENT_ENDPOINTS_JSON at module initialization
 // Format: {"agent-stage2-lit": "http://agent-stage2-lit:8010", ...}
-const AGENT_ENDPOINTS: Record<string, string> = (() => {
+const AGENT_ENDPOINTS_STATE: { endpoints: Record<string, string>; error?: string } = (() => {
   const envVar = process.env.AGENT_ENDPOINTS_JSON;
   if (!envVar) {
     console.warn('[ai-router] AGENT_ENDPOINTS_JSON not set, agent dispatch will fail');
-    return {};
+    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not set' };
   }
   try {
-    return JSON.parse(envVar);
+    const parsed = JSON.parse(envVar);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON must be a JSON object mapping agent names to URLs' };
+    }
+    return { endpoints: parsed as Record<string, string> };
   } catch (error) {
     console.error('[ai-router] Failed to parse AGENT_ENDPOINTS_JSON:', error);
-    return {};
+    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not valid JSON' };
   }
 })();
 
@@ -217,17 +221,26 @@ router.post(
     const TASK_TYPE_TO_AGENT: Record<string, string> = {
       STAGE_2_LITERATURE_REVIEW: 'agent-stage2-lit',
       LIT_RETRIEVAL: 'agent-lit-retrieval',
+      POLICY_REVIEW: 'agent-policy-review',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {
+      const supportedTypes = Object.keys(TASK_TYPE_TO_AGENT);
       return res.status(400).json({
         error: 'UNSUPPORTED_TASK_TYPE',
-        message: `Task type "${task_type}" is not supported.`,
-        supportedTypes: Object.keys(TASK_TYPE_TO_AGENT),
+        message: `Task type "${task_type}" is not supported. Allowed values: ${supportedTypes.join(', ')}`,
+        supportedTypes,
       });
     }
 
-    const agent_url = AGENT_ENDPOINTS[agent_name];
+    if (AGENT_ENDPOINTS_STATE.error) {
+      return res.status(500).json({
+        error: 'AGENT_ENDPOINTS_INVALID',
+        message: AGENT_ENDPOINTS_STATE.error,
+      });
+    }
+
+    const agent_url = AGENT_ENDPOINTS_STATE.endpoints[agent_name];
 
     if (!agent_url) {
       return res.status(500).json({
