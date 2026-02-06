@@ -67,8 +67,8 @@ jobs:
         run: |
           echo "::group::Capabilities check"
           
-          RESP=$(curl -sf "$DEPLOY_URL/api/ros/analysis/capabilities" 2>/dev/null)
-          if [ $? -ne 0 ]; then
+          RESP=$(curl -sf "$DEPLOY_URL/api/ros/analysis/capabilities" 2>/dev/null || true)
+          if [ -z "$RESP" ]; then
             echo "::warning::Capabilities endpoint not responding — non-fatal"
             echo "capabilities_ok=false" >> "$GITHUB_OUTPUT"
           else
