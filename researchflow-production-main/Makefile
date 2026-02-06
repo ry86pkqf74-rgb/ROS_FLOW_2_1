@@ -35,6 +35,7 @@ help:
 	@echo "  make test-unit    - Run unit tests"
 	@echo "  make test-integration - Run integration tests"
 	@echo "  make test-e2e     - Run end-to-end tests"
+	@echo "  make rag-smoke    - RAG regression smoke test"
 	@echo ""
 	@echo "$(GREEN)Code Quality:$(NC)"
 	@echo "  make lint         - Run linters"
@@ -141,6 +142,11 @@ test-coverage:
 	@echo "$(BLUE)Running tests with coverage...$(NC)"
 	npm run test:coverage
 	docker-compose run --rm worker pytest --cov=src --cov-report=html
+
+rag-smoke: ## RAG regression smoke test (Chroma ingest + retrieve + schema)
+	@echo "$(BLUE)Running RAG smoke tests...$(NC)"
+	docker-compose run --rm worker pytest tests/test_rag_smoke.py -v -m rag_smoke --tb=short
+	@echo "$(GREEN)RAG smoke tests passed!$(NC)"
 
 # ===================
 # Code Quality

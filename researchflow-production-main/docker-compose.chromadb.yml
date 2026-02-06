@@ -17,7 +17,7 @@ services:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
       - ANONYMIZED_TELEMETRY=FALSE
-      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_AUTH_TOKEN:?CHROMA_AUTH_TOKEN must be set}
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMADB_AUTH_TOKEN:?CHROMADB_AUTH_TOKEN must be set}
       - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
       - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
     volumes:
@@ -85,7 +85,7 @@ volumes:
 
 # Add these environment variables to orchestrator and worker services:
 # CHROMADB_URL=http://chromadb:8000
-# CHROMADB_AUTH_TOKEN=${CHROMA_AUTH_TOKEN:?CHROMA_AUTH_TOKEN must be set}
+# CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
 # CHROMA_HOST=chromadb
 # CHROMA_PORT=8000
 # OLLAMA_URL=http://ollama:11434

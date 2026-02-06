@@ -1,0 +1,192 @@
+name: Post-Deploy Smoke Test
+
+on:
+  workflow_run:
+    workflows: ["Build, Push & Deploy to Hetzner (Full Stack)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Base URL of the deployed instance"
+        required: false
+        default: ""
+
+concurrency: deploy-smoke
+
+env:
+  # Resolve target: manual input > secret > default
+  DEPLOY_URL: ${{ inputs.target_url || secrets.HETZNER_DEPLOY_URL || 'http://researchflow.dev' }}
+  MAX_POLL_SECONDS: 120
+  POLL_INTERVAL: 5
+
+jobs:
+  smoke_test:
+    name: Post-Deploy Smoke
+    runs-on: ubuntu-latest
+    # Only run if the triggering deploy succeeded (or manual dispatch)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout (for log context)
+        uses: actions/checkout@v4
+
+      # ── 1. Health check ──────────────────────────────────────────────
+      - name: "🏥 Health check — /health"
+        id: health
+        run: |
+          echo "::group::Health check"
+          echo "Target: $DEPLOY_URL"
+          
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf -o /tmp/health.json -w '%{http_code}' "$DEPLOY_URL/health" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Health check passed (attempt $i)"
+              cat /tmp/health.json | jq . 2>/dev/null || cat /tmp/health.json
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/12 — HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          
+          echo "::endgroup::"
+          echo "::error::Health check failed after 12 attempts"
+          echo "📋 Troubleshooting:"
+          echo "  1. SSH into server: ssh researchflow-hetzner"
+          echo "  2. Check containers: docker ps -a"
+          echo "  3. View orchestrator logs: docker logs researchflow-production-main-orchestrator-1 --tail 50"
+          echo "  4. Check deploy script ran: cat /opt/researchflow/deploy.log"
+          exit 1
+
+      # ── 2. API sanity — capabilities endpoint ───────────────────────
+      - name: "🔬 API sanity — capabilities"
+        id: capabilities
+        run: |
+          echo "::group::Capabilities check"
+          
+          RESP=$(curl -sf "$DEPLOY_URL/api/ros/analysis/capabilities" 2>/dev/null)
+          if [ $? -ne 0 ]; then
+            echo "::warning::Capabilities endpoint not responding — non-fatal"
+            echo "capabilities_ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
+            echo "capabilities_ok=true" >> "$GITHUB_OUTPUT"
+          fi
+          
+          echo "::endgroup::"
+
+      # ── 3. Stage2 request (non-sensitive, literature search) ─────────
+      - name: "📚 Stage2 — submit literature search"
+        id: stage2_submit
+        run: |
+          echo "::group::Stage2 submit"
+          
+          PAYLOAD='{"query":"systematic review methodology","stage":"stage2","domain_id":"smoke-test","options":{"max_results":3,"source":"pubmed"}}'
+          
+          RESP=$(curl -sf -X POST "$DEPLOY_URL/api/ros/stage2/search" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            -w "\n%{http_code}" 2>/dev/null)
+          
+          HTTP_CODE=$(echo "$RESP" | tail -1)
+          BODY=$(echo "$RESP" | sed '$d')
+          
+          echo "HTTP: $HTTP_CODE"
+          echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
+            # Try to extract a task/job ID for polling
+            TASK_ID=$(echo "$BODY" | jq -r '.taskId // .id // .job_id // empty' 2>/dev/null)
+            echo "task_id=$TASK_ID" >> "$GITHUB_OUTPUT"
+            echo "submit_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Stage2 submit returned HTTP $HTTP_CODE — non-fatal for smoke test"
+            echo "submit_ok=false" >> "$GITHUB_OUTPUT"
+          fi
+          
+          echo "::endgroup::"
+
+      # ── 4. Poll for Stage2 completion (if async) ─────────────────────
+      - name: "⏳ Stage2 — poll for completion"
+        if: steps.stage2_submit.outputs.submit_ok == 'true' && steps.stage2_submit.outputs.task_id != ''
+        id: stage2_poll
+        run: |
+          echo "::group::Stage2 poll"
+          
+          TASK_ID="${{ steps.stage2_submit.outputs.task_id }}"
+          echo "Polling task: $TASK_ID"
+          
+          ELAPSED=0
+          while [ $ELAPSED -lt $MAX_POLL_SECONDS ]; do
+            RESP=$(curl -sf "$DEPLOY_URL/api/ros/tasks/$TASK_ID" 2>/dev/null)
+            STATUS=$(echo "$RESP" | jq -r '.status // "unknown"' 2>/dev/null)
+            
+            echo "  [$ELAPSED s] status=$STATUS"
+            
+            if [ "$STATUS" = "completed" ] || [ "$STATUS" = "done" ] || [ "$STATUS" = "success" ]; then
+              echo "✅ Task completed"
+              echo "$RESP" | jq . 2>/dev/null
+              
+              # Verify artifacts
+              HAS_RESULTS=$(echo "$RESP" | jq -r '.result.results // .artifacts // empty' 2>/dev/null)
+              if [ -n "$HAS_RESULTS" ]; then
+                echo "✅ Artifacts/results present"
+                echo "artifacts_ok=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "::warning::Task completed but no artifacts found"
+                echo "artifacts_ok=false" >> "$GITHUB_OUTPUT"
+              fi
+              echo "::endgroup::"
+              exit 0
+            fi
+            
+            if [ "$STATUS" = "failed" ] || [ "$STATUS" = "error" ]; then
+              echo "::error::Task failed"
+              echo "$RESP" | jq . 2>/dev/null
+              echo "::endgroup::"
+              exit 1
+            fi
+            
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+          
+          echo "::warning::Poll timed out after ${MAX_POLL_SECONDS}s — task may still be running"
+          echo "::endgroup::"
+
+      # ── 5. ChromaDB health (if exposed) ──────────────────────────────
+      - name: "🗄️ ChromaDB — health check"
+        id: chroma
+        continue-on-error: true
+        run: |
+          echo "::group::ChromaDB health"
+          
+          # ChromaDB might be on internal network only
+          CHROMA_RESP=$(curl -sf "$DEPLOY_URL/api/ros/vectordb/health" 2>/dev/null || echo '{"status":"not-exposed"}')
+          echo "$CHROMA_RESP" | jq . 2>/dev/null || echo "$CHROMA_RESP"
+          
+          echo "::endgroup::"
+
+      # ── 6. Summary ──────────────────────────────────────────────────
+      - name: "📋 Smoke Test Summary"
+        if: always()
+        run: |
+          echo "## 🚀 Post-Deploy Smoke Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Check | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Health (/health) | ${{ steps.health.outcome == 'success' && '✅ Pass' || '❌ Fail' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API Capabilities | ${{ steps.capabilities.outputs.capabilities_ok == 'true' && '✅ Pass' || '⚠️ Skip' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage2 Submit | ${{ steps.stage2_submit.outputs.submit_ok == 'true' && '✅ Pass' || '⚠️ Skip' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ChromaDB | ${{ steps.chroma.outcome == 'success' && '✅ Pass' || '⚠️ Skip' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Target:** \`$DEPLOY_URL\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🔧 Troubleshooting" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. \`ssh researchflow-hetzner\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. \`docker ps -a\` — check container status" >> "$GITHUB_STEP_SUMMARY"
+          echo "3. \`docker logs <container> --tail 100\` — read logs" >> "$GITHUB_STEP_SUMMARY"
+          echo "4. \`cat /opt/researchflow/deploy.log\` — deploy script output" >> "$GITHUB_STEP_SUMMARY"
