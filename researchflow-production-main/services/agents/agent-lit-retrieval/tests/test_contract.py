@@ -85,6 +85,16 @@ def test_sync_contract_lit_retrieval_requires_inputs_query() -> None:
     assert "outputs" in data and "papers" in data["outputs"]
 
 
+def test_sync_rejects_missing_or_empty_inputs_query() -> None:
+    """Contract-check fails if caller sends {} or inputs without query; agent must reject."""
+    for payload in (
+        {"request_id": "c1", "task_type": "LIT_RETRIEVAL", "inputs": {}},
+        {"request_id": "c2", "task_type": "LIT_RETRIEVAL", "inputs": {"max_results": 10}},
+    ):
+        r = client.post("/agents/run/sync", json=payload)
+        assert r.status_code != 200, f"expected rejection for payload {payload}"
+
+
 def test_sync_rejects_wrong_task_type() -> None:
     r = client.post(
         "/agents/run/sync",

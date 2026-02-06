@@ -28,16 +28,37 @@ STREAM_FIRST_EVENT_TIMEOUT = 10
 HEADERS = {"Content-Type": "application/json"}
 
 
-def make_body(n: int, task_type: str) -> bytes:
+LIT_RETRIEVAL_QUERY_FALLBACK = "contract-check query"
+
+
+def get_body_dict(n: int, task_type: str) -> dict:
+    """Build request body dict. For LIT_RETRIEVAL always sets inputs.query."""
     inputs: dict = {}
     if task_type == "LIT_RETRIEVAL":
-        raw = (os.environ.get("RESEARCH_QUESTION") or "test query").strip()
-        inputs["query"] = raw if raw else "test query"
-    body = {
+        research_question = (os.environ.get("RESEARCH_QUESTION") or "").strip()
+        existing_query = ""  # contract script builds from scratch; no prior inputs
+        query = research_question or existing_query or LIT_RETRIEVAL_QUERY_FALLBACK
+        inputs["query"] = query.strip() or LIT_RETRIEVAL_QUERY_FALLBACK
+    return {
         "request_id": f"contract-check-{n}",
         "task_type": task_type,
         "inputs": inputs,
     }
+
+
+def ensure_lit_retrieval_has_query(body_dict: dict, task_type: str) -> None:
+    """Exit with code 1 if LIT_RETRIEVAL payload is missing or empty inputs.query."""
+    if task_type != "LIT_RETRIEVAL":
+        return
+    inputs = body_dict.get("inputs")
+    query = inputs.get("query") if isinstance(inputs, dict) else None
+    if not (isinstance(query, str) and query.strip()):
+        print("Error: LIT_RETRIEVAL request must include non-empty inputs.query.", file=sys.stderr)
+        sys.exit(1)
+
+
+def make_body(n: int, task_type: str) -> bytes:
+    body = get_body_dict(n, task_type)
     return json.dumps(body).encode("utf-8")
 
 
@@ -220,6 +241,8 @@ def main() -> int:
     targets = get_agent_targets()
     results: list[tuple[str, bool, str, bool, str]] = []
     for i, (base, task_type) in enumerate(targets, start=1):
+        body_dict = get_body_dict(i, task_type)
+        ensure_lit_retrieval_has_query(body_dict, task_type)
         sync_ok, sync_msg = sync_check(base, task_type, n=i)
         stream_ok, stream_msg = stream_check(base, task_type, n=i)
         results.append((base, sync_ok, sync_msg, stream_ok, stream_msg))
