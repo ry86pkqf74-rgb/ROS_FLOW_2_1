@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth';
 import { Queue } from 'bullmq';
 import crypto from 'crypto';
+import { getEvents, isDone } from '../../services/sse-event-store';
 
 const router = Router();
 
@@ -208,6 +209,112 @@ router.get('/:stage/jobs/:job_id/status', requireAuth, async (req: Request, res:
       error: 'Failed to get job status',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
+  }
+});
+
+/**
+ * GET /api/workflow/stages/:stage/jobs/:job_id/stream
+ * SSE endpoint: replays stored events from Redis, then polls for new events
+ * until :done marker (Stage 2) or BullMQ terminal state or timeout.
+ */
+router.get('/:stage/jobs/:job_id/stream', requireAuth, async (req: Request, res: Response) => {
+  const stage = req.params.stage as string;
+  const stageNum = parseInt(stage, 10);
+  const job_id = req.params.job_id as string;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  const POLL_INTERVAL_MS = 500;
+  const STREAM_TIMEOUT_MS = 120 * 1000; // 120s
+  const startTime = Date.now();
+  let lastSeq = 0;
+
+  const queue = getWorkflowStagesQueue();
+
+  const writeEvent = (evt: { seq: number; event?: string; data: unknown }): void => {
+    if (closed) return;
+    res.write(`id: ${evt.seq}\nevent: ${evt.event || 'message'}\ndata: ${JSON.stringify(evt.data)}\n\n`);
+  };
+
+  try {
+    // Replay all stored events immediately
+    const initial = await getEvents(job_id, 0);
+    for (const evt of initial) {
+      if (closed) break;
+      writeEvent(evt);
+      lastSeq = evt.seq + 1;
+    }
+
+    while (!closed && (Date.now() - startTime) < STREAM_TIMEOUT_MS) {
+      const events = await getEvents(job_id, lastSeq);
+
+      for (const evt of events) {
+        if (closed) break;
+        writeEvent(evt);
+        lastSeq = evt.seq + 1;
+      }
+
+      // Stage 2: end when :done marker exists
+      if (stageNum === 2) {
+        if (await isDone(job_id)) {
+          const remaining = await getEvents(job_id, lastSeq);
+          for (const evt of remaining) {
+            if (closed) break;
+            writeEvent(evt);
+            lastSeq = evt.seq + 1;
+          }
+          if (!closed) {
+            res.write(`event: done\ndata: ${JSON.stringify({ job_id, stage: stageNum })}\n\n`);
+          }
+          break;
+        }
+      } else {
+        // Non–Stage 2: use BullMQ terminal state
+        const job = await queue.getJob(job_id);
+        if (job) {
+          const state = await job.getState();
+          if (state === 'completed' || state === 'failed') {
+            const remaining = await getEvents(job_id, lastSeq);
+            for (const evt of remaining) {
+              if (closed) break;
+              writeEvent(evt);
+              lastSeq = evt.seq + 1;
+            }
+            if (!closed) {
+              res.write(`event: ${state}\ndata: ${JSON.stringify({
+                job_id,
+                stage: stageNum,
+                status: state,
+                result: job.returnvalue,
+                error: job.failedReason,
+              })}\n\n`);
+            }
+            break;
+          }
+        }
+      }
+
+      if (events.length === 0 && !closed) {
+        res.write(': keepalive\n\n');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  } catch (error) {
+    if (!closed) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Stream error' })}\n\n`);
+    }
+  }
+
+  if (!closed) {
+    res.end();
   }
 });
 

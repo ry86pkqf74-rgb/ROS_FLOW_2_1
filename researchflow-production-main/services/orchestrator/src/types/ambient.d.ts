@@ -171,6 +171,19 @@ declare module 'ioredis' {
     subscribe(channel: string): Promise<void>;
     on(event: string, handler: any): this;
     quit(): Promise<void>;
+    // List operations
+    llen(key: string): Promise<number>;
+    lrange(key: string, start: number, stop: number): Promise<string[]>;
+    rpush(key: string, ...values: string[]): Promise<number>;
+    ltrim(key: string, start: number, stop: number): Promise<string>;
+    expire(key: string, seconds: number): Promise<number>;
+    pipeline(): RedisPipeline;
+  }
+  export interface RedisPipeline {
+    rpush(key: string, ...values: string[]): this;
+    ltrim(key: string, start: number, stop: number): this;
+    expire(key: string, seconds: number): this;
+    exec(): Promise<Array<[Error | null, any]>>;
   }
 }
 

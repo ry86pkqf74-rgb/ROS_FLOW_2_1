@@ -20,6 +20,7 @@ import {
 } from "./src/middleware/rateLimit";
 import { AdvancedErrorRecovery } from "./src/middleware/recovery";
 import { BackupRecoveryService } from "./src/services/backup-recovery.service";
+import { serviceAuthMiddleware } from "./src/middleware/service-auth";
 import { SecurityEnhancementMiddleware } from "./src/middleware/security-enhancements";
 import { ComplianceAuditService } from "./src/services/compliance-audit.service";
 import { optionalAuth } from "./src/services/authService";
@@ -138,7 +139,10 @@ app.use("/api", healthRouter);
 
 // Phase 3 Production Hardening Middleware (must be after CORS and body parsing)
 
-// Security enhancements (first layer)
+// 1. Service token auth context first (sets req.auth so security + rate limiters can classify internal calls)
+app.use(serviceAuthMiddleware);
+
+// 2. Security enhancements (reads req.auth.isServiceToken to set authenticated and skip rate limit)
 app.use(securityMiddleware.middleware());
 
 // Recovery system (second layer)
@@ -173,6 +177,11 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      // Skip routine request log for internal service calls unless VERBOSE_INTERNAL_LOGS
+      const isServiceCall = (req as { auth?: { isServiceToken?: boolean } }).auth?.isServiceToken === true;
+      if (isServiceCall && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
+        return;
+      }
       // Use debug level for request logging to reduce noise in production
       logger.debug(`${req.method} ${path} ${res.statusCode} in ${duration}ms`, {
         method: req.method,

@@ -257,4 +257,5 @@ async def run_stream(payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], 
 
     yield {"type": "status", "request_id": request_id, "step": "finalize", "progress": 90}
 
-    yield {"type": "final", **result}
+    task_type = payload.get("task_type", "stage2_lit")
+    yield {"type": "final", "task_type": task_type, **result}
