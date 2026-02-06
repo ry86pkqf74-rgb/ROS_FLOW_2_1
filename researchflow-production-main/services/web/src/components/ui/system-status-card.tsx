@@ -33,6 +33,11 @@ export function SystemStatusCard({
   const fetchHealth = async () => {
     try {
       const response = await fetch("/api/v1/health");
+      if (!response.ok) {
+        setError(true);
+        setHealth(null);
+        return;
+      }
       const data = await response.json();
       setHealth(data);
       setError(false);
@@ -63,7 +68,7 @@ export function SystemStatusCard({
     />
   );
 
-  const isLiveMode = health?.services?.ros_backend?.mode === "LIVE" && !health?.environment.mock_only;
+  const isLiveMode = health?.services?.ros_backend?.mode === "LIVE" && !health?.environment?.mock_only;
 
   if (loading) {
     return (
@@ -105,7 +110,7 @@ export function SystemStatusCard({
               </div>
               <div className="flex items-center gap-1.5" data-testid="service-ros">
                 {getStatusDot(health?.services?.ros_backend?.status)}
-                {health.environment.no_network ? (
+                {health?.environment?.no_network ? (
                   <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />
                 ) : (
                   <Wifi className="h-3.5 w-3.5 text-muted-foreground" />
@@ -161,7 +166,7 @@ export function SystemStatusCard({
           </div>
           <div className="flex items-center justify-between" data-testid="service-ros-row">
             <div className="flex items-center gap-2">
-              {health.environment.no_network ? (
+              {health?.environment?.no_network ? (
                 <WifiOff className="h-4 w-4 text-muted-foreground" />
               ) : (
                 <Wifi className="h-4 w-4 text-muted-foreground" />
@@ -189,11 +194,11 @@ export function SystemStatusCard({
         <div className="pt-2 border-t text-xs text-muted-foreground" data-testid="environment-info">
           <div className="flex items-center justify-between">
             <span>Mock Mode</span>
-            <span>{health.environment.mock_only ? "Yes" : "No"}</span>
+            <span>{health?.environment?.mock_only ? "Yes" : "No"}</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Uploads</span>
-            <span>{health.environment.allow_uploads ? "Enabled" : "Disabled"}</span>
+            <span>{health?.environment?.allow_uploads ? "Enabled" : "Disabled"}</span>
           </div>
         </div>
       </CardContent>
