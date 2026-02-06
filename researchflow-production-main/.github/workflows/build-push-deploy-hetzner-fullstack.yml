@@ -1,0 +1,88 @@
+name: Build, Push & Deploy to Hetzner (Full Stack)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency: hetzner-prod
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1
+
+jobs:
+  build_and_push:
+    name: Build & Push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: orchestrator
+            context: researchflow-production-main
+            dockerfile: services/orchestrator/Dockerfile
+            target: development
+          - service: worker
+            context: researchflow-production-main/services/worker
+            dockerfile: Dockerfile
+            target: development
+          - service: guideline-engine
+            context: researchflow-production-main/packages/guideline-engine
+            dockerfile: Dockerfile
+            target: ""
+          - service: collab
+            context: researchflow-production-main
+            dockerfile: services/collab/Dockerfile
+            target: development
+          - service: web
+            context: researchflow-production-main
+            dockerfile: services/web/Dockerfile
+            target: production
+          - service: agent-stage2-lit
+            context: researchflow-production-main
+            dockerfile: services/agents/agent-stage2-lit/Dockerfile
+            target: ""
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=main
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
+          target: ${{ matrix.target || '' }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
