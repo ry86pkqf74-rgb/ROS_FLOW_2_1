@@ -12,6 +12,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+logger = logging.getLogger(__name__)
+
 from .stage_base import (
     call_llm_async,
     make_error,
@@ -34,8 +36,6 @@ try:
 except ImportError as e:
     logger.warning(f"Enhanced reference management not available: {e}")
     ENHANCED_REFERENCE_MANAGEMENT = False
-
-logger = logging.getLogger(__name__)
 
 STAGE = 17
 
