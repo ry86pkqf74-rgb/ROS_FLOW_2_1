@@ -10,6 +10,7 @@ services:
   # ===================
   chromadb:
     image: chromadb/chroma:0.4.22
+    dns: [1.1.1.1, 8.8.8.8]  # Stabilize startup in offline/DNS-broken environments (see docs/dev/chromadb-offline-startup.md)
     ports:
       - "8002:8000"
     environment:
