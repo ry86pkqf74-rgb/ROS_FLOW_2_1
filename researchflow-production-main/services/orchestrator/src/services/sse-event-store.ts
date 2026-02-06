@@ -80,15 +80,17 @@ export async function pushEvent(
 }
 
 /**
- * Get stored events starting from a sequence number.
+ * Get stored events with seq >= fromSeq.
+ * After ltrim, list indices no longer match seq; we fetch the list and filter by seq.
  */
 export async function getEvents(
   jobId: string,
   fromSeq: number = 0
 ): Promise<StoredSSEEvent[]> {
   const r = getRedis();
-  const raw = await r.lrange(jobKey(jobId), fromSeq, -1);
-  return raw.map((s) => JSON.parse(s) as StoredSSEEvent);
+  const raw = await r.lrange(jobKey(jobId), 0, -1);
+  const events = raw.map((s) => JSON.parse(s) as StoredSSEEvent);
+  return events.filter((evt) => evt.seq >= fromSeq);
 }
 
 /**

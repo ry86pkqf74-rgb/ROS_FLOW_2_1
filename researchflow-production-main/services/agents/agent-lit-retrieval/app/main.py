@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -86,8 +87,17 @@ async def run_stream(task: AgentTask) -> Response:
         yield b"data: " + json.dumps({"event": "start", "request_id": task.request_id}).encode() + b"\n\n"
         yield b"data: " + json.dumps({"event": "progress", "pct": 50}).encode() + b"\n\n"
         demo = DEMO_OVERRIDE or (task.mode == "DEMO")
-        papers, _ = run_lit_retrieval(
-            task.inputs, mode=task.mode or None, demo_override=demo, timeout_seconds=RETRIEVAL_TIMEOUT
+        # run_lit_retrieval uses asyncio.run() internally; must run in executor to avoid
+        # "asyncio.run() cannot be called from a running event loop" in async stream.
+        loop = asyncio.get_event_loop()
+        papers, _ = await loop.run_in_executor(
+            None,
+            lambda: run_lit_retrieval(
+                task.inputs,
+                mode=task.mode or None,
+                demo_override=demo,
+                timeout_seconds=RETRIEVAL_TIMEOUT,
+            ),
         )
         yield b"data: " + json.dumps(
             {
