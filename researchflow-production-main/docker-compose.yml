@@ -346,7 +346,7 @@ services:
   web:
     image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/web:${IMAGE_TAG:-main}
     ports:
-      - "5173:80"
+      - "80:80"
     logging:
       driver: "json-file"
       options:
