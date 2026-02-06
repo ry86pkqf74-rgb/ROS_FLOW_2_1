@@ -6,9 +6,6 @@
 
 import { apiRequest } from '../lib/queryClient';
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
 export interface ResearchBriefInput {
   topic: string;
   depth?: 'brief' | 'standard' | 'comprehensive';
@@ -70,7 +67,7 @@ export interface DecisionMatrixResponse {
 export async function generateResearchBrief(
   input: ResearchBriefInput
 ): Promise<ResearchBriefResponse> {
-  const response = await apiRequest('POST', `${API_BASE}/api/ai/research-brief`, input);
+  const response = await apiRequest('POST', '/api/ai/research-brief', input);
   return response.json();
 }
 
@@ -80,7 +77,7 @@ export async function generateResearchBrief(
 export async function generateEvidenceGapMap(
   input: EvidenceGapMapInput
 ): Promise<EvidenceGapMapResponse> {
-  const response = await apiRequest('POST', `${API_BASE}/api/ai/evidence-gap-map`, input);
+  const response = await apiRequest('POST', '/api/ai/evidence-gap-map', input);
   return response.json();
 }
 
@@ -90,7 +87,7 @@ export async function generateEvidenceGapMap(
 export async function generateStudyCards(
   input: StudyCardsInput
 ): Promise<{ cards: StudyCard[] }> {
-  const response = await apiRequest('POST', `${API_BASE}/api/ai/study-cards`, input);
+  const response = await apiRequest('POST', '/api/ai/study-cards', input);
   return response.json();
 }
 
@@ -100,6 +97,6 @@ export async function generateStudyCards(
 export async function generateDecisionMatrix(
   input: DecisionMatrixInput
 ): Promise<DecisionMatrixResponse> {
-  const response = await apiRequest('POST', `${API_BASE}/api/ai/decision-matrix`, input);
+  const response = await apiRequest('POST', '/api/ai/decision-matrix', input);
   return response.json();
 }
