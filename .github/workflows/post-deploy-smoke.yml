@@ -15,7 +15,7 @@ concurrency: deploy-smoke
 
 env:
   # Resolve target: manual input > secret > default
-  DEPLOY_URL: ${{ inputs.target_url || secrets.HETZNER_DEPLOY_URL || 'http://researchflow.dev' }}
+  DEPLOY_URL: ${{ inputs.target_url || secrets.HETZNER_DEPLOY_URL || 'http://178.156.180.37:3001' }}
   MAX_POLL_SECONDS: 120
   POLL_INTERVAL: 5
 

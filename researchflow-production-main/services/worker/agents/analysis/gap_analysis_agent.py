@@ -92,7 +92,7 @@ class GapAnalysisAgent(BaseAgent):
         """Initialize multiple LLM clients for specialized tasks."""
         
         # Grok-2 for fast literature comparison
-        xai_key = os.getenv("XAI_API_KEY")
+        xai_key = os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY")
         xai_base = os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
         if xai_key:
             self.grok_llm = ChatOpenAI(
@@ -105,7 +105,7 @@ class GapAnalysisAgent(BaseAgent):
             logger.info("[GapAnalysisAgent] Grok-2 initialized for literature comparison")
         else:
             self.grok_llm = None
-            logger.warning("[GapAnalysisAgent] XAI_API_KEY not set, using Claude fallback")
+            logger.warning("[GapAnalysisAgent] XAI_API_KEY not set (also checked GROK_API_KEY), using Claude fallback")
         
         # Mercury for structured analysis
         mercury_key = (

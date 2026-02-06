@@ -37,7 +37,8 @@ class XAIProvider:
     Required environment variables:
 
     - ``XAI_API_KEY`` (required): bearer token used for authentication.
-      If it is not set, this provider fails closed by raising a
+      Falls back to ``GROK_API_KEY`` for backward compatibility.
+      If neither is set, this provider fails closed by raising a
       ``RuntimeError`` instead of attempting a network call.
     - ``XAI_BASE_URL`` (required): base URL for the xAI-compatible API
       (e.g., ``https://api.x.ai/v1``). This is intentionally required
@@ -112,9 +113,9 @@ class XAIProvider:
                 "NO_NETWORK=1 or MOCK_ONLY=1 blocks xAI calls (fail-closed)."
             )
 
-        api_key = os.getenv("XAI_API_KEY")
+        api_key = os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY")
         if not api_key:
-            raise RuntimeError("XAI_API_KEY not set.")
+            raise RuntimeError("XAI_API_KEY not set (also checked GROK_API_KEY).")
 
         base_url = os.getenv("XAI_BASE_URL")
         if not base_url:

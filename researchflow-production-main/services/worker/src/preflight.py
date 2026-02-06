@@ -59,7 +59,9 @@ def collect_preflight_issues(cfg: RuntimeConfig) -> list[PreflightIssue]:
                 )
             )
         else:
-            if not os.getenv(env_key):
+            # Support backward-compat aliases (e.g. GROK_API_KEY → XAI_API_KEY)
+            alias_map = {"XAI_API_KEY": "GROK_API_KEY"}
+            if not (os.getenv(env_key) or os.getenv(alias_map.get(env_key, ""))):
                 issues.append(
                     PreflightIssue(
                         "LLM_KEY_MISSING",
