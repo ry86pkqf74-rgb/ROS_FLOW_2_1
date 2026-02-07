@@ -254,6 +254,7 @@ export class CustomAgentDispatcher extends EventEmitter {
       yield {
         type: 'error',
         content: `No custom model for task: ${request.taskType}`,
+        done: false,
       };
       return;
     }
@@ -269,8 +270,9 @@ export class CustomAgentDispatcher extends EventEmitter {
       context = this.formatRAGContext(ragContext);
       
       yield {
-        type: 'rag',
+        type: 'metadata',
         content: `Retrieved ${ragContext.results?.length || 0} documents`,
+        done: false,
         metadata: { sources: ragContext.results?.map(r => r.id) },
       };
     }
@@ -312,10 +314,10 @@ export class CustomAgentDispatcher extends EventEmitter {
           try {
             const json = JSON.parse(line);
             if (json.response) {
-              yield { type: 'content', content: json.response };
+              yield { type: 'content', content: json.response, done: false };
             }
             if (json.done) {
-              yield { type: 'done', content: '' };
+              yield { type: 'done', content: '', done: true };
             }
           } catch {
             // Skip invalid JSON lines
