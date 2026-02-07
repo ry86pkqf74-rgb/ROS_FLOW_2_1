@@ -69,3 +69,127 @@ jobs:
 
       - name: Unit tests
         run: pnpm run test:unit
+
+  integration-tests:
+    name: Integration tests (with services)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: researchflow-production-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('researchflow-production-main/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install pnpm dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies (worker)
+        run: |
+          cd services/worker
+          pip install -r requirements.txt
+
+      - name: Start test services (postgres, redis, mockserver)
+        run: docker compose -f docker-compose.test.yml up -d postgres-test redis-test mockserver
+
+      - name: Wait for service health checks
+        run: |
+          echo "Waiting for postgres..."
+          timeout 60 bash -c 'until docker compose -f docker-compose.test.yml ps postgres-test | grep -q "healthy"; do sleep 2; done'
+          echo "Waiting for redis..."
+          timeout 60 bash -c 'until docker compose -f docker-compose.test.yml ps redis-test | grep -q "healthy"; do sleep 2; done'
+          echo "Waiting for mockserver..."
+          timeout 60 bash -c 'until docker compose -f docker-compose.test.yml ps mockserver | grep -q "healthy"; do sleep 2; done'
+          echo "All services healthy"
+
+      - name: Build packages
+        run: pnpm run build:packages
+
+      - name: Start worker (background)
+        run: |
+          cd services/worker
+          python -m uvicorn app:app --host 0.0.0.0 --port 8000 &
+          echo $! > worker.pid
+        env:
+          DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
+          REDIS_URL: redis://localhost:6380/0
+          NODE_ENV: test
+          ENV: test
+          NO_NETWORK: true
+
+      - name: Start orchestrator (background)
+        run: |
+          cd services/orchestrator
+          node dist/index.js &
+          echo $! > orchestrator.pid
+        env:
+          DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
+          REDIS_URL: redis://localhost:6380/0
+          NODE_ENV: test
+          ENV: test
+          PORT: 3001
+          NO_NETWORK: true
+
+      - name: Wait for worker health
+        run: |
+          echo "Waiting for worker on http://localhost:8000/health..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8000/health > /dev/null; do sleep 2; done'
+          echo "Worker is ready"
+
+      - name: Wait for orchestrator health
+        run: |
+          echo "Waiting for orchestrator on http://localhost:3001/health..."
+          timeout 60 bash -c 'until curl -sf http://localhost:3001/health > /dev/null; do sleep 2; done'
+          echo "Orchestrator is ready"
+
+      - name: Run integration tests
+        run: pnpm run test:integration
+        env:
+          DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
+          REDIS_URL: redis://localhost:6380/0
+          ORCHESTRATOR_URL: http://localhost:3001
+          WORKER_URL: http://localhost:8000
+          MOCKSERVER_URL: http://localhost:1080
+          NODE_ENV: test
+          ENV: test
+          NO_NETWORK: true
+          CI: true
+
+      - name: Cleanup services
+        if: always()
+        run: |
+          # Stop Node/Python processes
+          if [ -f services/worker/worker.pid ]; then
+            kill $(cat services/worker/worker.pid) || true
+          fi
+          if [ -f services/orchestrator/orchestrator.pid ]; then
+            kill $(cat services/orchestrator/orchestrator.pid) || true
+          fi
+          # Stop Docker services
+          docker compose -f docker-compose.test.yml down -v
