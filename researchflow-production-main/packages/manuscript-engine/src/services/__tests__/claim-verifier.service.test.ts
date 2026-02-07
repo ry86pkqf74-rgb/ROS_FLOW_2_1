@@ -14,7 +14,7 @@ import {
 
 // Mock the AI router
 const mockRoute = vi.fn();
-vi.mock('@researchflow/ai-router', () => ({
+vi.mock('@researchflow/ai-router/model-router', () => ({
   getModelRouter: vi.fn(() => ({
     route: mockRoute,
   })),

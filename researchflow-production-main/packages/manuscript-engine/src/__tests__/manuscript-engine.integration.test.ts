@@ -16,7 +16,7 @@ import type {
 } from '../types';
 
 // Mock AI Router
-vi.mock('@researchflow/ai-router', () => ({
+vi.mock('@researchflow/ai-router/model-router', () => ({
   getModelRouter: vi.fn(() => ({
     route: vi.fn(async (request) => {
       // Return mocked responses based on task type

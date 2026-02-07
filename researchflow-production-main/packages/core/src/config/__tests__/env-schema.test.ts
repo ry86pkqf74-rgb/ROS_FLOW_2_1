@@ -12,9 +12,17 @@ import { envSchema, validateEnv, validateEnvSafe, getEnvValidationReport } from 
 describe('envSchema', () => {
   const originalEnv = process.env;
 
+  // Helper to provide a minimal valid environment
+  const getMinimalValidEnv = (): Record<string, string> => ({
+    DATABASE_URL: 'postgresql://user:pass@localhost:5432/dbname',
+    POSTGRES_USER: 'testuser',
+    POSTGRES_DB: 'testdb',
+    JWT_SECRET: 'a'.repeat(32), // Meets 32-char entropy requirement
+  });
+
   beforeEach(() => {
-    // Save original environment
-    process.env = { ...originalEnv };
+    // Save original environment and set minimal valid env
+    process.env = { ...originalEnv, ...getMinimalValidEnv() };
   });
 
   afterEach(() => {
@@ -68,11 +76,11 @@ describe('envSchema', () => {
     });
 
     it('should validate POSTGRES_PASSWORD entropy if provided', () => {
-      process.env.POSTGRES_PASSWORD = 'short';
+      process.env = { ...process.env, POSTGRES_PASSWORD: 'short' };
       const result = envSchema.safeParse(process.env);
       expect(result.success).toBe(false);
 
-      process.env.POSTGRES_PASSWORD = 'a'.repeat(32);
+      process.env = { ...process.env, POSTGRES_PASSWORD: 'a'.repeat(32) };
       const result2 = envSchema.safeParse(process.env);
       expect(result2.success).toBe(true);
     });
@@ -86,11 +94,11 @@ describe('envSchema', () => {
     });
 
     it('should enforce JWT_SECRET entropy (32+ chars)', () => {
-      process.env.JWT_SECRET = 'tooshort';
+      process.env = { ...process.env, JWT_SECRET: 'tooshort' };
       const result = envSchema.safeParse(process.env);
       expect(result.success).toBe(false);
 
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = { ...process.env, JWT_SECRET: 'a'.repeat(32) };
       const result2 = envSchema.safeParse(process.env);
       expect(result2.success).toBe(true);
     });
@@ -314,16 +322,19 @@ describe('envSchema', () => {
 
   describe('validateEnv function', () => {
     it('should throw ZodError on validation failure', () => {
-      process.env.NODE_ENV = 'invalid';
+      process.env = { ...process.env, NODE_ENV: 'invalid' };
       expect(() => validateEnv()).toThrow();
     });
 
     it('should return validated env object on success', () => {
-      process.env.NODE_ENV = 'production';
-      process.env.POSTGRES_USER = 'user';
-      process.env.POSTGRES_DB = 'db';
-      process.env.DATABASE_URL = 'postgresql://user:pass@localhost/db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = {
+        ...process.env,
+        NODE_ENV: 'production',
+        POSTGRES_USER: 'user',
+        POSTGRES_DB: 'db',
+        DATABASE_URL: 'postgresql://user:pass@localhost/db',
+        JWT_SECRET: 'a'.repeat(32),
+      };
 
       const env = validateEnv();
       expect(env.NODE_ENV).toBe('production');
@@ -331,7 +342,7 @@ describe('envSchema', () => {
     });
 
     it('should include validation error messages', () => {
-      process.env.JWT_SECRET = 'tooshort';
+      process.env = { ...process.env, JWT_SECRET: 'tooshort' };
       try {
         validateEnv();
         expect.fail('Should have thrown');
@@ -346,10 +357,13 @@ describe('envSchema', () => {
 
   describe('validateEnvSafe function', () => {
     it('should return success true on valid env', () => {
-      process.env.POSTGRES_USER = 'user';
-      process.env.POSTGRES_DB = 'db';
-      process.env.DATABASE_URL = 'postgresql://user:pass@localhost/db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = {
+        ...process.env,
+        POSTGRES_USER: 'user',
+        POSTGRES_DB: 'db',
+        DATABASE_URL: 'postgresql://user:pass@localhost/db',
+        JWT_SECRET: 'a'.repeat(32),
+      };
 
       const result = validateEnvSafe();
       expect(result.success).toBe(true);
@@ -357,8 +371,11 @@ describe('envSchema', () => {
     });
 
     it('should return success false and errors on validation failure', () => {
-      process.env.JWT_SECRET = 'tooshort';
-      process.env.NODE_ENV = 'invalid';
+      process.env = {
+        ...process.env,
+        JWT_SECRET: 'tooshort',
+        NODE_ENV: 'invalid',
+      };
 
       const result = validateEnvSafe();
       expect(result.success).toBe(false);
@@ -367,17 +384,20 @@ describe('envSchema', () => {
     });
 
     it('should not throw', () => {
-      process.env.JWT_SECRET = 'tooshort';
+      process.env = { ...process.env, JWT_SECRET: 'tooshort' };
       expect(() => validateEnvSafe()).not.toThrow();
     });
   });
 
   describe('getEnvValidationReport function', () => {
     it('should return PASS status on valid env', () => {
-      process.env.POSTGRES_USER = 'user';
-      process.env.POSTGRES_DB = 'db';
-      process.env.DATABASE_URL = 'postgresql://user:pass@localhost/db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = {
+        ...process.env,
+        POSTGRES_USER: 'user',
+        POSTGRES_DB: 'db',
+        DATABASE_URL: 'postgresql://user:pass@localhost/db',
+        JWT_SECRET: 'a'.repeat(32),
+      };
 
       const report = getEnvValidationReport();
       expect(report.validationStatus).toBe('PASS');
@@ -385,14 +405,14 @@ describe('envSchema', () => {
     });
 
     it('should return FAIL status on invalid env', () => {
-      process.env.JWT_SECRET = 'tooshort';
+      process.env = { ...process.env, JWT_SECRET: 'tooshort' };
       const report = getEnvValidationReport();
       expect(report.validationStatus).toBe('FAIL');
       expect(report.issues.length).toBeGreaterThan(0);
     });
 
     it('should include timestamp and nodeEnv', () => {
-      process.env.NODE_ENV = 'production';
+      process.env = { ...process.env, NODE_ENV: 'production' };
       const report = getEnvValidationReport();
 
       expect(report.timestamp).toBeDefined();
@@ -401,10 +421,13 @@ describe('envSchema', () => {
     });
 
     it('should track required and optional variables', () => {
-      process.env.POSTGRES_USER = 'user';
-      process.env.POSTGRES_DB = 'db';
-      process.env.DATABASE_URL = 'postgresql://user:pass@localhost/db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = {
+        ...process.env,
+        POSTGRES_USER: 'user',
+        POSTGRES_DB: 'db',
+        DATABASE_URL: 'postgresql://user:pass@localhost/db',
+        JWT_SECRET: 'a'.repeat(32),
+      };
 
       const report = getEnvValidationReport();
 
@@ -416,10 +439,13 @@ describe('envSchema', () => {
 
   describe('Type Safety', () => {
     it('should infer correct types for validated env', () => {
-      process.env.POSTGRES_USER = 'user';
-      process.env.POSTGRES_DB = 'db';
-      process.env.DATABASE_URL = 'postgresql://user:pass@localhost/db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env = {
+        ...process.env,
+        POSTGRES_USER: 'user',
+        POSTGRES_DB: 'db',
+        DATABASE_URL: 'postgresql://user:pass@localhost/db',
+        JWT_SECRET: 'a'.repeat(32),
+      };
 
       const env = validateEnv();
 
@@ -436,17 +462,20 @@ describe('envSchema', () => {
 
   describe('Complex Scenario', () => {
     it('should validate production configuration', () => {
-      process.env.NODE_ENV = 'production';
-      process.env.ENVIRONMENT = 'prod';
-      process.env.DATABASE_URL = 'postgresql://prod_user:secure_pass@prod-db.example.com/prod_db';
-      process.env.POSTGRES_USER = 'prod_user';
-      process.env.POSTGRES_DB = 'prod_db';
-      process.env.JWT_SECRET = 'x'.repeat(64);
-      process.env.GOVERNANCE_MODE = 'LIVE';
-      process.env.PHI_FAIL_CLOSED = 'true';
-      process.env.OPENAI_API_KEY = 'sk-prod-key';
-      process.env.CORS_WHITELIST = 'https://app.example.com,https://api.example.com';
-      process.env.ADMIN_EMAILS = 'admin@example.com,support@example.com';
+      process.env = {
+        ...process.env,
+        NODE_ENV: 'production',
+        ENVIRONMENT: 'prod',
+        DATABASE_URL: 'postgresql://prod_user:secure_pass@prod-db.example.com/prod_db',
+        POSTGRES_USER: 'prod_user',
+        POSTGRES_DB: 'prod_db',
+        JWT_SECRET: 'x'.repeat(64),
+        GOVERNANCE_MODE: 'LIVE',
+        PHI_FAIL_CLOSED: 'true',
+        OPENAI_API_KEY: 'sk-prod-key',
+        CORS_WHITELIST: 'https://app.example.com,https://api.example.com',
+        ADMIN_EMAILS: 'admin@example.com,support@example.com',
+      };
 
       const result = validateEnvSafe();
       expect(result.success).toBe(true);
@@ -461,12 +490,15 @@ describe('envSchema', () => {
     });
 
     it('should validate development configuration with minimal setup', () => {
-      process.env.NODE_ENV = 'development';
-      process.env.DATABASE_URL = 'postgresql://localhost/dev_db';
-      process.env.POSTGRES_USER = 'dev_user';
-      process.env.POSTGRES_DB = 'dev_db';
-      process.env.JWT_SECRET = 'a'.repeat(32);
-      process.env.DEBUG = 'true';
+      process.env = {
+        ...process.env,
+        NODE_ENV: 'development',
+        DATABASE_URL: 'postgresql://localhost/dev_db',
+        POSTGRES_USER: 'dev_user',
+        POSTGRES_DB: 'dev_db',
+        JWT_SECRET: 'a'.repeat(32),
+        DEBUG: 'true',
+      };
 
       const result = validateEnvSafe();
       expect(result.success).toBe(true);

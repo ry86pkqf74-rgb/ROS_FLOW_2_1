@@ -481,10 +481,11 @@ export class QualityGateService {
   checkCitationsPresent(content: string, minCount: number = 1): QualityCheck {
     // Citation patterns
     const patterns = [
-      /\[\d+(?:[-,]\d+)*\]/g,                          // [1], [1,2], [1-5]
-      /\([A-Z][a-z]+(?:\s+et\s+al\.?)?,?\s*\d{4}\)/g, // (Smith, 2024), (Smith et al., 2023)
-      /[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g,                               // Superscript numbers
-      /\b(?:doi|DOI):\s*\S+/g,                         // DOI references
+      /\[\d+(?:[-,]\d+)*\]/g,                                           // [1], [1,2], [1-5]
+      /\([A-Z][a-z]+(?:\s+et\s+al\.?)?,?\s*\d{4}\)/g,                  // (Smith, 2024), (Smith et al., 2023)
+      /\b[A-Z][a-z]+(?:\s+et\s+al\.?)?\s+\(\d{4}\)/g,                  // Smith (2024), Jones et al. (2023)
+      /[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g,                                                // Superscript numbers
+      /\b(?:doi|DOI):\s*\S+/g,                                          // DOI references
     ];
 
     const foundCitations: string[] = [];
