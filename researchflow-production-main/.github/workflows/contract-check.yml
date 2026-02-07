@@ -53,11 +53,11 @@ jobs:
           echo "--- agent-policy-review contract tests ---"
           cat /tmp/policy-review-contract.log
 
-      - name: Install agent-rag-retrieve deps and run contract tests
+      - name: Install agent-rag-retrieve deps and run contract + BM25-lite tests
         run: |
           cd services/agents/agent-rag-retrieve
           pip install -r requirements.txt -q
-          pytest tests/test_contract.py -v --tb=short 2>&1 | tee /tmp/rag-retrieve-contract.log
+          pytest tests/ -v --tb=short 2>&1 | tee /tmp/rag-retrieve-contract.log
           echo "--- agent-rag-retrieve contract tests ---"
           cat /tmp/rag-retrieve-contract.log
 

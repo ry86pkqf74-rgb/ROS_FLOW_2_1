@@ -6,6 +6,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import structlog
 
+from agent.bm25_lite import score_candidates as bm25_score_candidates
 from agent.schemas import (
     GroundingPack,
     RetrievalChunk,
@@ -88,6 +89,22 @@ async def _execute_retrieve(payload: Dict[str, Any]) -> Dict[str, Any]:
         top_k = 10
 
     metadata_filters = inputs.get("metadata_filters") or inputs.get("metadataFilters") or {}
+    semantic_weight = inputs.get("semanticWeight") or inputs.get("semantic_weight")
+    if semantic_weight is None:
+        semantic_weight = 0.5
+    try:
+        semantic_weight = float(semantic_weight)
+        semantic_weight = max(0.0, min(1.0, semantic_weight))
+    except (TypeError, ValueError):
+        semantic_weight = 0.5
+    bm25_top_n = inputs.get("bm25TopN") or inputs.get("bm25_top_n")
+    if bm25_top_n is not None:
+        try:
+            bm25_top_n = max(1, min(100, int(bm25_top_n)))
+        except (TypeError, ValueError):
+            bm25_top_n = 50
+    else:
+        bm25_top_n = 50
 
     request_id = payload.get("request_id", "unknown")
 
@@ -128,6 +145,8 @@ async def _execute_retrieve(payload: Dict[str, Any]) -> Dict[str, Any]:
             },
         }
 
+    semantic_k = min(100, max(bm25_top_n, top_k))
+
     # Run query in thread to avoid blocking (chromadb is sync)
     import asyncio
     loop = asyncio.get_event_loop()
@@ -136,33 +155,83 @@ async def _execute_retrieve(payload: Dict[str, Any]) -> Dict[str, Any]:
         lambda: chroma_query(
             collection_name=collection_name,
             query_text=query_text,
-            k=top_k,
+            k=semantic_k,
             where=where if where else None,
         ),
     )
 
-    chunks: List[RetrievalChunk] = []
-    citations: List[str] = []
-    sources: List[Dict[str, Any]] = []
+    if not hits:
+        retrieval_trace = RetrievalTrace(
+            stages=["semantic"],
+            semantic_k=semantic_k,
+            bm25_k=None,
+            rerank_k=None,
+        )
+        grounding = GroundingPack(
+            chunks=[],
+            citations=[],
+            retrieval_trace=retrieval_trace,
+            sources=[],
+            span_refs=[],
+        )
+        return {
+            "status": "ok",
+            "request_id": request_id,
+            "outputs": {
+                "groundingPack": grounding.model_dump(),
+                "chunk_count": 0,
+                "citation_count": 0,
+            },
+            "artifacts": [],
+            "provenance": {"retrieval": "chroma", "collection": collection_name},
+            "usage": {},
+            "grounding": grounding,
+        }
 
+    bm25_raw = bm25_score_candidates(
+        query_text, [(h.id, h.document or "") for h in hits]
+    )
+    bm25_max = max(bm25_raw.values()) if bm25_raw else 1e-9
+    bm25_norm: Dict[str, float] = {
+        cid: (s / bm25_max if bm25_max > 0 else 0.0) for cid, s in bm25_raw.items()
+    }
+
+    scored: List[Any] = []
     for h in hits:
-        doc_id = (h.metadata.get("doc_id") or h.metadata.get("document_id") or h.id)
+        blended = semantic_weight * h.score + (1.0 - semantic_weight) * bm25_norm.get(
+            h.id, 0.0
+        )
+        scored.append((blended, h))
+
+    scored.sort(key=lambda x: (-x[0], x[1].id))
+    top_scored = scored[:top_k]
+
+    chunks = []
+    citations = []
+    sources = []
+    for blended, h in top_scored:
+        doc_id = (
+            h.metadata.get("doc_id") or h.metadata.get("document_id") or h.id
+        )
+        meta = dict(h.metadata)
+        meta["semanticScore"] = h.score
+        meta["bm25Score"] = bm25_raw.get(h.id, 0.0)
         chunks.append(
             RetrievalChunk(
                 chunk_id=h.id,
                 doc_id=doc_id,
                 text=h.document or "",
-                score=h.score,
-                metadata=dict(h.metadata),
+                score=blended,
+                metadata=meta,
             )
         )
         citations.append(h.id)
         sources.append({"id": h.id, "doc_id": doc_id, "text": (h.document or "")[:500]})
 
     retrieval_trace = RetrievalTrace(
-        stages=["semantic"],
-        semantic_k=top_k,
-        bm25_k=None,
+        stages=["semantic", "bm25"],
+        semantic_k=semantic_k,
+        bm25_k=top_k,
         rerank_k=None,
     )
 
