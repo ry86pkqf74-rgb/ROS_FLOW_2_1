@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-discussion-writer-response",
+  "title": "agent-discussion-writer response",
+  "description": "IMRaD Discussion section writer output.",
+  "allOf": [{ "$ref": "_base_envelope.json" }],
+  "properties": {
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "sectionMarkdown": { "type": "string" },
+        "claimsWithEvidence": { "type": "array" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "overallPass": { "type": "boolean" }
+      }
+    }
+  }
+}
