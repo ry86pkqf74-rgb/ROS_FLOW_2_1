@@ -68,7 +68,9 @@
   "exclude": [
     "node_modules",
     "**/node_modules",
-    "node_modules/.pnpm/**/node_modules/@researchflow/*/**",
+    "node_modules/.pnpm/**",
+    "**/node_modules/.pnpm/**",
+    "node_modules/.pnpm/**/node_modules/@researchflow/**",
     "**/dist",
     "services/web",
     "packages/cli",
