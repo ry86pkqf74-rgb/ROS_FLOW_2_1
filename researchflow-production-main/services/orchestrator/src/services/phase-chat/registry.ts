@@ -199,6 +199,39 @@ const AGENT_REGISTRY: Record<string, PhaseAgentDefinition> = {
     taskType: 'summarize',
     knowledgeBase: 'research_papers',
   },
+  'rag-ingest': {
+    id: 'rag-ingest',
+    name: 'RAG Ingest Agent',
+    description: 'Ingests documents into the knowledge base for retrieval',
+    modelTier: 'MINI',
+    phiScanRequired: true,
+    maxTokens: 2048,
+    taskType: 'extract_metadata',
+    knowledgeBase: 'research_papers',
+    stageHints: ['chunking', 'embedding', 'indexing'],
+  },
+  'rag-retrieve': {
+    id: 'rag-retrieve',
+    name: 'RAG Retrieve Agent',
+    description: 'Retrieves relevant context from the knowledge base',
+    modelTier: 'MINI',
+    phiScanRequired: false,
+    maxTokens: 4096,
+    taskType: 'summarize',
+    knowledgeBase: 'research_papers',
+    stageHints: ['semantic search', 'context assembly'],
+  },
+  verify: {
+    id: 'verify',
+    name: 'Verify Agent',
+    description: 'Verifies outputs and runs quality checks',
+    modelTier: 'FRONTIER',
+    phiScanRequired: true,
+    maxTokens: 8192,
+    taskType: 'policy_check',
+    knowledgeBase: 'clinical_guidelines',
+    stageHints: ['QC', 'consistency', 'compliance'],
+  },
 };
 
 export const STAGE_DESCRIPTIONS: Record<number, string> = {
@@ -225,7 +258,7 @@ export const STAGE_DESCRIPTIONS: Record<number, string> = {
 };
 
 export const STAGE_TO_AGENTS: Record<number, string[]> = {
-  1: ['data-extraction'],
+  1: ['data-extraction', 'rag-ingest'],
   2: ['data-validation', 'data-extraction'],
   3: ['variable-identification', 'data-extraction'],
   4: ['cohort-definition', 'variable-identification'],
@@ -234,7 +267,7 @@ export const STAGE_TO_AGENTS: Record<number, string[]> = {
   7: ['statistical-analysis', 'model-builder'],
   8: ['model-builder', 'statistical-analysis'],
   9: ['results-interpreter', 'statistical-analysis'],
-  10: ['results-interpreter', 'model-builder'],
+  10: ['results-interpreter', 'model-builder', 'rag-retrieve', 'verify'],
   11: ['introduction-writer', 'manuscript-drafting'],
   12: ['methods-writer', 'manuscript-drafting'],
   13: ['results-writer', 'manuscript-drafting'],
