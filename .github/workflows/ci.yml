@@ -14,12 +14,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
-        with:
-          config: researchflow-production-main/security/gitleaks.toml
-          args: --redact --verbose
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lint-typecheck-test:
     name: Lint, typecheck & test
