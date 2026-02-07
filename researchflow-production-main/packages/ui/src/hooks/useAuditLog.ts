@@ -244,7 +244,7 @@ export function useAuditLog(options: UseAuditLogOptions = {}): UseAuditLogState 
     if (autoFetch) {
       fetchEntries();
     }
-  }, [autoFetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoFetch]);
 
   return {
     ...state,
