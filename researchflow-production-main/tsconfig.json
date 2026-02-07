@@ -68,6 +68,6 @@
     "tests/integration/standby-mode.test.ts",
     "tests/utils/test-app.ts",
     "tests/e2e/mocks/**/*",
-    "packages/manuscript-engine/src/services/__tests__/**/*"
+    "packages/manuscript-engine/src/services/__tests__/**/*","tests/e2e/visualization-workflow.test.ts","tests/integration/visualization.test.ts","tests/unit/services/figures.service.test.ts"
   ]
 }

@@ -10,8 +10,8 @@
  * Provides batch scanning, risk assessment, and contextual analysis.
  */
 
-import type { PhiFinding, PhiScanner, RiskLevel, ScanContext } from './types';
 import { RegexPhiScanner } from './regex-scanner';
+import type { PhiFinding, PhiScanner, RiskLevel, ScanContext } from './types';
 
 /**
  * Result of scanning a single snippet

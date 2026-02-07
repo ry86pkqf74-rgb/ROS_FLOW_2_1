@@ -5,6 +5,7 @@
  *
  * @packageDocumentation
  */
+/* eslint-disable @typescript-eslint/no-require-imports -- dynamic lazy loading */
 
 // Types
 export * from './src/types';

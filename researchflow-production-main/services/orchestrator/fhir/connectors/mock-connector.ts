@@ -12,6 +12,7 @@
  */
 
 import { FHIRObservation, FHIRPatient } from '../types';
+
 import {
   SMARTConnector,
   ROSMode,

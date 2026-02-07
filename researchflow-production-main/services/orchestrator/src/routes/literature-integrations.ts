@@ -3,12 +3,13 @@
  * Routes for Zotero reference manager sync and other literature integrations
  */
 
+import { orgIntegrations } from '@researchflow/core/types/schema';
+import { ZoteroService, zoteroService } from '@researchflow/manuscript-engine/services';
+import { eq, and } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { ZoteroService, zoteroService } from '@researchflow/manuscript-engine/services';
+
 import { db } from '../../db';
-import { orgIntegrations } from '@researchflow/core/types/schema';
-import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../middleware/governance';
 import { resolveOrgContext, requireOrgMember } from '../middleware/org-context';
 

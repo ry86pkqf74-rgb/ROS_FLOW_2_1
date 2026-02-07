@@ -9,13 +9,14 @@
  */
 
 import crypto from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
-import { containsPhi } from '@researchflow/phi-engine';
+
 import type {
   RunManifest,
   ManifestEntry,
   RuntimeConfigSnapshot,
 } from "@researchflow/core/types/run-manifest"
+import { containsPhi } from '@researchflow/phi-engine';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Generates stable JSON string with sorted keys for deterministic hashing

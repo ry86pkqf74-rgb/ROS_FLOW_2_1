@@ -6,7 +6,9 @@
  */
 
 import crypto from 'crypto';
+
 import type { Request, Response } from 'express';
+
 import { createAuditEntry } from '../services/auditService.js';
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;

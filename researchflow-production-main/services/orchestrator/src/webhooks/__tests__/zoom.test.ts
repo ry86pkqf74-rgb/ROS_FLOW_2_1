@@ -2,8 +2,10 @@
  * Zoom Webhook Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { verifyZoomSignature } from '../zoom.js';
 
 describe('Zoom Webhook', () => {

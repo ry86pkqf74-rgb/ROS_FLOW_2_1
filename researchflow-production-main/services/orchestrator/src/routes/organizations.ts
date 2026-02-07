@@ -14,16 +14,23 @@
  * Enhanced with application-level role checks for sensitive operations
  */
 
-import { Router, Request, Response } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { db } from "../../db";
 import {
   organizations,
   orgMemberships,
   users,
   researchProjects,
 } from "@researchflow/core/schema";
+import {
+  createOrganizationSchema,
+  updateOrganizationSchema,
+  OrgRole,
+} from "@researchflow/core/types/organization";
+import { eq, and, desc } from "drizzle-orm";
+import { Router, Request, Response } from "express";
+
+import { db } from "../../db";
 import { asyncHandler } from "../middleware/asyncHandler";
+import { requireAuth as isAuthenticated } from "../middleware/auth.js";
 import {
   resolveOrgContext,
   requireOrgMember,
@@ -31,14 +38,8 @@ import {
   requireOrgCapability,
   requireOrgId,
 } from "../middleware/org-context";
-import {
-  createOrganizationSchema,
-  updateOrganizationSchema,
-  OrgRole,
-} from "@researchflow/core/types/organization";
-import { logAction } from "../services/audit-service";
-import { requireAuth as isAuthenticated } from "../middleware/auth.js";
 import { protect, logAuditEvent } from "../middleware/rbac";
+import { logAction } from "../services/audit-service";
 
 const router = Router();
 

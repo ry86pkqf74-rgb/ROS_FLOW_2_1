@@ -4,13 +4,14 @@
  * API endpoints for managing target publication/presentation venues.
  */
 
-import express, { type Request, type Response } from 'express';
-import { db } from '../../lib/db.js';
 import { venues, type Venue } from '@researchflow/core/schema';
-import { requirePermission, requireRole } from '../../middleware/rbac.js';
-import { blockInStandby } from '../../middleware/governance-gates.js';
-import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { eq, and } from 'drizzle-orm';
+import express, { type Request, type Response } from 'express';
+
+import { db } from '../../lib/db.js';
+import { asyncHandler } from '../../middleware/asyncHandler.js';
+import { blockInStandby } from '../../middleware/governance-gates.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { createAuditEntry } from '../../services/auditService.js';
 
 const router = express.Router();

@@ -8,11 +8,12 @@
  * Provides validation, progress tracking, and export functionality
  */
 
-import { Router, Request, Response } from 'express';
-import { v4 as uuid } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+
+import { Router, Request, Response } from 'express';
 import yaml from 'js-yaml';
+import { v4 as uuid } from 'uuid';
 
 // Types for checklist management
 interface ChecklistItem {

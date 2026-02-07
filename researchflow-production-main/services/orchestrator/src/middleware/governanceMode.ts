@@ -9,6 +9,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+
 import { getGovernanceState } from '../routes/governance.js';
 
 export type GovernanceMode = 'DEMO' | 'LIVE';

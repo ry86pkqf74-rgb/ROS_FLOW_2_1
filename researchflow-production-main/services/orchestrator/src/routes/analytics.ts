@@ -8,12 +8,13 @@
  * @module routes/analytics
  */
 
-import { Router, type Request, type Response } from 'express';
-import { db } from '../../db';
 import { userConsents } from '@researchflow/core/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { requireRole } from '../middleware/rbac';
+import { Router, type Request, type Response } from 'express';
+
+import { db } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requireRole } from '../middleware/rbac';
 import { analyticsService, type AnalyticsEventInput } from '../services/analytics.service';
 
 const router = Router();

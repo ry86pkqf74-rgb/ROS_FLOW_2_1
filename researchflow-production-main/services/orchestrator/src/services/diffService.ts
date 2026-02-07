@@ -4,12 +4,15 @@
  * Computes text diffs between artifact versions using diff-match-patch.
  * Supports PHI-safe diff summaries (no raw text in responses).
  */
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import { artifactVersions, artifactComparisons } from "@researchflow/core/schema";
+import { hasPhi } from "@researchflow/phi-engine";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { hasPhi } from "@researchflow/phi-engine";
-import { createHash } from "crypto";
+
+import { db } from "../../db";
+
 
 // diff-match-patch implementation
 interface DiffOp {

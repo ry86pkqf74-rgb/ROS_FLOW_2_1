@@ -157,7 +157,7 @@ export class ConferenceFinderService {
   async searchConferences(input: ConferenceSearchInput): Promise<Conference[]> {
     const { keywords, field, startDate, endDate, maxResults = 10 } = input;
 
-    let results = this.staticConferences.filter(conf => {
+    const results = this.staticConferences.filter(conf => {
       // Filter by date range
       if (startDate && conf.conferenceDate < startDate) return false;
       if (endDate && conf.conferenceDate > endDate) return false;

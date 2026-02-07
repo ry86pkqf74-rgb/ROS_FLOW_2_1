@@ -2,9 +2,10 @@
  * Chat Repository - Database operations for chat sessions, messages, and actions
  */
 
-import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+
+import { db } from '../../db';
 
 // Types
 export interface ChatSession {

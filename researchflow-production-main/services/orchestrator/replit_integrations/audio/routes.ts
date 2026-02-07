@@ -1,5 +1,7 @@
 import type { Express, Request, Response } from "express";
+
 import { chatStorage } from "../chat/storage";
+
 import { openai, speechToText, voiceChatWithTextModel } from "./client";
 
 export function registerAudioRoutes(app: Express): void {

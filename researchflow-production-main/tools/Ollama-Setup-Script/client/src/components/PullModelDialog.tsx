@@ -1,5 +1,7 @@
+import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { usePullModel } from "@/hooks/use-ollama";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Loader2 } from "lucide-react";
+import { usePullModel } from "@/hooks/use-ollama";
 
 export function PullModelDialog() {
   const [open, setOpen] = useState(false);

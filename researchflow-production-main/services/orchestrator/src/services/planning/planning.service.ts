@@ -5,8 +5,9 @@
  */
 
 import OpenAI from 'openai';
+
+import { config } from '../../config/env';
 import { planRepository } from '../../repositories/plan.repository';
-import { phiGate, PHIGateResult } from './phi-gate';
 import type {
   AnalysisPlan,
   AnalysisJob,
@@ -18,12 +19,13 @@ import type {
   PlanStage,
   JobEvent,
 } from '../../types/planning';
-import { config } from '../../config/env';
+
+import { phiGate, PHIGateResult } from './phi-gate';
 
 // Conditionally import Anthropic
 let Anthropic: typeof import('@anthropic-ai/sdk').default | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   Anthropic = require('@anthropic-ai/sdk').default;
 } catch {
   // Anthropic SDK not available

@@ -1,6 +1,7 @@
 import { users, type User, type UpsertUser } from "@researchflow/core/types/auth";
-import { db } from "../../db";
 import { eq } from "drizzle-orm";
+
+import { db } from "../../db";
 
 // Interface for auth storage operations
 // (IMPORTANT) These user operations are mandatory for Replit Auth.

@@ -11,9 +11,10 @@
  */
 
 import { Router, Request, Response } from 'express';
+
 import { asyncHandler } from '../middleware/asyncHandler';
-import { getMfaService, isMfaEnabled } from '../services/mfa-service';
 import { logAction } from '../services/audit-service';
+import { getMfaService, isMfaEnabled } from '../services/mfa-service';
 
 const router = Router();
 

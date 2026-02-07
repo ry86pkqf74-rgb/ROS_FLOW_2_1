@@ -6,12 +6,15 @@
  * - Evidence linking with location-only storage
  * - Coverage reporting by section
  */
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import { claims, claimEvidenceLinks, artifacts } from "@researchflow/core/schema";
+import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
-import { createHash } from "crypto";
+
+import { db } from "../../db";
+
 
 export type ClaimStatus = 'draft' | 'verified' | 'disputed' | 'retracted';
 export type EvidenceType = 'citation' | 'data_artifact' | 'figure' | 'table' | 'external_url';
@@ -149,7 +152,7 @@ export async function getClaimsForManuscript(
     includeEvidence?: boolean;
   }
 ): Promise<any[]> {
-  let query = db
+  const query = db
     .select()
     .from(claims)
     .where(and(

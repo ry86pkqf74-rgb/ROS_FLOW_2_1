@@ -5,11 +5,14 @@
  * Implements blockchain-style verification of frozen documents.
  */
 
-import { db } from '../../lib/db.js';
+import crypto from 'crypto';
+
 import { topicBriefs, docAnchors, type DocAnchor } from '@researchflow/core/schema';
 import { eq, desc } from 'drizzle-orm';
+
+import { db } from '../../lib/db.js';
 import { createAuditEntry } from '../auditService.js';
-import crypto from 'crypto';
+
 
 export class ScopeFreezeService {
   /**

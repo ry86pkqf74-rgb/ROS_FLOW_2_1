@@ -4,8 +4,9 @@
  * Or: k6 run --vus 10 --duration 60m scenarios/soak-test.js
  */
 
-import http from 'k6/http';
 import { check, sleep, group } from 'k6';
+import http from 'k6/http';
+
 import { getAuthHeaders } from '../lib/auth.js';
 import { getStages, completeStage } from '../lib/workflow.js';
 

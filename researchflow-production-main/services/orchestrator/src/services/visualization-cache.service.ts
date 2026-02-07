@@ -6,10 +6,12 @@
  * compression, TTL, and cache warming capabilities.
  */
 
-import Redis from 'ioredis';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import { gzip, gunzip } from 'zlib';
+
+import Redis from 'ioredis';
+
 import { visualizationConfig } from '../config/visualization.config';
 import { createLogger } from '../utils/logger';
 

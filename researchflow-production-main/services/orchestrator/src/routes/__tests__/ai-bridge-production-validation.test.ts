@@ -4,10 +4,12 @@
  * Comprehensive validation of the production-ready AI Bridge system
  */
 
-import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import request from 'supertest';
+import { test, describe } from 'node:test';
+
 import express from 'express';
+import request from 'supertest';
+
 import aiBridgeRoutes from '../ai-bridge';
 
 // Create production-like test app

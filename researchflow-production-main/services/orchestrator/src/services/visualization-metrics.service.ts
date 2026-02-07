@@ -7,10 +7,12 @@
  */
 
 import { Registry, Counter, Histogram, Gauge, Summary } from 'prom-client';
+
 import { visualizationConfig } from '../config/visualization.config';
-import { createLogger } from '../utils/logger';
-import { visualizationCache } from './visualization-cache.service';
 import { pool } from '../db';
+import { createLogger } from '../utils/logger';
+
+import { visualizationCache } from './visualization-cache.service';
 
 const logger = createLogger('visualization-metrics');
 

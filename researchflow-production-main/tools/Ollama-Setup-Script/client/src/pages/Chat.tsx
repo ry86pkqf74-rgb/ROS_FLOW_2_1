@@ -1,8 +1,3 @@
-import { useState, useEffect, useRef } from "react";
-import { useLocation, useRoute } from "wouter";
-import { useSessions, useSession, useCreateSession, useCreateMessage } from "@/hooks/use-sessions";
-import { useChat, useOllamaModels } from "@/hooks/use-ollama";
-import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
 import { 
   Send, 
@@ -14,7 +9,17 @@ import {
   Trash2,
   MoreVertical 
 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import { useLocation, useRoute } from "wouter";
+
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -24,12 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useChat, useOllamaModels } from "@/hooks/use-ollama";
+import { useSessions, useSession, useCreateSession, useCreateMessage } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 
 // --- Subcomponents ---

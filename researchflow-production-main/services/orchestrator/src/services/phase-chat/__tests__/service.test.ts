@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PhaseChatService } from '../service';
-import { chatRepository } from '../../../repositories/chat.repository';
 import type { AIRouterResponse } from '@researchflow/ai-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { chatRepository } from '../../../repositories/chat.repository';
+import { PhaseChatService } from '../service';
 
 class FakeRouter {
   route = vi.fn(async () => ({

@@ -7,12 +7,13 @@
  * Endpoint: POST /api/ai/extraction/generate
  */
 
+import { scan } from '@researchflow/phi-engine';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
 import { generateStructured } from '../../llm-router';
-import { logAction } from '../services/audit-service';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { scan } from '@researchflow/phi-engine';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 

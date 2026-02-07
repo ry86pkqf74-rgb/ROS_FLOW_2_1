@@ -4,11 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import type { GrammarCheckResult, GrammarIssue } from '../../types';
 import {
   GrammarCheckerService,
   getGrammarChecker,
 } from '../grammar-checker.service';
-import type { GrammarCheckResult, GrammarIssue } from '../../types';
 
 // Mock the AI router
 const mockRoute = vi.fn();

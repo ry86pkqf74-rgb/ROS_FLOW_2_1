@@ -6,8 +6,9 @@
  * otherwise verifies JWT.
  */
 
-import { Request, Response, NextFunction } from 'express';
 import type { User as CoreUser } from '@researchflow/core';
+import { Request, Response, NextFunction } from 'express';
+
 import { requireAuth as authServiceRequireAuth } from '../services/authService.js';
 
 // Mock user for development when ALLOW_MOCK_AUTH=true

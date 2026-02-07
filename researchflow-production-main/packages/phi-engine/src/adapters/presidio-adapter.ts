@@ -7,8 +7,8 @@
  * IMPORTANT: Never returns matched text values, only types and offsets.
  */
 
-import type { PhiFinding, PhiScanner, RiskLevel } from '../types';
 import { RegexPhiScanner } from '../regex-scanner';
+import type { PhiFinding, PhiScanner, RiskLevel } from '../types';
 
 /**
  * Presidio analyzer request format

@@ -19,6 +19,7 @@
  */
 
 import { test, expect, Page, APIRequestContext } from '@playwright/test';
+
 import { CostCollector, createCostCollector } from './helpers';
 
 // =============================================================================

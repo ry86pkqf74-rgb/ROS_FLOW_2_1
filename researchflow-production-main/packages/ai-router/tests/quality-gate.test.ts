@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { QualityGateService } from '../src/quality-gate.service';
 
 describe('QualityGateService', () => {

@@ -5,8 +5,10 @@
  * Handles async plan generation and execution jobs.
  */
 
-import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 import { EventEmitter } from 'events';
+
+import { Queue, Worker, Job, QueueEvents } from 'bullmq';
+
 import { planningService } from './planning.service';
 
 // Redis connection config from environment

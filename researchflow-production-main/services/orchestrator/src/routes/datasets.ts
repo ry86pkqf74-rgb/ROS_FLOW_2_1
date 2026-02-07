@@ -7,20 +7,20 @@
  * Priority: P0 - CRITICAL (Phase 2 Integration)
  */
 
+import { approvalGates } from '@researchflow/core/schema';
+import { DatasetMetadata } from "@researchflow/core/types/classification";
+import { eq, and } from 'drizzle-orm';
 import { Router } from 'express';
-import { requirePermission } from '../middleware/rbac.js';
+
+import { db } from '../../db.js';
+import { blockDataUploadInDemo } from '../../middleware/mode-guard.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import {
   blockInStandby,
   enforceRateLimit
 } from '../middleware/governance-gates.js';
-import { blockDataUploadInDemo } from '../../middleware/mode-guard.js';
-import { detectPhiFields, calculateRiskScore } from '../services/phi-protection.js';
+import { requirePermission } from '../middleware/rbac.js';
 import { createAuditEntry } from '../services/auditService.js';
-import { DatasetMetadata } from "@researchflow/core/types/classification";
-import { approvalGates } from '@researchflow/core/schema';
-import { eq, and } from 'drizzle-orm';
-import { db } from '../../db.js';
 import {
   getDatasets,
   getDatasetById,
@@ -28,6 +28,7 @@ import {
   updateDataset,
   deleteDataset as deleteDatasetFromDb,
 } from '../services/datasets-persistence.service.js';
+import { detectPhiFields, calculateRiskScore } from '../services/phi-protection.js';
 
 const router = Router();
 

@@ -11,8 +11,9 @@
  * - Update compaction to reduce storage
  */
 
-import { db } from '../lib/db';
 import * as Y from 'yjs';
+
+import { db } from '../lib/db';
 
 export class YjsPersistence {
   /**

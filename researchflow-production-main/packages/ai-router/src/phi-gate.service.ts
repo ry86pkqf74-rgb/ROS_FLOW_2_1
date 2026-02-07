@@ -6,6 +6,7 @@
  */
 
 import { PHI_PATTERNS, scrubLog, containsPhi, getPhiStats } from '@researchflow/phi-engine';
+
 import type { AIPhiScanResult } from './types';
 
 /**

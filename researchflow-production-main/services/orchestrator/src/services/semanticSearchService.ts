@@ -5,9 +5,10 @@
  * Enables conceptual search beyond keyword matching.
  */
 
-import { db } from '../../db';
 import { artifacts, artifactEmbeddings } from '@researchflow/core/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
+
+import { db } from '../../db';
 
 interface SemanticSearchOptions {
   orgId: string;

@@ -5,20 +5,21 @@
  * Implements Tasks 41-42: PubMed, Semantic Scholar, arXiv search with Redis cache.
  */
 
-import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler.js';
-import { requirePermission } from '../middleware/rbac.js';
-import { createAuditEntry } from '../services/auditService.js';
-import { RedisCacheService, getCacheService } from '../services/redis-cache.js';
-import { getPubMedClient } from '../clients/pubmed.js';
-import { getSemanticScholarClient } from '../clients/semantic-scholar.js';
-import { getArxivClient } from '../clients/arxiv.js';
 import type {
   LiteratureItem,
   LiteratureSearchRequest,
   LiteratureSearchResponse,
   LiteratureProvider,
 } from '@researchflow/core';
+import { Router } from 'express';
+
+import { getArxivClient } from '../clients/arxiv.js';
+import { getPubMedClient } from '../clients/pubmed.js';
+import { getSemanticScholarClient } from '../clients/semantic-scholar.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { requirePermission } from '../middleware/rbac.js';
+import { createAuditEntry } from '../services/auditService.js';
+import { RedisCacheService, getCacheService } from '../services/redis-cache.js';
 
 const router = Router();
 

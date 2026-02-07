@@ -5,9 +5,10 @@
  * Auto-generates required documents based on venue type.
  */
 
-import { db } from '../../lib/db.js';
 import { docKits, docKitItems, venues, type DocKit, type DocKitItem } from '@researchflow/core/schema';
 import { eq, and, sql } from 'drizzle-orm';
+
+import { db } from '../../lib/db.js';
 import { createAuditEntry } from '../auditService.js';
 
 export class DocKitsService {

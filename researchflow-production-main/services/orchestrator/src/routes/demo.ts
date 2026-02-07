@@ -6,13 +6,13 @@
  * Returns simulated/stub data OR calls worker with demo flag.
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import {
   ManuscriptIdeationInputSchema,
   ManuscriptProposalSchema,
   type ManuscriptProposal
 } from '@packages/core/types';
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 
 const router = Router();
 

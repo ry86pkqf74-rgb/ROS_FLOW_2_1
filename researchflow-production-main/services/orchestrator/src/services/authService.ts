@@ -13,17 +13,18 @@
  * @module services/authService
  */
 
-import { z } from 'zod';
 import crypto from 'crypto';
+
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { JwtPayload } from 'jsonwebtoken';
+import { z } from 'zod';
 
 // Import jwt and bcrypt from wrapper module
 // This bypasses tsx module resolution issues with CommonJS packages
-import { jwt, bcrypt } from '../../lib/crypto-deps.js';
 
 // Import database connection
 import { pool } from '../../db.js';
+import { jwt, bcrypt } from '../../lib/crypto-deps.js';
 
 // JWT config (RS256)
 import { jwtConfig } from '../config/jwt.js';

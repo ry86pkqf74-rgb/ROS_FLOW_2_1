@@ -5,10 +5,11 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
-import { WorkflowPage, TOTAL_STAGES, PHI_REQUIRED_STAGES } from './pages/workflow.page';
 import { BasePage } from './pages/base.page';
+import { WorkflowPage, TOTAL_STAGES, PHI_REQUIRED_STAGES } from './pages/workflow.page';
 
 test.describe('Workflow Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,7 +25,7 @@ test.describe('Workflow Navigation', () => {
 
     // Try workflow page first
     await page.goto('/workflow');
-    let basePage = new BasePage(page);
+    const basePage = new BasePage(page);
     await basePage.waitForModeToResolve();
 
     // Count stage elements

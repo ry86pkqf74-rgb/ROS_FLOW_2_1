@@ -10,11 +10,13 @@
  * - File type handling
  */
 
+import * as path from 'path';
+
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
 import { BasePage } from './pages/base.page';
-import * as path from 'path';
 
 test.describe('VAL-003: Artifact Browser', () => {
   test.beforeEach(async ({ page }) => {

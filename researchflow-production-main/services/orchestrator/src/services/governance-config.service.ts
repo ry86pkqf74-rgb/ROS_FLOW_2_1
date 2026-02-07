@@ -8,9 +8,11 @@
  * @module services/governance-config.service
  */
 
-import { db } from '../../db';
 import { governanceConfig, users, type GovernanceMode, GOVERNANCE_MODES } from '@researchflow/core/schema';
 import { eq } from 'drizzle-orm';
+
+import { db } from '../../db';
+
 import { logAction } from './audit-service';
 import { eventBus } from './event-bus';
 

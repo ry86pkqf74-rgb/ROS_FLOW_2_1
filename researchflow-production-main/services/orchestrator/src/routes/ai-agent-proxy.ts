@@ -12,14 +12,15 @@
  * Python AIRouterBridge (llm_bridge.py) → HTTP → This Route → ModelRouterService
  */
 
-import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
-import { logAction } from '../services/audit-service';
-import { requirePermission } from '../middleware/rbac';
-import { asyncHandler } from '../middleware/asyncHandler';
-import { getWorkerClient } from '../clients/workerClient';
 import { getModelRouter } from '@researchflow/ai-router';
 import type { AITaskType, ModelTier, QualityCheck } from '@researchflow/ai-router';
+import { Router, type Request, type Response } from 'express';
+import { z } from 'zod';
+
+import { getWorkerClient } from '../clients/workerClient';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 import { attachCostEnvelope } from '../utils/cost-envelope';
 
 const router = Router();

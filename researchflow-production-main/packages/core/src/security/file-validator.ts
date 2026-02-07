@@ -5,6 +5,7 @@
  */
 
 import * as path from 'path';
+
 import { SecurityError } from './errors';
 import { sanitizeFilename } from './path-sanitizer';
 

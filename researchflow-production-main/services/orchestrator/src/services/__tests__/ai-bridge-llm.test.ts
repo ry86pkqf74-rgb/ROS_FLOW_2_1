@@ -3,8 +3,9 @@
  * Verifies real provider execution path and non-mock response shape.
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+
 import { callRealLLMProvider } from '../ai-bridge-llm';
 
 const originalFetch = globalThis.fetch;

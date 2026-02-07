@@ -4,10 +4,12 @@
  * Basic validation test for AI Bridge endpoints
  */
 
-import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import request from 'supertest';
+import { test, describe } from 'node:test';
+
 import express from 'express';
+import request from 'supertest';
+
 import aiBridgeRoutes from '../ai-bridge';
 
 // Create simple test app

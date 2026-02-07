@@ -7,6 +7,7 @@
 
 import { Pool } from 'pg';
 import { z } from 'zod';
+
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('figures-service');

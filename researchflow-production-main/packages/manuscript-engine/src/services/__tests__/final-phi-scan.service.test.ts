@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { FinalPhiScanService } from '../final-phi-scan.service';
 import type { FinalScanResult, PhiDetection } from '../final-phi-scan.service';
 

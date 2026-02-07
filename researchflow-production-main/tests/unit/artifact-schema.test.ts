@@ -4,6 +4,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
+import { syntheticArtifacts, invalidArtifactPayloads, expectedArtifactTypes } from '../fixtures/synthetic-artifacts';
+
 import {
   artifactSchema,
   insertArtifactSchema,
@@ -11,7 +14,6 @@ import {
   insertArtifactVersionSchema,
   ARTIFACT_TYPES,
 } from '@packages/core/types/schema';
-import { syntheticArtifacts, invalidArtifactPayloads, expectedArtifactTypes } from '../fixtures/synthetic-artifacts';
 
 describe('Artifact Schema Validation', () => {
   describe('artifactSchema', () => {

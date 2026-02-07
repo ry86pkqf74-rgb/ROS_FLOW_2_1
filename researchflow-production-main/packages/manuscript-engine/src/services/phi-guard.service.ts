@@ -6,6 +6,7 @@
  */
 
 import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine';
+
 import type { PHIScanResult, ManuscriptAuditEntry } from '../types';
 
 export interface PhiGuardConfig {

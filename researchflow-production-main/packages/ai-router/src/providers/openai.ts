@@ -11,6 +11,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletion,
 } from 'openai/resources/chat/completions';
+
 import { logAIUsage, type AIUsageLogEntry } from '../notion/notionLogger';
 import type { AITaskType, ModelTier } from '../types';
 

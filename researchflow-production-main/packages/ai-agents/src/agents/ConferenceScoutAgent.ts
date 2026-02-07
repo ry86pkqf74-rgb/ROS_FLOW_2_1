@@ -5,10 +5,13 @@
  * Now integrated with Claude provider via ai-router for real AI responses.
  */
 
-import { BaseAgent } from './BaseAgent.js';
-import type { AgentInput, AgentOutput } from '../types/agent.types.js';
-import { AGENT_REGISTRY } from '../registry.js';
 import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router';
+
+import { AGENT_REGISTRY } from '../registry.js';
+import type { AgentInput, AgentOutput } from '../types/agent.types.js';
+
+import { BaseAgent } from './BaseAgent.js';
+
 
 export class ConferenceScoutAgent extends BaseAgent {
   constructor() {

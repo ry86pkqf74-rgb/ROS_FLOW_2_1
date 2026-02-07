@@ -6,30 +6,30 @@
  */
 
 // Import getter functions for initialization
-import { getPhiGuard } from './src/services/phi-guard.service';
-import { getDataMapper } from './src/services/data-mapper.service';
-import { getDataTagger } from './src/services/data-tagger.service';
-import { getVersionControl } from './src/services/version-control.service';
-import { getCitationManager } from './src/services/citation-manager.service';
-import { getExportService } from './src/services/export.service';
-import { getComplianceChecker } from './src/services/compliance-checker.service';
 
 // Import Phase 4 service classes
-import { OpenAIDrafterService } from './src/services/openai-drafter.service';
-import { ClaudeWriterService } from './src/services/claude-writer.service';
-import { GrammarCheckerService } from './src/services/grammar-checker.service';
-import { ClaimVerifierService } from './src/services/claim-verifier.service';
-import { TransitionSuggesterService } from './src/services/transition-suggester.service';
-import { ToneAdjusterService } from './src/services/tone-adjuster.service';
-import { SynonymFinderService } from './src/services/synonym-finder.service';
-import { MedicalNLPService } from './src/services/medical-nlp.service';
-import { ClarityAnalyzerService } from './src/services/clarity-analyzer.service';
-import { ParaphraseService } from './src/services/paraphrase.service';
-import { SentenceBuilderService } from './src/services/sentence-builder.service';
-import { ReadabilityService } from './src/services/readability.service';
 import { AbbreviationService } from './src/services/abbreviation.service';
+import { getCitationManager } from './src/services/citation-manager.service';
 import { CitationSuggesterService } from './src/services/citation-suggester.service';
 import { ClaimHighlighterService } from './src/services/claim-highlighter.service';
+import { ClaimVerifierService } from './src/services/claim-verifier.service';
+import { ClarityAnalyzerService } from './src/services/clarity-analyzer.service';
+import { ClaudeWriterService } from './src/services/claude-writer.service';
+import { getComplianceChecker } from './src/services/compliance-checker.service';
+import { getDataMapper } from './src/services/data-mapper.service';
+import { getDataTagger } from './src/services/data-tagger.service';
+import { getExportService } from './src/services/export.service';
+import { GrammarCheckerService } from './src/services/grammar-checker.service';
+import { MedicalNLPService } from './src/services/medical-nlp.service';
+import { OpenAIDrafterService } from './src/services/openai-drafter.service';
+import { ParaphraseService } from './src/services/paraphrase.service';
+import { getPhiGuard } from './src/services/phi-guard.service';
+import { ReadabilityService } from './src/services/readability.service';
+import { SentenceBuilderService } from './src/services/sentence-builder.service';
+import { SynonymFinderService } from './src/services/synonym-finder.service';
+import { ToneAdjusterService } from './src/services/tone-adjuster.service';
+import { TransitionSuggesterService } from './src/services/transition-suggester.service';
+import { getVersionControl } from './src/services/version-control.service';
 
 // ============================================================================
 // PHASE 1: Data Integration & PHI Protection (DEPLOYED ✅)

@@ -5,10 +5,11 @@
  * Replaces in-memory mockDatasets array for production use.
  */
 
-import { db } from '../../db';
 import { datasets } from '@researchflow/core/schema';
-import { eq, ilike, and, sql } from 'drizzle-orm';
 import { DatasetMetadata } from '@researchflow/core/types/classification';
+import { eq, ilike, and, sql } from 'drizzle-orm';
+
+import { db } from '../../db';
 
 // In-memory fallback with seed data for when DB is unavailable
 const mockDatasets: DatasetMetadata[] = [

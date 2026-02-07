@@ -1,7 +1,8 @@
+import type { User as CoreUser } from "@researchflow/core";
 import { Router, Request, Response, NextFunction } from "express";
+
 import { jwt } from "../../lib/crypto-deps.js";
 import { jwtConfig } from "../config/jwt.js";
-import type { User as CoreUser } from "@researchflow/core";
 
 function devAuthEnabled() {
   return !process.env.REPL_ID && process.env.ENABLE_DEV_AUTH === "true";

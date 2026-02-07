@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
+
 import type { Request, Response, NextFunction } from 'express';
+
 import { logger } from './logger.js';
 
 export const TRACE_HEADER = 'x-correlation-id';
@@ -10,7 +12,7 @@ export interface TraceContext {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __rfTrace: { correlationId: string } | undefined;
 }
 

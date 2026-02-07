@@ -19,7 +19,7 @@ import './index.ts';
 // For now we provide a direct capture test when the process starts (optional).
 if ((process.env.SENTRY_STARTUP_SMOKE_TEST ?? 'false').toLowerCase() === 'true') {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+     
     (globalThis as any).___sentry_smoke_test___();
   } catch (e) {
     Sentry.captureException(e);

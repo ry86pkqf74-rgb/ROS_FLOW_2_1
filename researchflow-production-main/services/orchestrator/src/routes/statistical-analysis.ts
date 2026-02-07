@@ -13,10 +13,11 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
 import { config } from '../config/env';
-import { logAction } from '../services/audit-service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 import { createLogger } from '../utils/logger';
 
 const router = Router();

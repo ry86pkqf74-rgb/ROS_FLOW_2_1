@@ -28,17 +28,20 @@
  * @module routes/papers
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { db } from '../../db';
-import { sql, eq, desc, and, ilike, or } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
-import multer from 'multer';
-import path from 'path';
 import fs from 'fs/promises';
-import { protect, requirePermission } from '../middleware/rbac';
+import path from 'path';
+
+import { sql, eq, desc, and, ilike, or } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import { nanoid } from 'nanoid';
+import { z } from 'zod';
+
+import { db } from '../../db';
 import { requireAuth } from '../middleware/auth.js';
+import { protect, requirePermission } from '../middleware/rbac';
+
 import annotationsRouter from './paper-annotations';
 import copilotRouter from './paper-copilot';
 

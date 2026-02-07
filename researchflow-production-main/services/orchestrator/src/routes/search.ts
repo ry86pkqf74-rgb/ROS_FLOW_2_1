@@ -7,9 +7,10 @@
  */
 
 import { Router, Request, Response } from "express";
+
 import { asyncHandler } from "../middleware/asyncHandler";
-import { resolveOrgContext, requireOrgMember } from "../middleware/org-context";
 import { requireAuth as isAuthenticated } from "../middleware/auth.js";
+import { resolveOrgContext, requireOrgMember } from "../middleware/org-context";
 import {
   searchAll,
   searchArtifacts,

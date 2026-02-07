@@ -6,6 +6,7 @@
  */
 
 import { setupWorker } from 'msw/browser';
+
 import { handlers, resetMockState, setMockUser, setMockMode, addPendingApproval } from './handlers';
 
 /**

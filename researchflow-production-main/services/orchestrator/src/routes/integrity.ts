@@ -23,10 +23,11 @@
  * @module routes/integrity
  */
 
+import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
 import { db } from '../../db';
-import { sql } from 'drizzle-orm';
 
 const router = Router();
 

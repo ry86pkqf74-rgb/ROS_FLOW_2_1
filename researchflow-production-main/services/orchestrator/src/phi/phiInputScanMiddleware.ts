@@ -7,8 +7,9 @@
  * - LIVE mode: Return 422 error
  */
 
-import { Request, Response, NextFunction } from 'express';
 import { containsPhi, getPhiStats, scrubLog } from '@researchflow/phi-engine';
+import { Request, Response, NextFunction } from 'express';
+
 import { logAction } from '../services/audit-service';
 import { getMode } from '../services/governance-config.service';
 

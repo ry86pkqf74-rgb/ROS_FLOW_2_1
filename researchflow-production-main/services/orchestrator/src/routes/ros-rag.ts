@@ -9,6 +9,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
+
 import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();

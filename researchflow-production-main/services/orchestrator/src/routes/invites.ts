@@ -9,19 +9,21 @@
  * - POST /api/invites/accept - Accept invite
  */
 
-import { Router, Request, Response } from "express";
-import { eq } from "drizzle-orm";
-import { db } from "../../db";
 import { organizations, users } from "@researchflow/core/schema";
+import { inviteMemberSchema } from "@researchflow/core/types/organization";
+import { eq } from "drizzle-orm";
+import { Router, Request, Response } from "express";
+
+import { db } from "../../db";
 import { asyncHandler } from "../middleware/asyncHandler";
+import { requireAuth as isAuthenticated } from "../middleware/auth.js";
 import {
   resolveOrgContext,
   requireOrgId,
   requireOrgCapability,
 } from "../middleware/org-context";
-import { inviteMemberSchema } from "@researchflow/core/types/organization";
 import { logAction } from "../services/audit-service";
-import { requireAuth as isAuthenticated } from "../middleware/auth.js";
+import { sendInviteEmail, sendWelcomeEmail } from "../services/emailService";
 import {
   createInvite,
   validateInvite,
@@ -29,7 +31,6 @@ import {
   revokeInvite,
   getOrgPendingInvites,
 } from "../services/inviteService";
-import { sendInviteEmail, sendWelcomeEmail } from "../services/emailService";
 
 const router = Router();
 

@@ -4,8 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ExportService } from '../export.service';
+
 import type { Manuscript, ExportOptions } from '../../types';
+import { ExportService } from '../export.service';
 
 describe('ExportService', () => {
   let service: ExportService;

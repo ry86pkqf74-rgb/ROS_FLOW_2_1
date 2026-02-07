@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { PeerReviewService, REVIEW_CRITERIA } from '../peer-review.service';
 import type { PeerReviewResult } from '../peer-review.service';
 

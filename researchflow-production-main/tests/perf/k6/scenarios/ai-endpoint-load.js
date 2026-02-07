@@ -3,11 +3,12 @@
  * Run with: k6 run scenarios/ai-endpoint-load.js --config config/ai-focused.json
  */
 
-import http from 'k6/http';
 import { check, sleep, group } from 'k6';
+import http from 'k6/http';
+
 import { getAuthHeaders } from '../lib/auth.js';
-import { recordAiResponse, recordManuscriptGeneration } from '../lib/metrics.js';
 import { aiResearchBriefPayload, manuscriptGeneratePayload } from '../lib/data.js';
+import { recordAiResponse, recordManuscriptGeneration } from '../lib/metrics.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3001';
 

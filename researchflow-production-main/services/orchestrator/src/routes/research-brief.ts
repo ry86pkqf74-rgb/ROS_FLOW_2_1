@@ -5,19 +5,21 @@
  * Supports both Quick Entry and PICO mode topics.
  */
 
-import { Router, Request, Response } from 'express';
-import { eq, desc } from 'drizzle-orm';
-import { v4 as uuid } from 'uuid';
-import { db } from '../../db';
 import { researchBriefs, topics, artifacts } from '@researchflow/core/schema';
+import type { GenerateResearchBriefRequest } from '@researchflow/core/types/research-brief';
+import { eq, desc } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+import { v4 as uuid } from 'uuid';
+
+import { db } from '../../db';
+import { blockAIInDemo } from '../../middleware/mode-guard';
+import { asyncHandler } from '../middleware/errorHandler';
+import { requireRole, logAuditEvent, ROLES } from '../middleware/rbac';
 import {
   generateEnhancedResearchBrief,
   validateBriefForApproval,
 } from '../services/research-brief-generator';
-import { blockAIInDemo } from '../../middleware/mode-guard';
-import { requireRole, logAuditEvent, ROLES } from '../middleware/rbac';
-import { asyncHandler } from '../middleware/errorHandler';
-import type { GenerateResearchBriefRequest } from '@researchflow/core/types/research-brief';
+
 
 const router = Router();
 

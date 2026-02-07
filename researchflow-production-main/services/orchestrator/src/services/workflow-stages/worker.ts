@@ -6,12 +6,14 @@
  * Stage 2 uses the new AI router -> agent architecture.
  */
 
-import { Worker, Job } from 'bullmq';
-import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
+import { EventEmitter } from 'events';
+
+import { Worker, Job } from 'bullmq';
+
 import { getAgentClient } from '../../clients/agentClient';
-import { pushEvent, setDone } from '../sse-event-store';
 import { createLogger } from '../../utils/logger';
+import { pushEvent, setDone } from '../sse-event-store';
 
 const logger = createLogger('workflow-stages-worker');
 

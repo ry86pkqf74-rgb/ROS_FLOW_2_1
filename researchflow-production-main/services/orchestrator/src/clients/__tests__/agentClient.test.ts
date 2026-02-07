@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { getAgentClient, AgentClient, CircuitOpenError, URLValidationError, AgentResponse } from '../agentClient';
 
 // Mock fetch globally

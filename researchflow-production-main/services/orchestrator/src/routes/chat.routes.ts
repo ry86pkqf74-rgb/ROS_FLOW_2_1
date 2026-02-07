@@ -10,11 +10,12 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+
 import { chatRepository } from '../repositories/chat.repository';
 import type { ChatSession, ChatMessage, ChatAction } from '../repositories/chat.repository';
 import { chatAgentService, ChatAgentError } from '../services/chat-agent';
-import { executeAction } from '../services/chat-agent/action-executor';
 import type { AgentType } from '../services/chat-agent';
+import { executeAction } from '../services/chat-agent/action-executor';
 import { attachCostEnvelope } from '../utils/cost-envelope';
 
 const router = Router();

@@ -10,10 +10,11 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
-import { PipelinePage } from './pages/pipeline.page';
 import { BasePage } from './pages/base.page';
+import { PipelinePage } from './pages/pipeline.page';
 
 test.describe('VAL-002: Run Lifecycle', () => {
   test.beforeEach(async ({ page }) => {

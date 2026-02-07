@@ -5,8 +5,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../utils/logger';
+
 import { logAction } from '../services/audit-service';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ai-bridge-error-handler');
 

@@ -1,4 +1,5 @@
 import net from "net";
+
 import { pool } from "../../db";
 
 export async function checkPostgres(): Promise<{ ok: boolean; error?: string }> {

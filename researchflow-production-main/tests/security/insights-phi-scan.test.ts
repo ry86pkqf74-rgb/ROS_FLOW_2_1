@@ -26,7 +26,7 @@ vi.mock('ioredis', () => ({
 const PHI_PATTERNS = {
   SSN: /\b\d{3}-\d{2}-\d{4}\b/,
   MRN: /\b(MRN|mrn)[:\s]?\d{6,10}\b/i,
-  DOB: /\b(DOB|dob|date of birth)[:\s]?\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/i,
+  DOB: /\b(DOB|dob|date of birth)[:\s]?\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/i,
   PHONE: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/,
   EMAIL: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/,
   ADDRESS: /\b\d{1,5}\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|way|court|ct)\b/i,

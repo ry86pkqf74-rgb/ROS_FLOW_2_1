@@ -3,8 +3,9 @@
  * Provides minimal type definitions for HTTP assertion testing
  */
 declare module 'supertest' {
-  import { Express } from 'express';
   import { Server } from 'http';
+
+  import { Express } from 'express';
 
   interface Response {
     status: number;

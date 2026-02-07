@@ -11,6 +11,7 @@
  */
 
 import http from "http";
+
 import { Hocuspocus } from "@hocuspocus/server";
 import type {
   onAuthenticatePayload,
@@ -21,9 +22,10 @@ import type {
   onChangePayload,
 } from "@hocuspocus/server";
 import * as Y from "yjs";
+
+import { createAuthHandler, type AuthHandler, type AuthenticatedUser } from "./auth.js";
 import { createPersistenceAdapter, type PersistenceAdapter } from "./persistence/index.js";
 import { PostgresPersistenceAdapter } from "./persistence/postgres.js";
-import { createAuthHandler, type AuthHandler, type AuthenticatedUser } from "./auth.js";
 import { createPhiScanner, extractTextFromYDoc, type CollabPhiScanner } from "./phi-scanner.js";
 
 /**

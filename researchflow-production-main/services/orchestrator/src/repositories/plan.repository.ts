@@ -4,14 +4,15 @@
  * Data access layer for analysis plans, jobs, artifacts, and events.
  * Uses Drizzle ORM for type-safe database operations.
  */
-import { eq, desc, and, gt } from 'drizzle-orm';
-import { db } from '../../db';
 import {
   analysisPlans,
   analysisJobs,
   analysisJobEvents,
   analysisArtifacts,
 } from '@researchflow/core/schema';
+import { eq, desc, and, gt } from 'drizzle-orm';
+
+import { db } from '../../db';
 import type {
   AnalysisPlan,
   AnalysisJob,

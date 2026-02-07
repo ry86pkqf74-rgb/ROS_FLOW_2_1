@@ -8,6 +8,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
+
 import { PHI_PATTERNS, type PatternDefinition } from '@researchflow/phi-engine';
 
 export interface PhiDetectionResult {

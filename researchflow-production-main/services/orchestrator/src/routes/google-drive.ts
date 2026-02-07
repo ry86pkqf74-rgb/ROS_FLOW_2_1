@@ -3,14 +3,15 @@
  * Routes for Google Drive/Docs export and sync
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import * as googleDriveService from '../services/googleDriveService';
-import { db } from '../../db';
 import { orgIntegrations } from '@researchflow/core/types/schema';
 import { eq, and } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
+import { db } from '../../db';
 import { requireAuth } from '../middleware/governance';
 import { resolveOrgContext, requireOrgMember, requireOrgCapability } from '../middleware/org-context';
+import * as googleDriveService from '../services/googleDriveService';
 
 export const googleDriveRouter = Router();
 

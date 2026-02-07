@@ -5,17 +5,8 @@
  * via HTTP API at /api/services/{serviceName}/{methodName}
  */
 
-import {
-  Router,
-  Request,
-  Response,
-  NextFunction,
-} from 'express';
-
-import rateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
-
-import yaml from 'yaml';
+import fs from 'fs';
+import path from 'path';
 
 import {
   claudeWriterService,
@@ -54,15 +45,23 @@ import {
   medicalNLPService,
   transitionSuggesterService,
 } from '@researchflow/manuscript-engine';
+import {
+  Router,
+  Request,
+  Response,
+  NextFunction,
+} from 'express';
+import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import yaml from 'yaml';
 
+
+import { ServiceDiscovery } from '../services/discovery.js';
 import { getRedisClient, isCacheAvailable } from '../utils/cache.js';
+import { CircuitBreakerRegistry } from '../utils/circuit-breaker.js';
 import { logger } from '../utils/logger.js';
 import { tracingMiddleware, traceServiceCall } from '../utils/tracing.js';
-import { CircuitBreakerRegistry } from '../utils/circuit-breaker.js';
-import { ServiceDiscovery } from '../services/discovery.js';
 
-import fs from 'fs';
-import path from 'path';
 
 const router = Router();
 

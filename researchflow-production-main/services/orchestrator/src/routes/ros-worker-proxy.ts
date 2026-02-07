@@ -8,10 +8,12 @@
  * See docs/architecture/perf-optimization-roadmap.md
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import https from 'https';
 import { URL } from 'url';
+
+import { Router, Request, Response, NextFunction } from 'express';
+
 import { config } from '../config/env';
 
 const router = Router();

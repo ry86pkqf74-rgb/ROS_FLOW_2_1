@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { hasPermissionByRole, hasMinimumRoleByName, ROLES } from '@packages/core/types/roles';
 
 type RosMode = 'STANDBY' | 'DEMO' | 'LIVE';

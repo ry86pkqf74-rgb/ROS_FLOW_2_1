@@ -5,9 +5,10 @@
  * the complete statistical analysis workflow under realistic conditions.
  */
 
-import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+
+import { test, expect } from '@playwright/test';
 
 // Real dataset configurations for testing
 const REAL_DATASETS = {
@@ -492,7 +493,7 @@ test.describe('Real Data Performance Benchmarks', () => {
 // Utility function to validate statistical results make sense
 async function validateStatisticalSensibility(page: any, testType: string) {
   switch (testType) {
-    case 't-test-independent':
+    case 't-test-independent': {
       // Check that means are different if significant
       const significant = await page.locator('[data-testid="significance-badge"]').textContent();
       if (significant?.includes('Significant')) {
@@ -500,19 +501,20 @@ async function validateStatisticalSensibility(page: any, testType: string) {
         expect(parseFloat(pValue?.replace(/[^\d.]/g, '') || '1')).toBeLessThan(0.05);
       }
       break;
-      
-    case 'anova-one-way':
+    }
+    case 'anova-one-way': {
       // Check F-statistic is positive
       const fStat = await page.locator('[data-testid="f-statistic"]').textContent();
       expect(parseFloat(fStat || '0')).toBeGreaterThan(0);
       break;
-      
-    case 'correlation-pearson':
+    }
+    case 'correlation-pearson': {
       // Check correlation is between -1 and 1
       const correlation = await page.locator('[data-testid="correlation-coefficient"]').textContent();
       const r = parseFloat(correlation || '0');
       expect(r).toBeGreaterThanOrEqual(-1);
       expect(r).toBeLessThanOrEqual(1);
       break;
+    }
   }
 }

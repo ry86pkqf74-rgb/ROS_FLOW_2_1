@@ -5,11 +5,15 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { test, expect } from '@playwright/test';
+
 import AxeBuilder from '@axe-core/playwright';
-import { assertNoCriticalOrSeriousViolations, getViolationSummary, A11Y_THRESHOLDS } from './helpers';
+import { test, expect } from '@playwright/test';
+
+
 import { loginAs, setMode } from '../fixtures';
 import { E2E_USERS } from '../fixtures/users.fixture';
+
+import { assertNoCriticalOrSeriousViolations, getViolationSummary, A11Y_THRESHOLDS } from './helpers';
 
 const REPORTS_DIR = path.join(process.cwd(), 'tests', 'e2e', 'accessibility', 'reports');
 

@@ -1,6 +1,9 @@
 import { ModelRouterService, type AIRouterResponse, getMercuryCoderProvider, type MercuryResponse } from '@researchflow/ai-router';
+
 import { chatRepository } from '../../repositories/chat.repository';
 import { getGovernanceDecision, scanForPHI, type PHIScanResult } from '../../utils/phi-scanner';
+
+import { phaseRagService, type RagContextItem } from './rag.service';
 import {
   getAgentById,
   getAgentsForStage,
@@ -8,7 +11,6 @@ import {
   STAGE_DESCRIPTIONS,
   type PhaseAgentDefinition,
 } from './registry';
-import { phaseRagService, type RagContextItem } from './rag.service';
 
 export interface PhaseChatInput {
   stage: number;

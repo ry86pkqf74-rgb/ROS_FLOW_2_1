@@ -7,8 +7,9 @@
  * Priority: P0 - CRITICAL (Phase 2 Integration)
  */
 
-import { Request, Response, NextFunction } from 'express';
 import { OperationNotAllowedError } from "@researchflow/core/types/classification"
+import { Request, Response, NextFunction } from 'express';
+
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('error-handler');

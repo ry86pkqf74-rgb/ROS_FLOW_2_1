@@ -1,4 +1,3 @@
-import { db } from "./db";
 import {
   settings, chatSessions, messages,
   type Setting, type InsertSetting,
@@ -6,6 +5,8 @@ import {
   type Message, type InsertMessage
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
+
+import { db } from "./db";
 
 export interface IStorage {
   // Settings

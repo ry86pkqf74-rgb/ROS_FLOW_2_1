@@ -4,21 +4,22 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { pubmedService } from '../../../packages/manuscript-engine/src/services/pubmed.service';
-import { semanticScholarService } from '../../../packages/manuscript-engine/src/services/semantic-scholar.service';
-import { litReviewService } from '../../../packages/manuscript-engine/src/services/lit-review.service';
+
 import { arxivService } from '../../../packages/manuscript-engine/src/services/arxiv.service';
-import { litMatrixService } from '../../../packages/manuscript-engine/src/services/lit-matrix.service';
-import { plagiarismCheckService } from '../../../packages/manuscript-engine/src/services/plagiarism-check.service';
-import { litWatcherService } from '../../../packages/manuscript-engine/src/services/lit-watcher.service';
-import { litSummaryEmbedService } from '../../../packages/manuscript-engine/src/services/lit-summary-embed.service';
-import { conflictDetectorService } from '../../../packages/manuscript-engine/src/services/conflict-detector.service';
-import { zoteroService } from '../../../packages/manuscript-engine/src/services/zotero.service';
 import { citationFormatterService } from '../../../packages/manuscript-engine/src/services/citation-formatter.service';
+import { conflictDetectorService } from '../../../packages/manuscript-engine/src/services/conflict-detector.service';
+import { litMatrixService } from '../../../packages/manuscript-engine/src/services/lit-matrix.service';
+import { litReviewService } from '../../../packages/manuscript-engine/src/services/lit-review.service';
+import { litSummaryEmbedService } from '../../../packages/manuscript-engine/src/services/lit-summary-embed.service';
+import { litWatcherService } from '../../../packages/manuscript-engine/src/services/lit-watcher.service';
+import { plagiarismCheckService } from '../../../packages/manuscript-engine/src/services/plagiarism-check.service';
+import { pubmedService } from '../../../packages/manuscript-engine/src/services/pubmed.service';
 import { relevanceScorerService } from '../../../packages/manuscript-engine/src/services/relevance-scorer.service';
-import { extractKeywords } from '../../../packages/manuscript-engine/src/utils/keyword-extractor';
-import { exportToBibTeX, exportToRIS } from '../../../packages/manuscript-engine/src/utils/citation-export';
+import { semanticScholarService } from '../../../packages/manuscript-engine/src/services/semantic-scholar.service';
+import { zoteroService } from '../../../packages/manuscript-engine/src/services/zotero.service';
 import type { Citation } from '../../../packages/manuscript-engine/src/types/citation.types';
+import { exportToBibTeX, exportToRIS } from '../../../packages/manuscript-engine/src/utils/citation-export';
+import { extractKeywords } from '../../../packages/manuscript-engine/src/utils/keyword-extractor';
 
 describe('Literature Integration Pipeline', () => {
   const mockManuscriptId = 'manuscript-123';

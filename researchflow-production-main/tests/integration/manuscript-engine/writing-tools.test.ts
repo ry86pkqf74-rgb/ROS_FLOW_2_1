@@ -20,7 +20,6 @@ import {
   citationSuggesterService,
   claimHighlighterService,
 } from '../../../packages/manuscript-engine/src/services';
-
 import { PHRASE_LIBRARY, fillTemplate } from '../../../packages/manuscript-engine/src/templates/phrase-library';
 
 describe('Phase 4: Writing Assistance Tools Integration', () => {

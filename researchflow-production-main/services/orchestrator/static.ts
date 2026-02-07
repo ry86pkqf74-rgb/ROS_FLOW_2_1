@@ -1,7 +1,8 @@
-import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+
+import express, { type Express } from "express";
 
 // ESM compatibility for __dirname
 const __filename = fileURLToPath(import.meta.url);

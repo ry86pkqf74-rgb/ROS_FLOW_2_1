@@ -5,8 +5,8 @@
  * manuscript-engine services via HTTP API.
  */
 
-import request from 'supertest';
 import express from 'express';
+import request from 'supertest';
 
 // Mock the manuscript-engine services
 jest.mock('../../../src/services', () => ({

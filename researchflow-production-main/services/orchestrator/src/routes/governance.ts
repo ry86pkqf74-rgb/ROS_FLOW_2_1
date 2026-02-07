@@ -10,15 +10,16 @@
  * and FeatureFlagsService instead of in-memory mocks.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
-import { requireRole } from '../middleware/rbac';
-import { validateAuditChain } from '../services/auditService.js';
-import { db } from '../../db.js';
 import { auditLogs } from '@researchflow/core/schema';
 import { desc, gte, lte, eq, and, sql } from 'drizzle-orm';
-import { governanceConfigService } from '../services/governance-config.service';
-import { featureFlagsService } from '../services/feature-flags.service';
+import { Router, Request, Response, NextFunction } from 'express';
+
+import { db } from '../../db.js';
+import { requireRole } from '../middleware/rbac';
+import { validateAuditChain } from '../services/auditService.js';
 import { eventBus } from '../services/event-bus';
+import { featureFlagsService } from '../services/feature-flags.service';
+import { governanceConfigService } from '../services/governance-config.service';
 
 // Simple async handler wrapper
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {

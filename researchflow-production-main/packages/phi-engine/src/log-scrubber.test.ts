@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { scrubLog, scrubObject, containsPhi, getPhiStats } from './log-scrubber';
 
 describe('log-scrubber', () => {

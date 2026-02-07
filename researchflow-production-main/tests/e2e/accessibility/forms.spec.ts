@@ -4,6 +4,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { hasAccessibleName } from './helpers';
 
 test.describe('Form accessibility', () => {

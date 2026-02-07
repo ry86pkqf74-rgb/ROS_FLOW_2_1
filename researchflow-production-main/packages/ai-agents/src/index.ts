@@ -31,12 +31,12 @@ export {
 } from './registry.js';
 
 // Agent factory
-import type { AgentConfig } from './types/agent.types.js';
 import { BaseAgent } from './agents/BaseAgent.js';
 import { ConferenceScoutAgent } from './agents/ConferenceScoutAgent.js';
 import { DataExtractionAgent } from './agents/DataExtractionAgent.js';
-import { StatisticalAnalysisAgent } from './agents/StatisticalAnalysisAgent.js';
 import { ManuscriptDraftingAgent } from './agents/ManuscriptDraftingAgent.js';
+import { StatisticalAnalysisAgent } from './agents/StatisticalAnalysisAgent.js';
+import type { AgentConfig } from './types/agent.types.js';
 
 /**
  * Create an agent instance by ID

@@ -12,10 +12,12 @@
  */
 
 import { Router, Request, Response } from 'express';
+
 import { db } from '../../db';
-import { logAction } from '../services/audit-service';
-import { gapAnalysisService } from './gapanalysis.service';
 import { rateLimitedFetch } from '../infra/rateLimiter';
+import { logAction } from '../services/audit-service';
+
+import { gapAnalysisService } from './gapanalysis.service';
 
 const router = Router();
 

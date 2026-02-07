@@ -32,8 +32,8 @@ export * from './types.js';
 export { NotionClient } from './notion-client.js';
 export { ExecutionTracker } from './execution-tracker.js';
 
-import { NotionClient } from './notion-client.js';
 import { ExecutionTracker } from './execution-tracker.js';
+import { NotionClient } from './notion-client.js';
 
 // Default data source IDs from ResearchFlow Notion setup
 const DEFAULT_DEPLOYMENT_TASKS_ID = '52e84cac-8ed0-4231-b9c8-5b854d042b9b';

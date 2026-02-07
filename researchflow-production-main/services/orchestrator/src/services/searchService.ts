@@ -5,9 +5,10 @@
  * Searches across artifacts and manuscripts within organization scope.
  */
 
-import { db } from "../../db";
-import { eq, sql, and, or, ilike } from "drizzle-orm";
 import { artifacts, researchProjects } from "@researchflow/core/schema";
+import { eq, sql, and, or, ilike } from "drizzle-orm";
+
+import { db } from "../../db";
 
 export interface SearchResult {
   id: string;

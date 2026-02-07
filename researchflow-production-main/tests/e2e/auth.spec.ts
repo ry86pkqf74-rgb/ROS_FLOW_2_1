@@ -5,6 +5,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { loginAs, loginAsRole, logout, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
 import { BasePage } from './pages/base.page';

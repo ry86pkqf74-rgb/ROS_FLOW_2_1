@@ -4,8 +4,8 @@
  * @package @researchflow/vector-store
  */
 
-import type { SearchResult, VectorStoreConfig, DocumentMetadata } from './types.js';
 import { DocumentEmbedder } from './embedder.js';
+import type { SearchResult, VectorStoreConfig, DocumentMetadata } from './types.js';
 
 export interface RetrieverConfig {
   vectorStore: VectorStoreConfig;

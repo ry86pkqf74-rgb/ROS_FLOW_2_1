@@ -3,8 +3,9 @@
  * Tests for TRIPOD+AI and CONSORT-AI checklist management APIs
  */
 
-import request from 'supertest';
 import express from 'express';
+import request from 'supertest';
+
 import checklistsRouter from '../checklists';
 
 describe('Checklists API Routes', () => {

@@ -6,7 +6,9 @@
  */
 
 import crypto from 'crypto';
+
 import type { Request, Response } from 'express';
+
 import { createAuditEntry } from '../services/auditService.js';
 
 const ZOOM_WEBHOOK_SECRET_TOKEN = process.env.ZOOM_WEBHOOK_SECRET_TOKEN;

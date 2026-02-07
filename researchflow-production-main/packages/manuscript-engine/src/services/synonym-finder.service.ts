@@ -5,6 +5,7 @@
  */
 
 import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+
 import type { SynonymSuggestion } from '../types';
 
 export class SynonymFinderService {

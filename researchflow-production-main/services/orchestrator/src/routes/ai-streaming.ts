@@ -9,6 +9,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+
 import { config } from '../config/env';
 
 const router = Router();

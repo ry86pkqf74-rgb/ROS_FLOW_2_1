@@ -4,23 +4,24 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { IMRAD_TEMPLATE, getTemplateById, listTemplates } from '../../../packages/manuscript-engine/src/templates/imrad-templates';
-import { NEJM_TEMPLATE, JAMA_TEMPLATE, LANCET_TEMPLATE, BMJ_TEMPLATE, getJournalTemplate } from '../../../packages/manuscript-engine/src/templates/journal-templates';
+
 import { abstractGeneratorService } from '../../../packages/manuscript-engine/src/services/abstract-generator.service';
-import { introductionBuilderService } from '../../../packages/manuscript-engine/src/services/introduction-builder.service';
-import { methodsPopulatorService } from '../../../packages/manuscript-engine/src/services/methods-populator.service';
-import { resultsScaffoldService } from '../../../packages/manuscript-engine/src/services/results-scaffold.service';
-import { discussionBuilderService } from '../../../packages/manuscript-engine/src/services/discussion-builder.service';
-import { referencesBuilderService } from '../../../packages/manuscript-engine/src/services/references-builder.service';
 import { acknowledgmentsService } from '../../../packages/manuscript-engine/src/services/acknowledgments.service';
-import { wordCountTrackerService } from '../../../packages/manuscript-engine/src/services/word-count-tracker.service';
-import { outlineExpanderService } from '../../../packages/manuscript-engine/src/services/outline-expander.service';
-import { keywordGeneratorService } from '../../../packages/manuscript-engine/src/services/keyword-generator.service';
-import { coiDisclosureService } from '../../../packages/manuscript-engine/src/services/coi-disclosure.service';
 import { appendicesBuilderService } from '../../../packages/manuscript-engine/src/services/appendices-builder.service';
-import { titleGeneratorService } from '../../../packages/manuscript-engine/src/services/title-generator.service';
 import { authorManagerService } from '../../../packages/manuscript-engine/src/services/author-manager.service';
 import { branchManagerService } from '../../../packages/manuscript-engine/src/services/branch-manager.service';
+import { coiDisclosureService } from '../../../packages/manuscript-engine/src/services/coi-disclosure.service';
+import { discussionBuilderService } from '../../../packages/manuscript-engine/src/services/discussion-builder.service';
+import { introductionBuilderService } from '../../../packages/manuscript-engine/src/services/introduction-builder.service';
+import { keywordGeneratorService } from '../../../packages/manuscript-engine/src/services/keyword-generator.service';
+import { methodsPopulatorService } from '../../../packages/manuscript-engine/src/services/methods-populator.service';
+import { referencesBuilderService } from '../../../packages/manuscript-engine/src/services/references-builder.service';
+import { resultsScaffoldService } from '../../../packages/manuscript-engine/src/services/results-scaffold.service';
+import { titleGeneratorService } from '../../../packages/manuscript-engine/src/services/title-generator.service';
+import { wordCountTrackerService } from '../../../packages/manuscript-engine/src/services/word-count-tracker.service';
+import { outlineExpanderService } from '../../../packages/manuscript-engine/src/services/outline-expander.service';
+import { IMRAD_TEMPLATE, getTemplateById, listTemplates } from '../../../packages/manuscript-engine/src/templates/imrad-templates';
+import { NEJM_TEMPLATE, JAMA_TEMPLATE, LANCET_TEMPLATE, BMJ_TEMPLATE, getJournalTemplate } from '../../../packages/manuscript-engine/src/templates/journal-templates';
 
 describe('Phase 3: Structure Building Integration', () => {
   const mockManuscriptId = 'manuscript-test-structure';

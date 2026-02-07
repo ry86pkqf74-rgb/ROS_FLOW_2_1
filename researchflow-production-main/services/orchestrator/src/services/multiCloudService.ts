@@ -10,8 +10,9 @@
  * - Provider-specific configuration management
  */
 
-import { z } from 'zod';
 import { EventEmitter } from 'events';
+
+import { z } from 'zod';
 
 // ============================================================================
 // Types & Schemas

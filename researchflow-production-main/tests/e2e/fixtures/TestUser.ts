@@ -6,6 +6,7 @@
  */
 
 import type { APIRequestContext } from '@playwright/test';
+
 import { E2E_USERS } from './users.fixture';
 
 export type UserRole = 'researcher' | 'steward' | 'admin';

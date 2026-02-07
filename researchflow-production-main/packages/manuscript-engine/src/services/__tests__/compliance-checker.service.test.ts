@@ -4,8 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ComplianceCheckerService } from '../compliance-checker.service';
+
 import type { Manuscript } from '../../types';
+import { ComplianceCheckerService } from '../compliance-checker.service';
 
 describe('ComplianceCheckerService', () => {
   let service: ComplianceCheckerService;

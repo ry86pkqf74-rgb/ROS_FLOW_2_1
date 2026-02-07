@@ -7,6 +7,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+
 import type { Role } from '../../packages/core/types/roles';
 
 export interface MockUser {

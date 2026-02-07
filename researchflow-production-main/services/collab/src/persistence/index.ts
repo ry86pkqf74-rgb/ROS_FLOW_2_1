@@ -6,8 +6,8 @@
  */
 
 import { MemoryPersistenceAdapter } from "./memory.js";
-import { RedisPersistenceAdapter } from "./redis.js";
 import { PostgresPersistenceAdapter } from "./postgres.js";
+import { RedisPersistenceAdapter } from "./redis.js";
 
 /**
  * Base interface for all persistence adapters

@@ -23,11 +23,12 @@
  * @module routes/citations
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { db } from '../../db';
 import { sql } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
+
+import { db } from '../../db';
 
 const router = Router();
 

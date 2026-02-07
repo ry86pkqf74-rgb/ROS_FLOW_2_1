@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+
 import type { IMRaDSection } from './imrad.types';
 
 // Note: IMRaDSection is imported from imrad.types.ts and used here

@@ -8,8 +8,8 @@
  * @module services/event-bus
  */
 
-import { EventEmitter } from 'events';
 import { createHash } from 'crypto';
+import { EventEmitter } from 'events';
 import net from 'net';
 
 // Event topics

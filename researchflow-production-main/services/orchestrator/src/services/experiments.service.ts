@@ -10,7 +10,8 @@
  * @module services/experiments.service
  */
 
-import { db } from '../../db';
+import { createHash } from 'crypto';
+
 import {
   experiments,
   experimentAssignments,
@@ -19,10 +20,13 @@ import {
   GOVERNANCE_MODES,
 } from '@researchflow/core/schema';
 import { eq, and } from 'drizzle-orm';
-import { createHash } from 'crypto';
+
+import { db } from '../../db';
+
+
+import { analyticsService } from './analytics.service';
 import { eventBus } from './event-bus';
 import { getMode } from './governance-config.service';
-import { analyticsService } from './analytics.service';
 
 /**
  * Variant assignment result
@@ -50,7 +54,7 @@ interface ExperimentCache {
   expiry: number;
 }
 
-let experimentCache: ExperimentCache = {
+const experimentCache: ExperimentCache = {
   experiments: new Map(),
   expiry: 0,
 };

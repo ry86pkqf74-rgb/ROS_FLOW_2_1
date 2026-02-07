@@ -13,6 +13,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
 import { BasePage } from './pages/base.page';

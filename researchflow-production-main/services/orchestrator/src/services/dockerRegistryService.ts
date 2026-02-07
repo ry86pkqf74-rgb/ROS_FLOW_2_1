@@ -1,5 +1,6 @@
-import { z } from 'zod';
 import crypto from 'crypto';
+
+import { z } from 'zod';
 
 /**
  * Docker Registry Service Integration
@@ -62,7 +63,7 @@ async function dockerHubApiRequest<T>(
   options?: RequestInit & { requiresAuth?: boolean }
 ): Promise<{ data?: T; error?: string }> {
   try {
-    let headers: Record<string, string> = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...options?.headers,
     };

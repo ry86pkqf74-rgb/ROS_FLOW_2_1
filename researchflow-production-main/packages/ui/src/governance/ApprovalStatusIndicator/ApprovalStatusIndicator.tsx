@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { 
   Clock, 
   CheckCircle2, 
@@ -7,6 +6,8 @@ import {
   User,
   Calendar
 } from 'lucide-react';
+import * as React from 'react';
+
 import { cn } from '../../utils/cn';
 
 // figma: fileKey=PENDING nodeId=PENDING

@@ -13,11 +13,12 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode } from '../e2e/fixtures';
 import { E2E_USERS } from '../e2e/fixtures/users.fixture';
 import { BasePage } from '../e2e/pages/base.page';
-import { PipelinePage } from '../e2e/pages/pipeline.page';
 import { GovernancePage } from '../e2e/pages/governance.page';
+import { PipelinePage } from '../e2e/pages/pipeline.page';
 
 test.describe('VAL-005: Visual Regression Tests - Key Screens', () => {
   test.beforeEach(async ({ page }) => {

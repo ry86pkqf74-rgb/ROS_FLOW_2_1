@@ -4,8 +4,8 @@
  * Defines interfaces for AI-powered writing assistance tools.
  */
 
-import { z } from 'zod';
 import type { AIRouterRequest, AIRouterResponse } from '@researchflow/ai-router';
+import { z } from 'zod';
 
 // Re-export all types from the types directory for backward compatibility
 export * from './types/index';

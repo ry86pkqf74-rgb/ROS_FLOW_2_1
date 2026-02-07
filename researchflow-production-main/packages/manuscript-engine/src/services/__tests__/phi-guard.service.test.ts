@@ -3,7 +3,10 @@
  * Comprehensive tests for fail-closed PHI protection
  */
 
+import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import type { ManuscriptAuditEntry } from '../../types';
 import {
   PhiGuardService,
   PHIDetectedError,
@@ -12,8 +15,6 @@ import {
   type PhiGuardConfig,
   type RedactedContent,
 } from '../phi-guard.service';
-import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine';
-import type { ManuscriptAuditEntry } from '../../types';
 
 // Mock PHI Scanner
 class MockPhiScanner implements PhiScanner {

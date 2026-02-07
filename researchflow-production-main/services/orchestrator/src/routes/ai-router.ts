@@ -10,9 +10,10 @@
 
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { logAction } from '../services/audit-service';
-import { requirePermission } from '../middleware/rbac';
+
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 

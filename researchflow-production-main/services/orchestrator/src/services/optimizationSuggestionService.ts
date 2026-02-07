@@ -10,9 +10,10 @@
  */
 
 import { z } from 'zod';
-import { performanceAnalyzerService, Bottleneck, PerformanceReport } from './performanceAnalyzerService';
-import { metricsCollectorService } from './metricsCollectorService';
+
 import { haToggleService } from './haToggleService';
+import { metricsCollectorService } from './metricsCollectorService';
+import { performanceAnalyzerService, Bottleneck, PerformanceReport } from './performanceAnalyzerService';
 
 // ============================================================================
 // Types & Schemas

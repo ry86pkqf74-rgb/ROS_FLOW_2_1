@@ -8,6 +8,32 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+
+import {
+  getConfig,
+  isAutoRefineEnabled,
+  isNarrativeTask,
+  getQualityCheckOptions,
+  type AIRouterFullConfig,
+} from './config';
+import { PhiGateService } from './phi-gate.service';
+import {
+  PromptRefinementService,
+  type RefinementContext,
+  type RefinementResult,
+} from './prompt-refinement.service';
+import { MercuryCoderProvider } from './providers/mercury-coder';
+import {
+  QwenLocalProvider,
+  shouldUseLocal,
+  LOCAL_BLOCKED_TASKS,
+} from './providers/qwen-local';
+import { QualityGateService } from './quality-gate.service';
+import {
+  MODEL_CONFIGS,
+  TASK_TIER_MAPPING,
+  TIER_ESCALATION_ORDER,
+} from './types';
 import type {
   ModelTier,
   AITaskType,
@@ -19,31 +45,6 @@ import type {
   EscalationDecision,
   QualityCheck,
 } from './types';
-import {
-  MODEL_CONFIGS,
-  TASK_TIER_MAPPING,
-  TIER_ESCALATION_ORDER,
-} from './types';
-import { QualityGateService } from './quality-gate.service';
-import { PhiGateService } from './phi-gate.service';
-import {
-  getConfig,
-  isAutoRefineEnabled,
-  isNarrativeTask,
-  getQualityCheckOptions,
-  type AIRouterFullConfig,
-} from './config';
-import {
-  PromptRefinementService,
-  type RefinementContext,
-  type RefinementResult,
-} from './prompt-refinement.service';
-import {
-  QwenLocalProvider,
-  shouldUseLocal,
-  LOCAL_BLOCKED_TASKS,
-} from './providers/qwen-local';
-import { MercuryCoderProvider } from './providers/mercury-coder';
 
 /**
  * Extended response with refinement metadata (Phase 10)
@@ -173,7 +174,7 @@ export class ModelRouterService {
 
     // Refinement tracking (Phase 10)
     let refinementAttempts = 0;
-    let refinementRulesApplied: string[] = [];
+    const refinementRulesApplied: string[] = [];
     let refinementApplied = false;
     let escalatedDueToRefinement = false;
     let currentPrompt = request.prompt;

@@ -11,13 +11,15 @@
  */
 
 import crypto from "crypto";
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
+
 import { orgSubscriptions, organizations } from "@researchflow/core/schema";
 import {
   SubscriptionTier,
   TIER_LIMITS,
 } from "@researchflow/core/types/organization";
+import { eq } from "drizzle-orm";
+
+import { db } from "../../db";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";

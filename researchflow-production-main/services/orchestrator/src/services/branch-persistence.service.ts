@@ -6,9 +6,10 @@
  * Supports: create, merge, diff, revision history
  */
 
+import crypto from 'crypto';
+
 import { db } from '../../db';
 import { logAction } from '../services/audit-service';
-import crypto from 'crypto';
 
 export interface Branch {
   id: string;

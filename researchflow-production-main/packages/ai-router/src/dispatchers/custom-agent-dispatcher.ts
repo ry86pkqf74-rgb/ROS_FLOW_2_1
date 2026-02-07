@@ -8,6 +8,7 @@
  */
 
 import { EventEmitter } from 'events';
+
 import type { AIRouterRequest as AIRequest, AIRouterResponse as AIResponse } from '../types';
 
 // Define StreamChunk locally since it's not in main types

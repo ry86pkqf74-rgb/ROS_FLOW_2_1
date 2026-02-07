@@ -20,10 +20,11 @@
  * @module routes/paper-copilot
  */
 
+import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
 import { db } from '../../db';
-import { sql } from 'drizzle-orm';
 import { paperCopilotService } from '../services/paper-copilot.service';
 
 const router = Router({ mergeParams: true }); // Access :paperId from parent router

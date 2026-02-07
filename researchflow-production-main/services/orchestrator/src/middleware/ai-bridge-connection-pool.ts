@@ -4,10 +4,12 @@
  * Manages HTTP connections and request queuing for optimal performance
  */
 
-import axios, { AxiosInstance } from 'axios';
-import { createLogger } from '../utils/logger';
 import http from 'http';
 import https from 'https';
+
+import axios, { AxiosInstance } from 'axios';
+
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ai-bridge-pool');
 

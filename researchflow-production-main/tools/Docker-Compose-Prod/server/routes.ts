@@ -1,5 +1,7 @@
-import type { Express } from "express";
 import { createServer, type Server } from "http";
+
+import type { Express } from "express";
+
 import { storage } from "./storage";
 
 export async function registerRoutes(

@@ -8,7 +8,8 @@
  * - Rebuttal response management
  * - Submission package generation
  */
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import {
   submissions,
   submissionTargets,
@@ -18,10 +19,12 @@ import {
   artifacts,
   artifactVersions,
 } from "@researchflow/core/schema";
+import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
-import { createHash } from "crypto";
+
+import { db } from "../../db";
+
 
 export type SubmissionStatus = 'draft' | 'submitted' | 'revise' | 'accepted' | 'rejected' | 'withdrawn' | 'camera_ready';
 export type SubmissionTargetKind = 'journal' | 'conference';
@@ -134,7 +137,7 @@ export async function listTargets(options?: {
   kind?: SubmissionTargetKind;
   orgId?: string;
 }): Promise<any[]> {
-  let query = db.select().from(submissionTargets);
+  const query = db.select().from(submissionTargets);
 
   const rows = await query;
 

@@ -1,5 +1,6 @@
-import helmet from 'helmet';
 import { Request, Response } from 'express';
+import helmet from 'helmet';
+
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('securityHeaders');

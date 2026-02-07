@@ -12,8 +12,9 @@
  * - citation_context: Generate context for citations
  */
 
-import { getPhiGate } from '../phi-gate.service';
 import { logAction } from '@apps/api-node/src/services/audit-service';
+
+import { getPhiGate } from '../phi-gate.service';
 
 export interface WritingToolInput {
   text: string;

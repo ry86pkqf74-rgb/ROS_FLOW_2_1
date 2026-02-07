@@ -5,10 +5,13 @@
  * PHI-SAFE: Only embeds metadata (filename, type, description, tags) - NEVER content.
  */
 
-import { db } from '../../db';
+import crypto from 'crypto';
+
 import { artifacts, artifactEmbeddings } from '@researchflow/core/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import crypto from 'crypto';
+
+import { db } from '../../db';
+
 
 interface EmbeddingMetadata {
   artifactType: string;

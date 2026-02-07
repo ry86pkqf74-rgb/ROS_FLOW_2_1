@@ -8,14 +8,17 @@
  * Architecture: Python Worker → AI Bridge → AI Router → LLM Provider
  */
 
+import axios from 'axios';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import axios from 'axios';
-import { asyncHandler } from '../middleware/asyncHandler';
-import { requirePermission } from '../middleware/rbac';
-import { createLogger } from '../utils/logger';
-import { logAction } from '../services/audit-service';
+
 import { getAIBridgeConfig } from '../config/ai-bridge.config';
+import { getBatchOptimizer } from '../middleware/ai-bridge-batch-optimizer';
+import { getConnectionPool } from '../middleware/ai-bridge-connection-pool';
+import { 
+  enhancedErrorHandlerMiddleware,
+  getAIBridgeErrorHandler 
+} from '../middleware/ai-bridge-error-handler';
 import { 
   aiBridgeMetricsMiddleware, 
   metricsRegistry 
@@ -27,13 +30,11 @@ import {
   recordCircuitBreakerOutcome,
   updateCostTracking
 } from '../middleware/ai-bridge-protection';
-import { getConnectionPool } from '../middleware/ai-bridge-connection-pool';
-import { getBatchOptimizer } from '../middleware/ai-bridge-batch-optimizer';
-import { 
-  enhancedErrorHandlerMiddleware,
-  getAIBridgeErrorHandler 
-} from '../middleware/ai-bridge-error-handler';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission } from '../middleware/rbac';
 import { callRealLLMProvider, streamRealLLMProvider } from '../services/ai-bridge-llm';
+import { logAction } from '../services/audit-service';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
 const logger = createLogger('ai-bridge');

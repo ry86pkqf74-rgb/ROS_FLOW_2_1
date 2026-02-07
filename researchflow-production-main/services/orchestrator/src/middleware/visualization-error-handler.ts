@@ -7,9 +7,10 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+
 import { visualizationConfig } from '../config/visualization.config';
-import { createLogger } from '../utils/logger';
 import { logAction } from '../services/audit-service';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('visualization-error');
 

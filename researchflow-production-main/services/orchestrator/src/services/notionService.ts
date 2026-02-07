@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { Client } from '@notionhq/client';
+import { z } from 'zod';
 
 /**
  * Enhanced Notion Service Integration

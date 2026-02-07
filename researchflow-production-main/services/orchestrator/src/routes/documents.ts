@@ -14,9 +14,10 @@
  * @module routes/documents
  */
 
-import { Router, Request, Response } from 'express';
-import { db } from '../../db';
 import { sql } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+
+import { db } from '../../db';
 import { config } from '../config/env';
 
 const router = Router();

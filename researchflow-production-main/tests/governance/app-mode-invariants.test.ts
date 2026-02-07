@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { AppMode, MODE_CONFIGS } from '@researchflow/core';
 
 describe('App Mode Type Definitions', () => {

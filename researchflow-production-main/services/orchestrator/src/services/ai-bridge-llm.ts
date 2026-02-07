@@ -6,8 +6,8 @@
  * No provider keys are hardcoded.
  */
 
-import { createLogger } from '../utils/logger';
 import { getAIBridgeConfig, type ProviderMode } from '../config/ai-bridge.config';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ai-bridge-llm');
 

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import crypto from 'crypto';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * Audit Hash Chain Tests

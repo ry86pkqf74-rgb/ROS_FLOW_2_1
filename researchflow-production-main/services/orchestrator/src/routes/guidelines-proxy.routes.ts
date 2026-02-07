@@ -6,8 +6,8 @@
  * the Node.js orchestrator for better maintainability.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { Router, Request, Response, NextFunction } from 'express';
 
 const router = Router();
 

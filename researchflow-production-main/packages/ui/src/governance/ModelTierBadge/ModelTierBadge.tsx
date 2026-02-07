@@ -1,5 +1,6 @@
-import * as React from 'react';
 import { Cpu, Zap, Sparkles } from 'lucide-react';
+import * as React from 'react';
+
 import { cn } from '../../utils/cn';
 
 // figma: fileKey=PENDING nodeId=PENDING

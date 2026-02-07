@@ -6,10 +6,12 @@
  * Test Client → AI Bridge → AI Router → Mock LLM Response
  */
 
-import { test, describe, beforeEach, mock } from 'node:test';
 import assert from 'node:assert';
-import request from 'supertest';
+import { test, describe, beforeEach, mock } from 'node:test';
+
 import express from 'express';
+import request from 'supertest';
+
 import aiBridgeRoutes from '../ai-bridge';
 
 // Mock dependencies
