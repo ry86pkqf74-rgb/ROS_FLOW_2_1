@@ -1,6 +1,6 @@
 # Agent HTTP contract
 
-Internal contract for agent services that the orchestrator calls. All agents must implement the same endpoints and shapes so the orchestrator can dispatch and parse responses without drift.
+Internal contract for agent services that the orchestrator calls. For the **unified JSON envelope**, **AgentRunResponse**, **AgentError**, and **GroundingPack** schema see [docs/AGENT_CONTRACT.md](../../docs/AGENT_CONTRACT.md). All agents must implement the same endpoints and shapes so the orchestrator can dispatch and parse responses without drift.
 
 ## Overview + endpoints
 

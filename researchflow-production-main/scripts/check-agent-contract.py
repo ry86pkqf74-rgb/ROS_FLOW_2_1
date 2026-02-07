@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Agent contract conformance check. Hits /agents/run/sync and /agents/run/stream
-for each target in AGENT_CONTRACT_TARGETS and validates response/event shape.
+Agent contract conformance check. For each target in AGENT_CONTRACT_TARGETS:
+  - GET /health and GET /health/ready: validate JSON has required keys and types
+  - POST /agents/run/sync (and /agents/run/stream): validate response JSON envelope and types
 
 Usage:
   AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py
@@ -106,12 +107,72 @@ def validate_sync_response(data: dict, status_code: int) -> tuple[bool, str]:
         return False, "response is not a JSON object"
     rid = data.get("request_id")
     if not (isinstance(rid, str) and rid):
-        return False, "missing or invalid request_id"
+        return False, "missing or invalid request_id (must be non-empty string)"
     if not has_outputs_or_data(data):
         return False, "missing outputs or data object"
+    out = data.get("outputs") if data.get("outputs") is not None else data.get("data")
+    if out is not None and not isinstance(out, dict):
+        return False, "outputs/data must be a JSON object"
+    st = data.get("status")
+    if st is not None and not isinstance(st, str):
+        return False, "status must be a string"
     if not has_success_indicator(data):
         return False, "missing success indicator (ok=true or status in ['ok','success'])"
     return True, ""
+
+
+def validate_health_like(data: dict, endpoint: str) -> tuple[bool, str]:
+    """Validate JSON from /health or /health/ready: required key 'status' (string)."""
+    if not isinstance(data, dict):
+        return False, f"{endpoint}: response is not a JSON object"
+    status = data.get("status")
+    if status is None:
+        return False, f"{endpoint}: missing key 'status'"
+    if not isinstance(status, str):
+        return False, f"{endpoint}: 'status' must be a string, got {type(status).__name__}"
+    return True, ""
+
+
+def health_check(base: str) -> tuple[bool, str]:
+    url = base.rstrip("/") + "/health"
+    req = Request(url, headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urlopen(req, timeout=5) as resp:
+            raw = resp.read().decode("utf-8")
+    except HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        return False, f"/health status {e.code}. {raw[:200]!r}"
+    except URLError as e:
+        return False, f"request failed: {e.reason}"
+    except Exception as e:
+        return False, str(e)
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return False, "/health: invalid JSON"
+    ok, msg = validate_health_like(data, "/health")
+    return ok, msg
+
+
+def ready_check(base: str) -> tuple[bool, str]:
+    url = base.rstrip("/") + "/health/ready"
+    req = Request(url, headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urlopen(req, timeout=5) as resp:
+            raw = resp.read().decode("utf-8")
+    except HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        return False, f"/health/ready status {e.code}. {raw[:200]!r}"
+    except URLError as e:
+        return False, f"request failed: {e.reason}"
+    except Exception as e:
+        return False, str(e)
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return False, "/health/ready: invalid JSON"
+    ok, msg = validate_health_like(data, "/health/ready")
+    return ok, msg
 
 
 def sync_check(base: str, task_type: str, n: int = 1) -> tuple[bool, str]:
@@ -239,28 +300,39 @@ def stream_check(base: str, task_type: str, n: int = 1) -> tuple[bool, str]:
 
 def main() -> int:
     targets = get_agent_targets()
-    results: list[tuple[str, bool, str, bool, str]] = []
+    results: list[tuple[str, bool, str, bool, str, bool, str, bool, str]] = []
     for i, (base, task_type) in enumerate(targets, start=1):
         body_dict = get_body_dict(i, task_type)
         ensure_lit_retrieval_has_query(body_dict, task_type)
+        health_ok, health_msg = health_check(base)
+        ready_ok, ready_msg = ready_check(base)
         sync_ok, sync_msg = sync_check(base, task_type, n=i)
         stream_ok, stream_msg = stream_check(base, task_type, n=i)
-        results.append((base, sync_ok, sync_msg, stream_ok, stream_msg))
+        results.append((base, health_ok, health_msg, ready_ok, ready_msg, sync_ok, sync_msg, stream_ok, stream_msg))
     # Table
     print("Agent contract check summary")
     print("-" * 72)
-    for base, sync_ok, sync_msg, stream_ok, stream_msg in results:
-        sync_s = "PASS" if sync_ok else "FAIL"
-        stream_s = "PASS" if stream_ok else "FAIL"
+    for base, health_ok, health_msg, ready_ok, ready_msg, sync_ok, sync_msg, stream_ok, stream_msg in results:
+        def _s(ok: bool) -> str:
+            return "PASS" if ok else "FAIL"
         print(f"  {base}")
-        print(f"    SYNC:   {sync_s}")
+        print(f"    /health:       {_s(health_ok)}")
+        if not health_ok and health_msg:
+            print(f"                  {health_msg[:200]}")
+        print(f"    /health/ready: {_s(ready_ok)}")
+        if not ready_ok and ready_msg:
+            print(f"                  {ready_msg[:200]}")
+        print(f"    /run (sync):   {_s(sync_ok)}")
         if not sync_ok and sync_msg:
-            print(f"           {sync_msg[:200]}")
-        print(f"    STREAM: {stream_s}")
+            print(f"                  {sync_msg[:200]}")
+        print(f"    /run (stream): {_s(stream_ok)}")
         if not stream_ok and stream_msg:
-            print(f"           {stream_msg[:200]}")
+            print(f"                  {stream_msg[:200]}")
         print()
-    failed = any(not sync_ok or not stream_ok for _, sync_ok, _, stream_ok, _ in results)
+    failed = any(
+        not health_ok or not ready_ok or not sync_ok or not stream_ok
+        for _, health_ok, _, ready_ok, _, sync_ok, _, stream_ok, _ in results
+    )
     return 1 if failed else 0
 
 
