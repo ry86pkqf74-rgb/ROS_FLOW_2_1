@@ -33,15 +33,18 @@ def parse_section_response(raw: str) -> Dict[str, Any]:
         except json.JSONDecodeError:
             pass
     if not claims_with_evidence:
-        # Fallback: look for any JSON array at end
+        # Fallback: look for any JSON array at end (all elements must be dicts for "in" check)
         for m in re.finditer(r"(\[[\s\S]*?\])\s*$", raw):
             try:
                 cand = json.loads(m.group(1))
-                if isinstance(cand, list) and cand and isinstance(cand[0], dict):
-                    if any("evidence_refs" in (x or {}) or "claim" in (x or {}) for x in cand):
-                        claims_with_evidence = cand
-                        break
-            except json.JSONDecodeError:
+                if not isinstance(cand, list) or not cand:
+                    continue
+                if not all(isinstance(x, dict) for x in cand):
+                    continue
+                if any("evidence_refs" in x or "claim" in x for x in cand):
+                    claims_with_evidence = cand
+                    break
+            except (json.JSONDecodeError, TypeError):
                 continue
 
     # Section: before CLAIMS_WITH_EVIDENCE
