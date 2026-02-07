@@ -4,7 +4,7 @@
  * Specialized agent for guiding statistical analysis.
  */
 
-import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router';
+import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router/providers';
 
 import { AGENT_REGISTRY } from '../registry.js';
 import type { AgentInput, AgentOutput } from '../types/agent.types.js';

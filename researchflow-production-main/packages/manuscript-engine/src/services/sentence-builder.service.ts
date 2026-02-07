@@ -4,7 +4,8 @@
  * Constructs data-driven sentences for results sections.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { SentenceConstructionRequest } from '../types';
 import { SentenceConstructionRequestSchema } from '../types';

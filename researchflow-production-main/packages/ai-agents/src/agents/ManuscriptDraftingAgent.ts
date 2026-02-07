@@ -5,7 +5,7 @@
  * Now integrated with Claude provider via ai-router for real AI responses.
  */
 
-import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router';
+import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router/providers';
 
 import { AGENT_REGISTRY } from '../registry.js';
 import type { AgentInput, AgentOutput } from '../types/agent.types.js';

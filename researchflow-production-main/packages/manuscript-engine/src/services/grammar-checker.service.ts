@@ -5,7 +5,8 @@
  * In production, integrate with LanguageTool API or similar service.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { GrammarCheckResult, GrammarIssue } from '../types';
 

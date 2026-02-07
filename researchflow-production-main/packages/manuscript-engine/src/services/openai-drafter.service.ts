@@ -4,7 +4,8 @@
  * Uses OpenAI GPT models for initial draft generation through AI Router.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { ManuscriptSection, SectionPromptContext } from '../types';
 import { SectionPromptContextSchema } from '../types';

@@ -4,7 +4,7 @@
  * Specialized agent for extracting structured data from clinical documents.
  */
 
-import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router';
+import { getClaudeProvider, type ClaudeRequestOptions } from '@researchflow/ai-router/providers';
 
 import { AGENT_REGISTRY } from '../registry.js';
 import type { AgentInput, AgentOutput } from '../types/agent.types.js';

@@ -75,7 +75,8 @@ function mapToLegacyCategory(type: PhiFinding['type']): PHICategory {
     'HEALTH_PLAN': 'other',
     'LICENSE': 'license_number',
     'DEVICE_ID': 'device_id',
-    'AGE_OVER_89': 'age_over_89'
+    'AGE_OVER_89': 'age_over_89',
+    'UNKNOWN': 'other'
   };
   return mapping[type];
 }
@@ -99,7 +100,8 @@ function getHipaaIdentifier(type: PhiFinding['type']): string {
     'HEALTH_PLAN': 'HIPAA 164.514(b)(2)(i)(G)',
     'LICENSE': 'HIPAA 164.514(b)(2)(i)(K)',
     'DEVICE_ID': 'HIPAA 164.514(b)(2)(i)(L)',
-    'AGE_OVER_89': 'HIPAA 164.514(b)(2)(i)(C)'
+    'AGE_OVER_89': 'HIPAA 164.514(b)(2)(i)(C)',
+    'UNKNOWN': 'HIPAA 164.514(b)(2)(i)(O)'
   };
   return mapping[type];
 }
