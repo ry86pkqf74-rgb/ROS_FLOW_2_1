@@ -88,7 +88,16 @@ The conformance script treats the **last** SSE event as the terminal event and v
    ```
    Start the agent(s) first (e.g. `uvicorn app.main:app --port 8000` in each agent directory). Exit code 0 = pass, 1 = fail.
 
-2. **Unit test (agent-lit-retrieval):**
+2. **Unit test (agent-rag-retrieve):**
+   ```bash
+   cd researchflow-production-main/services/agents/agent-rag-retrieve
+   pip install -r requirements.txt
+   python3 -m pytest tests/test_contract.py -v
+   ```
+   Or include in `AGENT_CONTRACT_TARGETS` for the script:
+   `AGENT_CONTRACT_TARGETS=...,http://agent-rag-retrieve:8000=RAG_RETRIEVE`
+
+4. **Unit test (agent-lit-retrieval):**
    ```bash
    cd researchflow-production-main/services/agents/agent-lit-retrieval
    pip install -r requirements.txt

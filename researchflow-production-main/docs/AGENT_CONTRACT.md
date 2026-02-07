@@ -53,13 +53,18 @@ Same JSON body for both sync and stream:
 
 ## GroundingPack schema
 
-Shared structure for RAG/retrieval citations and sources. Optional on `AgentRunResponse`.
+Shared structure for RAG/retrieval citations and sources. Optional on `AgentRunResponse`. **Canonical JSON Schema:** [docs/agent_response_schema.json](agent_response_schema.json) — contract checker and RAG retrieve agent both use this schema.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `sources` | array of object | no | Source documents or references. |
-| `citations` | array of string | no | Citation keys or IDs. |
-| `span_refs` | array of object | no | Optional span references into sources. |
+| `chunks` | array of [RetrievalChunk](agent_response_schema.json) | no | Retrieved chunks with stable `chunk_id` and `doc_id`. |
+| `citations` | array of string | no | Citation keys or IDs (e.g. chunkId). |
+| `retrieval_trace` | RetrievalTrace | no | Pipeline trace (e.g. semantic_k, bm25_k, rerank_k reserved). |
+| `sources` | array of object | no | Source documents or references (contract). |
+| `span_refs` | array of object | no | Optional span references into sources (contract). |
+
+**RetrievalChunk:** `chunk_id` (string), `doc_id` (string), `text` (string), `score` (number), `metadata` (object).  
+**RetrievalTrace:** `stages` (array of string), `semantic_k` / `bm25_k` / `rerank_k` (optional integers).
 
 ## Conformance check
 
@@ -80,6 +85,6 @@ Defined in each agent’s `agent/schemas.py` (aligned with this doc):
 - `AgentRunRequest`
 - `AgentRunResponse` (includes optional `grounding: GroundingPack`, `error: AgentError`)
 - `AgentError`
-- `GroundingPack`
+- `GroundingPack` (chunks, citations, retrieval_trace, sources, span_refs)
 
 See also: `services/agents/CONTRACT.md` for SSE/stream details and PHI-safe logging rules.

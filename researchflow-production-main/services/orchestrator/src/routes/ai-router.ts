@@ -222,6 +222,7 @@ router.post(
       STAGE_2_LITERATURE_REVIEW: 'agent-stage2-lit',
       LIT_RETRIEVAL: 'agent-lit-retrieval',
       POLICY_REVIEW: 'agent-policy-review',
+      RAG_RETRIEVE: 'agent-rag-retrieve',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

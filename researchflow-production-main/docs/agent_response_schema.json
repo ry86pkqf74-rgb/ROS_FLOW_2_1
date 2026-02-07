@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://researchflow/docs/agent_response_schema.json",
+  "title": "AgentRunResponse",
+  "description": "Unified sync response envelope for agents. Contract checker and RAG retrieve agent both use this schema.",
+  "type": "object",
+  "required": ["request_id", "status", "outputs"],
+  "properties": {
+    "status": { "type": "string", "enum": ["ok", "success", "error"] },
+    "request_id": { "type": "string", "minLength": 1 },
+    "outputs": { "type": "object" },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "provenance": { "type": "object" },
+    "usage": { "type": "object" },
+    "grounding": { "$ref": "#/$defs/GroundingPack" },
+    "error": { "$ref": "#/$defs/AgentError" }
+  },
+  "$defs": {
+    "GroundingPack": {
+      "title": "GroundingPack",
+      "description": "RAG grounding: chunks (with chunkId, docId), citations, retrievalTrace; contract fields sources and span_refs.",
+      "type": "object",
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RetrievalChunk" },
+          "description": "Retrieved chunks with stable chunk_id and doc_id"
+        },
+        "citations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Citation keys or IDs (e.g. chunkId)"
+        },
+        "retrieval_trace": { "$ref": "#/$defs/RetrievalTrace" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Source documents or references (contract)"
+        },
+        "span_refs": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Optional span references (contract)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RetrievalChunk": {
+      "title": "RetrievalChunk",
+      "type": "object",
+      "required": ["chunk_id", "doc_id"],
+      "properties": {
+        "chunk_id": { "type": "string", "description": "Stable chunk identifier" },
+        "doc_id": { "type": "string", "description": "Stable document/source identifier" },
+        "text": { "type": "string", "default": "" },
+        "score": { "type": "number", "default": 0 },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "RetrievalTrace": {
+      "title": "RetrievalTrace",
+      "type": "object",
+      "properties": {
+        "stages": { "type": "array", "items": { "type": "string" } },
+        "semantic_k": { "type": ["integer", "null"] },
+        "bm25_k": { "type": ["integer", "null"] },
+        "rerank_k": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "AgentError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    }
+  }
+}

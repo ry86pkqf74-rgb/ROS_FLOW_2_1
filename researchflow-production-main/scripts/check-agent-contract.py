@@ -5,10 +5,11 @@ Agent contract conformance check. For each target in AGENT_CONTRACT_TARGETS:
   - POST /agents/run/sync (and /agents/run/stream): validate response JSON envelope and types
 
 Usage:
-  AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py
+   AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW,http://agent-rag-ingest:8000=RAG_INGEST python3 scripts/check-agent-contract.py
 
 Requires: AGENT_CONTRACT_TARGETS (comma-separated baseUrl=task_type). Exits 2 if unset.
-Uses Python stdlib only (no extra dependencies). PHI-safe: never prints request/response bodies on success.
+Uses Python stdlib; optional: if jsonschema is installed, validates sync response against
+docs/agent_response_schema.json (same schema used by the RAG retrieve agent). PHI-safe: never prints request/response bodies on success.
 """
 
 from __future__ import annotations
@@ -33,13 +34,30 @@ LIT_RETRIEVAL_QUERY_FALLBACK = "contract-check query"
 
 
 def get_body_dict(n: int, task_type: str) -> dict:
-    """Build request body dict. For LIT_RETRIEVAL always sets inputs.query."""
+    """Build request body dict. For LIT_RETRIEVAL/RAG_RETRIEVE sets inputs.query; for RAG_INGEST sets inputs for ingest."""
     inputs: dict = {}
     if task_type == "LIT_RETRIEVAL":
         research_question = (os.environ.get("RESEARCH_QUESTION") or "").strip()
         existing_query = ""  # contract script builds from scratch; no prior inputs
         query = research_question or existing_query or LIT_RETRIEVAL_QUERY_FALLBACK
         inputs["query"] = query.strip() or LIT_RETRIEVAL_QUERY_FALLBACK
+    elif task_type == "RAG_RETRIEVE":
+        inputs["query"] = (os.environ.get("RAG_RETRIEVE_QUERY") or "contract-check query").strip() or "contract-check query"
+        inputs["knowledgeBase"] = os.environ.get("RAG_RETRIEVE_KB", "default")
+        inputs["topK"] = 5
+        inputs["domainId"] = os.environ.get("RAG_RETRIEVE_DOMAIN_ID", "default")
+        inputs["projectId"] = os.environ.get("RAG_RETRIEVE_PROJECT_ID", "default")
+    elif task_type == "RAG_INGEST":
+        # Minimal payload: no documents so no embedding/Chroma write; agent returns 0 ingested
+        inputs["documents"] = []
+        inputs["knowledgeBase"] = "contract-check"
+        inputs["domainId"] = "default"
+        inputs["projectId"] = "default"
+    elif task_type == "CLAIM_VERIFY":
+        inputs["claims"] = ["Contract check claim."]
+        inputs["groundingPack"] = {"sources": [{"id": "c1", "text": "Sample grounding text."}]}
+        inputs["governanceMode"] = "DEMO"
+        inputs["strictness"] = "normal"
     return {
         "request_id": f"contract-check-{n}",
         "task_type": task_type,
@@ -58,6 +76,17 @@ def ensure_lit_retrieval_has_query(body_dict: dict, task_type: str) -> None:
         sys.exit(1)
 
 
+def ensure_rag_retrieve_has_query(body_dict: dict, task_type: str) -> None:
+    """Exit with code 1 if RAG_RETRIEVE payload is missing or empty inputs.query."""
+    if task_type != "RAG_RETRIEVE":
+        return
+    inputs = body_dict.get("inputs")
+    query = inputs.get("query") if isinstance(inputs, dict) else None
+    if not (isinstance(query, str) and query.strip()):
+        print("Error: RAG_RETRIEVE request must include non-empty inputs.query.", file=sys.stderr)
+        sys.exit(1)
+
+
 def make_body(n: int, task_type: str) -> bytes:
     body = get_body_dict(n, task_type)
     return json.dumps(body).encode("utf-8")
@@ -67,7 +96,7 @@ def get_agent_targets() -> list[tuple[str, str]]:
     raw = os.environ.get("AGENT_CONTRACT_TARGETS", "").strip()
     if not raw:
         print("Error: AGENT_CONTRACT_TARGETS is not set.", file=sys.stderr)
-        print("Example: AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py", file=sys.stderr)
+        print("Example: AGENT_CONTRACT_TARGETS=http://agent-lit-retrieval:8000=LIT_RETRIEVAL,http://agent-rag-retrieve:8000=RAG_RETRIEVE,http://agent-policy-review:8000=POLICY_REVIEW python3 scripts/check-agent-contract.py", file=sys.stderr)
         sys.exit(2)
     out: list[tuple[str, str]] = []
     for entry in raw.split(","):
@@ -102,6 +131,25 @@ def has_outputs_or_data(obj: dict) -> bool:
     return False
 
 
+def _validate_against_canonical_schema(data: dict) -> tuple[bool, str]:
+    """Optional: validate sync response against docs/agent_response_schema.json (requires jsonschema)."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    schema_path = os.path.join(script_dir, "..", "docs", "agent_response_schema.json")
+    if not os.path.isfile(schema_path):
+        return True, ""
+    try:
+        import jsonschema
+    except ImportError:
+        return True, ""
+    with open(schema_path, encoding="utf-8") as f:
+        schema = json.load(f)
+    try:
+        jsonschema.validate(data, schema)
+        return True, ""
+    except jsonschema.ValidationError as e:
+        return False, f"canonical schema validation failed: {getattr(e, 'message', str(e))}"
+
+
 def validate_sync_response(data: dict, status_code: int) -> tuple[bool, str]:
     if not isinstance(data, dict):
         return False, "response is not a JSON object"
@@ -118,6 +166,9 @@ def validate_sync_response(data: dict, status_code: int) -> tuple[bool, str]:
         return False, "status must be a string"
     if not has_success_indicator(data):
         return False, "missing success indicator (ok=true or status in ['ok','success'])"
+    ok, msg = _validate_against_canonical_schema(data)
+    if not ok:
+        return False, msg
     return True, ""
 
 
@@ -304,6 +355,7 @@ def main() -> int:
     for i, (base, task_type) in enumerate(targets, start=1):
         body_dict = get_body_dict(i, task_type)
         ensure_lit_retrieval_has_query(body_dict, task_type)
+        ensure_rag_retrieve_has_query(body_dict, task_type)
         health_ok, health_msg = health_check(base)
         ready_ok, ready_msg = ready_check(base)
         sync_ok, sync_msg = sync_check(base, task_type, n=i)

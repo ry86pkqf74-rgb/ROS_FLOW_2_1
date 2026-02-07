@@ -26,6 +26,7 @@ jobs:
             services/agents/agent-lit-retrieval/requirements.txt
             services/agents/agent-policy-review/requirements.txt
             services/agents/agent-policy-review/requirements-dev.txt
+            services/agents/agent-rag-retrieve/requirements.txt
 
       - name: Install shared test dependency (invariants)
         run: pip install pytest
@@ -52,6 +53,14 @@ jobs:
           echo "--- agent-policy-review contract tests ---"
           cat /tmp/policy-review-contract.log
 
+      - name: Install agent-rag-retrieve deps and run contract tests
+        run: |
+          cd services/agents/agent-rag-retrieve
+          pip install -r requirements.txt -q
+          pytest tests/test_contract.py -v --tb=short 2>&1 | tee /tmp/rag-retrieve-contract.log
+          echo "--- agent-rag-retrieve contract tests ---"
+          cat /tmp/rag-retrieve-contract.log
+
       - name: Contract check failed summary
         if: failure()
         run: |
@@ -59,3 +68,4 @@ jobs:
           echo "Invariants: tests/contract/test_agent_invariants.py"
           echo "agent-lit-retrieval: services/agents/agent-lit-retrieval/tests/test_contract.py"
           echo "agent-policy-review: services/agents/agent-policy-review/tests/test_contract.py"
+          echo "agent-rag-retrieve: services/agents/agent-rag-retrieve/tests/test_contract.py"
