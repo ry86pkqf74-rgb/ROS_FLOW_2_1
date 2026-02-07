@@ -227,6 +227,9 @@ router.post(
       RAG_RETRIEVE: 'agent-rag-retrieve',
       SECTION_WRITE_INTRO: 'agent-intro-writer',
       SECTION_WRITE_METHODS: 'agent-methods-writer',
+      SECTION_WRITE_RESULTS: 'agent-results-writer',
+      SECTION_WRITE_DISCUSSION: 'agent-discussion-writer',
+      CLAIM_VERIFY: 'agent-verify',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

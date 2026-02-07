@@ -12,6 +12,9 @@ export const ALLOWED_TASK_TYPES = [
   'POLICY_REVIEW',
   'SECTION_WRITE_INTRO',
   'SECTION_WRITE_METHODS',
+  'SECTION_WRITE_RESULTS',
+  'SECTION_WRITE_DISCUSSION',
+  'CLAIM_VERIFY',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -52,6 +55,18 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   SECTION_WRITE_METHODS: {
     required: ['outline', 'verifiedClaims', 'extractionRows', 'groundingPack'],
     optional: ['styleParams'],
+  },
+  SECTION_WRITE_RESULTS: {
+    required: ['outline', 'verifiedClaims', 'extractionRows', 'groundingPack'],
+    optional: ['styleParams'],
+  },
+  SECTION_WRITE_DISCUSSION: {
+    required: ['outline', 'verifiedClaims', 'extractionRows', 'groundingPack'],
+    optional: ['styleParams'],
+  },
+  CLAIM_VERIFY: {
+    required: ['claims'],
+    optional: ['groundingPack', 'strictness'],
   },
 };
 

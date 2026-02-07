@@ -1,5 +1,9 @@
 # IMRaD Generation Gate Definitions
 
+> **Runtime status**: Gates 1–4 now enforce verify-after-write via  
+> `imrad-section-gate.service.ts` → `runSectionVerifyGate()`.  
+> See `03_verification_protocol.md § Runtime Wiring` for the implementation map.
+
 ## Gate 0: DATA_PREPARATION
 
 ### Prerequisites (Must Pass)

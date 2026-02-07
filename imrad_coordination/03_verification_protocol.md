@@ -233,3 +233,92 @@ GATE_3: ⏳ PENDING
 GATE_4: 🔒 BLOCKED (waiting for GATE_3)
 GATE_5: 🔒 BLOCKED (waiting for GATE_4)
 ```
+
+---
+
+## Runtime Wiring: Verify-After-Write Quality Gate (Step 4)
+
+> **Status**: IMPLEMENTED — wired into orchestrator as of 2026-02-06.
+
+### Where It Lives in Code
+
+| File | Purpose |
+|------|---------|
+| `services/orchestrator/src/services/imrad-section-gate.service.ts` | **Gate controller** — `runSectionVerifyGate()` and `runIMRaDPipeline()` |
+| `services/orchestrator/src/routes/manuscript-generation.ts` | **HTTP endpoints** — `POST /generate/gated-full` and `POST /generate/gated-section` |
+| `services/orchestrator/src/routes/ai-router.ts` | **Dispatch map** — `CLAIM_VERIFY → agent-verify` registered |
+| `services/orchestrator/src/services/task-contract.ts` | **Contract** — `CLAIM_VERIFY`, `SECTION_WRITE_RESULTS`, `SECTION_WRITE_DISCUSSION` registered |
+
+### Writer Output Contract
+
+Every section writer agent (`agent-intro-writer`, `agent-methods-writer`, `agent-results-writer`, `agent-discussion-writer`) **MUST** return:
+
+```json
+{
+  "sectionMarkdown": "## Introduction\n...",
+  "claimsWithEvidence": [
+    {
+      "claim": "Diabetes affects 537 million adults globally",
+      "evidence_refs": [
+        { "chunk_id": "chunk_42", "doc_id": "IDF_Atlas_2021" }
+      ]
+    }
+  ],
+  "warnings": [],
+  "overallPass": true
+}
+```
+
+**Rule**: Every claim must have ≥1 `evidence_ref` with valid `chunk_id` + `doc_id` from the grounding pack. If any claim lacks evidence, the writer sets `overallPass: false`.
+
+### Verify Gate Sequence (per section)
+
+```
+Writer Agent completes
+    ↓
+Gate receives { sectionMarkdown, claimsWithEvidence[], overallPass }
+    ↓
+Step 1: Check writer-side overallPass
+    If false + LIVE → BLOCK immediately
+    ↓
+Step 2: Extract claim strings from claimsWithEvidence
+    ↓
+Step 3: Dispatch to agent-verify (CLAIM_VERIFY)
+    POST /agents/run/sync → { claims[], groundingPack }
+    ↓
+Step 4: Evaluate verdicts
+    LIVE:  overallPass=false → BLOCK (422, progression halted)
+    DEMO:  overallPass=false → WARN (200, warnings emitted, pipeline continues)
+    ↓
+Step 5: Audit log (SECTION_GATE_PASSED or SECTION_GATE_BLOCKED)
+```
+
+### Pipeline Behaviour
+
+**LIVE mode** (production):
+- Sections run sequentially: Intro → Methods → Results → Discussion
+- Gate runs after each section
+- If any gate blocks → pipeline halts at that section (HTTP 422)
+- Subsequent sections are NOT written
+- Response includes `blockedAt: "<section>"` and per-claim verdicts
+
+**DEMO mode** (development/preview):
+- Same sequential flow with verify gates
+- Warnings emitted but no blocking
+- All sections completed regardless of verification outcome
+- Response includes warnings array per section
+
+### HTTP Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/manuscript/generate/gated-full` | Full 4-section pipeline with verify gates |
+| `POST /api/manuscript/generate/gated-section` | Single section verify gate (for retries) |
+
+### Fail-Closed Invariants
+
+1. **Writer returns no claims** in LIVE → gate blocks (claims are required)
+2. **agent-verify unreachable** in LIVE → gate blocks (fail-closed)
+3. **agent-verify returns unclear** for any claim in LIVE → `overallPass: false`
+4. **DEMO mode** always proceeds (warnings only)
+

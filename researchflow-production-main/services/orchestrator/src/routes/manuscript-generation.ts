@@ -21,6 +21,12 @@ import { Router, Request, Response } from 'express';
 import { logAction } from '../services/audit-service';
 import { validateWordBudget, DEFAULT_BUDGETS } from '@researchflow/manuscript-engine';
 import { phiEngine } from '@researchflow/phi-engine';
+import {
+  runSectionVerifyGate,
+  runIMRaDPipeline,
+  type SectionWriterOutput,
+  type IMRaDPipelineInput,
+} from '../services/imrad-section-gate.service';
 
 const router = Router();
 
@@ -395,6 +401,185 @@ router.post('/validate/section', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[ManuscriptGen] Validation failed:', error);
     res.status(500).json({ error: 'Failed to validate section' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+// IMRaD Gated Pipeline Endpoints (Step 4 — verify-after-write)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/manuscript/generate/gated-full
+ *
+ * Run the full IMRaD pipeline with verify-after-write quality gates.
+ * Each section is written sequentially; after each write, agent-verify
+ * checks that every claim is grounded in evidence.
+ *
+ * LIVE mode:  blocks progression if any section fails verification.
+ * DEMO mode:  emits warnings but continues.
+ *
+ * Body: {
+ *   manuscriptId: string,
+ *   outline: string[],
+ *   verifiedClaims: object[],
+ *   extractionRows: object[],
+ *   groundingPack: object,
+ *   styleParams?: object,
+ *   governanceMode: 'LIVE' | 'DEMO',
+ * }
+ */
+router.post('/generate/gated-full', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const {
+      manuscriptId,
+      outline,
+      verifiedClaims,
+      extractionRows,
+      groundingPack,
+      styleParams,
+      governanceMode,
+    } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!manuscriptId || !groundingPack) {
+      return res.status(400).json({
+        error: 'manuscriptId and groundingPack are required',
+      });
+    }
+
+    const requestId = `gated-${manuscriptId}-${Date.now()}`;
+    const mode: 'LIVE' | 'DEMO' = governanceMode === 'LIVE' ? 'LIVE' : 'DEMO';
+
+    const pipelineInput: IMRaDPipelineInput = {
+      manuscriptId,
+      outline: outline || [],
+      verifiedClaims: verifiedClaims || [],
+      extractionRows: extractionRows || [],
+      groundingPack: groundingPack || {},
+      styleParams: styleParams || {},
+      governanceMode: mode,
+      requestId,
+      userId,
+    };
+
+    const result = await runIMRaDPipeline(pipelineInput);
+
+    await logAction({
+      eventType: result.allGatesPassed ? 'GATED_PIPELINE_PASSED' : 'GATED_PIPELINE_BLOCKED',
+      action: 'GATED_GENERATE',
+      resourceType: 'MANUSCRIPT',
+      resourceId: manuscriptId,
+      userId,
+      details: {
+        governanceMode: mode,
+        allGatesPassed: result.allGatesPassed,
+        blockedAt: result.blockedAt,
+        sectionsCompleted: result.sections.length,
+      },
+    });
+
+    const statusCode = result.blockedAt ? 422 : 200;
+    res.status(statusCode).json({
+      manuscriptId,
+      pipeline: 'imrad-gated',
+      governanceMode: mode,
+      allGatesPassed: result.allGatesPassed,
+      blockedAt: result.blockedAt || null,
+      sections: result.sections.map((s) => ({
+        section: s.section,
+        gatePass: s.gateResult.gatePass,
+        blocked: s.gateResult.blocked,
+        sectionMarkdown: s.gateResult.sectionMarkdown,
+        claimsCount: s.gateResult.claimsWithEvidence.length,
+        verifiedClaimsCount: s.gateResult.claimVerdicts.length,
+        failedClaimsCount: s.gateResult.claimVerdicts.filter(
+          (v) => v.verdict !== 'pass',
+        ).length,
+        warnings: s.gateResult.warnings,
+        claimVerdicts: s.gateResult.claimVerdicts,
+      })),
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        requestId,
+      },
+    });
+  } catch (error) {
+    console.error('[ManuscriptGen] Gated pipeline failed:', error);
+    res.status(500).json({ error: 'Gated IMRaD pipeline failed' });
+  }
+});
+
+/**
+ * POST /api/manuscript/generate/gated-section
+ *
+ * Write a single section and run verify gate.
+ * Useful for incremental / retry workflows.
+ *
+ * Body: {
+ *   manuscriptId: string,
+ *   section: 'introduction' | 'methods' | 'results' | 'discussion',
+ *   writerOutput: { sectionMarkdown, claimsWithEvidence, warnings?, overallPass },
+ *   groundingPack: object,
+ *   governanceMode: 'LIVE' | 'DEMO',
+ * }
+ */
+router.post('/generate/gated-section', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { manuscriptId, section, writerOutput, groundingPack, governanceMode } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!manuscriptId || !section || !writerOutput || !groundingPack) {
+      return res.status(400).json({
+        error: 'manuscriptId, section, writerOutput, and groundingPack are required',
+      });
+    }
+
+    const validSections = ['introduction', 'methods', 'results', 'discussion'];
+    if (!validSections.includes(section)) {
+      return res.status(400).json({
+        error: `section must be one of: ${validSections.join(', ')}`,
+      });
+    }
+
+    const mode: 'LIVE' | 'DEMO' = governanceMode === 'LIVE' ? 'LIVE' : 'DEMO';
+    const requestId = `gate-${section}-${manuscriptId}-${Date.now()}`;
+
+    const normalizedOutput: SectionWriterOutput = {
+      sectionMarkdown: writerOutput.sectionMarkdown || '',
+      claimsWithEvidence: writerOutput.claimsWithEvidence || [],
+      warnings: writerOutput.warnings || [],
+      overallPass: writerOutput.overallPass ?? false,
+    };
+
+    const gateResult = await runSectionVerifyGate(
+      section,
+      normalizedOutput,
+      groundingPack,
+      mode,
+      requestId,
+      userId,
+      manuscriptId,
+    );
+
+    const statusCode = gateResult.blocked ? 422 : 200;
+    res.status(statusCode).json({
+      manuscriptId,
+      section,
+      governanceMode: mode,
+      gatePass: gateResult.gatePass,
+      blocked: gateResult.blocked,
+      sectionMarkdown: gateResult.sectionMarkdown,
+      claimsWithEvidence: gateResult.claimsWithEvidence,
+      claimVerdicts: gateResult.claimVerdicts,
+      warnings: gateResult.warnings,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        requestId,
+      },
+    });
+  } catch (error) {
+    console.error('[ManuscriptGen] Gated section verification failed:', error);
+    res.status(500).json({ error: 'Section verification gate failed' });
   }
 });
 
