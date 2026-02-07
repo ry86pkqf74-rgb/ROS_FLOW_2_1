@@ -266,14 +266,27 @@ describe('envSchema', () => {
       expect(result2.success).toBe(false);
     });
 
-    it('should require positive numbers for counts', () => {
-      process.env.AI_MAX_RETRIES = '0';
+    it('should accept non-negative numbers for retry counts', () => {
+      // AI_MAX_RETRIES=0 is valid (disables retries for latency-sensitive operations)
+      process.env = { ...process.env, AI_MAX_RETRIES: '0' };
       const result = envSchema.safeParse(process.env);
-      expect(result.success).toBe(false); // Must be > 0 for retries
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.AI_MAX_RETRIES).toBe(0);
+      }
 
-      process.env.AI_MAX_RETRIES = '3';
+      // Positive values also valid
+      process.env = { ...process.env, AI_MAX_RETRIES: '3' };
       const result2 = envSchema.safeParse(process.env);
       expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data.AI_MAX_RETRIES).toBe(3);
+      }
+
+      // Negative values should fail
+      process.env = { ...process.env, AI_MAX_RETRIES: '-1' };
+      const result3 = envSchema.safeParse(process.env);
+      expect(result3.success).toBe(false);
     });
   });
 

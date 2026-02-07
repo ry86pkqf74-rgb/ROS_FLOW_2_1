@@ -319,7 +319,7 @@ export const envSchema = z.object({
   AI_MAX_RETRIES: z
     .string()
     .transform(Number)
-    .refine((val) => !isNaN(val) && val > 0, 'Must be a positive number')
+    .refine((val) => !isNaN(val) && val >= 0, 'Must be a non-negative number')
     .default('3'),
   AI_RETRY_BACKOFF_MS: z
     .string()
