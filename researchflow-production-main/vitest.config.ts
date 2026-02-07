@@ -24,9 +24,13 @@ export default defineConfig({
       '**/node_modules/**',
       'tests/e2e/**',
       'services/web/**',
-      'tests/integration/api-endpoints.test.ts',
-      'tests/integration/artifacts.test.ts',
-      'tests/integration/standby-mode.test.ts',
+      // Exclude integration and governance tests to make test:unit truly unit-only
+      'tests/integration/**',
+      'tests/governance/**',
+      'packages/**/tests/integration/**',
+      'packages/**/__tests__/integration/**',
+      'services/**/tests/integration/**',
+      'services/**/__tests__/integration/**',
     ],
     testTimeout: 10000,
     coverage: {
