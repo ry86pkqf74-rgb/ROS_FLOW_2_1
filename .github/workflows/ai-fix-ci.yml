@@ -32,6 +32,8 @@ jobs:
 
       - name: Set branch and attempt
         id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RUN_ID="${{ github.event.workflow_run.id }}"
           HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
