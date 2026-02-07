@@ -1,18 +1,10 @@
-import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
-import archiver from "archiver";
 import crypto from "crypto";
-import multer from "multer";
-import path from "path";
 import fs from "fs";
-import OpenAI from "openai";
-import { storage } from "./storage";
-import { db } from "./db";
-import { topics } from "@researchflow/core/schema";
-import { eq } from "drizzle-orm";
-import { logger } from "./src/utils/logger";
+import { createServer, type Server } from "http";
+import path from "path";
+
+
 // JWT-based authentication (replaces Replit auth)
-import { requireAuth, requireAuth as isAuthenticated } from "./src/middleware/auth.js";
 import { optionalAuth, devOrRequireAuth } from "./src/services/authService";
 import jwtAuthRouter from "./src/routes/auth";
 import userSettingsRouter from "./src/routes/user-settings";
@@ -25,6 +17,7 @@ import {
 } from "./src/middleware/rbac";
 import { getTopicById, updateTopic } from "./src/services/topicService";
 import type { User } from "@researchflow/core";
+import { topics } from "@researchflow/core/schema";
 import {
   getCurrentMode,
   getCurrentModeConfig,
@@ -34,7 +27,6 @@ import {
   blockExportInDemo,
   addModeInfo
 } from "./middleware/mode-guard";
-import { getMockAIResponse, getMockAIResponseWithDelay } from "./services/mock-ai-service";
 import {
   generateResearchBrief,
   generateEvidenceGapMap,
@@ -160,6 +152,17 @@ import versionControlRouter from "./src/routes/version-control";
 import healthRouter from "./src/routes/health";
 import { getCumulativeDataService, WORKFLOW_STAGES } from "./src/services/cumulative-data.service";
 import { scan as scanPhi } from "@researchflow/phi-engine";
+import archiver from "archiver";
+import { eq } from "drizzle-orm";
+import type { Express, Request, Response, NextFunction } from "express";
+import multer from "multer";
+import OpenAI from "openai";
+
+import { db } from "./db";
+import { getMockAIResponse, getMockAIResponseWithDelay } from "./services/mock-ai-service";
+import { requireAuth, requireAuth as isAuthenticated } from "./src/middleware/auth.js";
+import { logger } from "./src/utils/logger";
+import { storage } from "./storage";
 
 // Initialize OpenAI client
 const openai = new OpenAI({

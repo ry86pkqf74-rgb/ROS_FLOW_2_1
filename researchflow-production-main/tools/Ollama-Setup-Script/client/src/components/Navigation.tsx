@@ -1,4 +1,3 @@
-import { Link, useLocation } from "wouter";
 import { 
   Bot, 
   Settings, 
@@ -6,6 +5,8 @@ import {
   Box, 
   Activity 
 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+
 import { cn } from "@/lib/utils";
 
 export function Navigation() {

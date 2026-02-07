@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { Pool } from 'pg';
-import { NotificationService } from '../collaboration/notification-service';
+
 import { pool } from '../../db';
+import { NotificationService } from '../collaboration/notification-service';
 
 function parseIntParam(v: any, fallback: number) {
   const n = Number.parseInt(String(v ?? ''), 10);

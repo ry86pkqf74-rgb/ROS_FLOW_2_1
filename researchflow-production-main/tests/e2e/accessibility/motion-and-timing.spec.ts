@@ -3,8 +3,8 @@
  * Reduced motion, no flash >3/sec, timeout warnings, pause/stop, auto-updating content.
  */
 
-import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from '@playwright/test';
 
 test.describe('Motion and timing', () => {
   test.beforeEach(async ({ page }) => {

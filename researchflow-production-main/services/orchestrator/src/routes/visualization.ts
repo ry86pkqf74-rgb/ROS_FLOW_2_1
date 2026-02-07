@@ -15,19 +15,20 @@
  */
 
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+
 import { config } from '../config/env';
-import { logAction } from '../services/audit-service';
+import { visualizationConfig, getTimeoutForChartType, validateDataSize } from '../config/visualization.config';
+import { pool } from '../db';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
-import { createLogger } from '../utils/logger';
-import { pool } from '../db';
+import { VisualizationErrorHandler, validateVisualizationRequest } from '../middleware/visualization-error-handler';
+import { logAction } from '../services/audit-service';
 import { createFiguresService, type FigureCreateInput } from '../services/figures.service';
-import { visualizationConfig, getTimeoutForChartType, validateDataSize } from '../config/visualization.config';
 import { visualizationCache } from '../services/visualization-cache.service';
 import { visualizationMetrics } from '../services/visualization-metrics.service';
-import { VisualizationErrorHandler, validateVisualizationRequest } from '../middleware/visualization-error-handler';
-import rateLimit from 'express-rate-limit';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
 const logger = createLogger('visualization-route');

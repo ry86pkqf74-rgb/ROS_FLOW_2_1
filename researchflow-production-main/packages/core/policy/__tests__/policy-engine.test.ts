@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createPolicyEngine } from '../policy-engine';
+
 import type { PolicyContext } from '../../types/policy';
+import { createPolicyEngine } from '../policy-engine';
 
 describe('PolicyEngine', () => {
   const engine = createPolicyEngine();

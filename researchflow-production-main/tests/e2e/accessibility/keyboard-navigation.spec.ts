@@ -4,6 +4,10 @@
  */
 
 import { test, expect } from '@playwright/test';
+
+import { loginAs, setMode } from '../fixtures';
+import { E2E_USERS } from '../fixtures/users.fixture';
+
 import {
   getFocusableElements,
   getTabOrder,
@@ -11,8 +15,6 @@ import {
   expectFocusVisible,
   tabThroughAndCollectFocus,
 } from './helpers';
-import { loginAs, setMode } from '../fixtures';
-import { E2E_USERS } from '../fixtures/users.fixture';
 
 test.describe('Keyboard navigation', () => {
   test.beforeEach(async ({ page }) => {

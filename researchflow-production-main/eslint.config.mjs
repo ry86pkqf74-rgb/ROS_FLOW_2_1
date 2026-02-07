@@ -2,9 +2,9 @@
 // See: https://eslint.org/docs/latest/use/configure/configuration-files
 
 import js from "@eslint/js";
-import tseslint from "typescript-eslint";
-import importPlugin from "eslint-plugin-import";
 import prettierConfig from "eslint-config-prettier";
+import importPlugin from "eslint-plugin-import";
+import tseslint from "typescript-eslint";
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [

@@ -7,11 +7,14 @@
  * - Permission scoping (read, comment)
  * - Token validation and revocation
  */
-import { db } from "../../db";
+import { createHash, randomBytes } from "crypto";
+
 import { artifactShares, artifacts } from "@researchflow/core/schema";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { createHash, randomBytes } from "crypto";
+
+import { db } from "../../db";
+
 
 export type SharePermission = 'read' | 'comment';
 

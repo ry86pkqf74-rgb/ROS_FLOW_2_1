@@ -5,11 +5,12 @@
  * GET list, POST add, DELETE remove.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
-import { requireRole } from '../middleware/rbac';
-import { db } from '../../db.js';
 import { sql } from 'drizzle-orm';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+
+import { db } from '../../db.js';
+import { requireRole } from '../middleware/rbac';
 
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
   return (req: Request, res: Response, next: NextFunction) => {

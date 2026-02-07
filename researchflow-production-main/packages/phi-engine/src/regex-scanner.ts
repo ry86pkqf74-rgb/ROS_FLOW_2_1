@@ -5,8 +5,8 @@
  * Ported from apps/api-node/services/phi-scanner.ts with improvements.
  */
 
-import type { PhiScanner, PhiFinding } from './types';
 import { PHI_PATTERNS } from './patterns';
+import type { PhiScanner, PhiFinding } from './types';
 
 /**
  * Regex-based implementation of PHI scanner

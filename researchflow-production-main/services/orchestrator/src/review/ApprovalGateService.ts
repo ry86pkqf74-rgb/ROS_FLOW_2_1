@@ -9,9 +9,10 @@
  * - SUBMISSION: Final approval for journal submission
  */
 
+import { EventEmitter } from 'events';
+
 import { db } from '../../db';
 import { logAction } from '../services/audit-service';
-import { EventEmitter } from 'events';
 
 export type GateType = 'AI_USAGE' | 'PHI_OVERRIDE' | 'EXPORT' | 'SUBMISSION';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';

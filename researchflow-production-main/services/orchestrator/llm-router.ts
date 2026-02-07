@@ -1,7 +1,5 @@
-import OpenAI from "openai";
-import { z, ZodSchema } from "zod";
-import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
+
 import {
   HandoffPackSchema,
   HandoffPackType,
@@ -13,6 +11,10 @@ import {
   ValidationResult
 } from "@researchflow/core/types/handoff-pack.schema";
 import { scan, redact } from "@researchflow/phi-engine";
+import OpenAI from "openai";
+import { v4 as uuidv4 } from "uuid";
+import { z, ZodSchema } from "zod";
+
 import { checkAICallAllowed, getTelemetry, AICallBlockedError } from "./src/utils/telemetry";
 
 const openai = new OpenAI({

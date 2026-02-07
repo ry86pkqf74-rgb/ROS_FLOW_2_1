@@ -1,10 +1,11 @@
-import { useOllamaModels } from "@/hooks/use-ollama";
+import { Search } from "lucide-react";
+import { useState } from "react";
+
 import { ModelCard } from "@/components/ModelCard";
 import { PullModelDialog } from "@/components/PullModelDialog";
 import { StatusIndicator } from "@/components/StatusIndicator";
-import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useOllamaModels } from "@/hooks/use-ollama";
 
 export default function Models() {
   const { data, isLoading, isError } = useOllamaModels();

@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type OllamaModelsResponse } from "@shared/routes";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { useToast } from "@/hooks/use-toast";
 
 // Fetch available models from Ollama proxy

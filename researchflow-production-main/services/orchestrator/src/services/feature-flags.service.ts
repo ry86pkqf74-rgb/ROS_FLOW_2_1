@@ -11,10 +11,14 @@
  * @module services/feature-flags.service
  */
 
-import { db } from '../../db';
+import { createHash } from 'crypto';
+
 import { featureFlags, type FeatureFlag, GOVERNANCE_MODES, type GovernanceMode } from '@researchflow/core/schema';
 import { eq } from 'drizzle-orm';
-import { createHash } from 'crypto';
+
+import { db } from '../../db';
+
+
 import { logAction } from './audit-service';
 import { eventBus } from './event-bus';
 import { getMode } from './governance-config.service';
@@ -25,7 +29,7 @@ interface FlagCache {
   expiry: number;
 }
 
-let flagCache: FlagCache = {
+const flagCache: FlagCache = {
   flags: new Map(),
   expiry: 0,
 };

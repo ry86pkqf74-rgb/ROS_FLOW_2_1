@@ -3,10 +3,11 @@
  * GDPR, SOX compliance with comprehensive audit logging
  */
 
+import crypto from 'crypto';
 import { EventEmitter } from 'events';
 import { promises as fs } from 'fs';
 import path from 'path';
-import crypto from 'crypto';
+
 import { createLogger } from '../utils/logger';
 
 interface ComplianceConfig {

@@ -5,11 +5,13 @@
  */
 
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { ideasService } from '../../services/docs-first/ideas.service.js';
-import { requirePermission } from '../../middleware/rbac.js';
-import { blockInStandby } from '../../middleware/governance-gates.js';
-import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { z } from 'zod';
+
+import { asyncHandler } from '../../middleware/asyncHandler.js';
+import { blockInStandby } from '../../middleware/governance-gates.js';
+import { requirePermission } from '../../middleware/rbac.js';
+import { ideasService } from '../../services/docs-first/ideas.service.js';
+
 
 const router = express.Router();
 

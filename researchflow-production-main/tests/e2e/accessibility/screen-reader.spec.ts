@@ -4,6 +4,10 @@
  */
 
 import { test, expect } from '@playwright/test';
+
+import { loginAs, setMode } from '../fixtures';
+import { E2E_USERS } from '../fixtures/users.fixture';
+
 import {
   getInteractiveElements,
   hasAccessibleName,
@@ -12,8 +16,6 @@ import {
   getLandmarks,
   getImagesWithoutAlt,
 } from './helpers';
-import { loginAs, setMode } from '../fixtures';
-import { E2E_USERS } from '../fixtures/users.fixture';
 
 const MAJOR_PAGES = [
   { path: '/', name: 'Home' },

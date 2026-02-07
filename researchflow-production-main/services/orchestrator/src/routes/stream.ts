@@ -8,6 +8,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
+
 import { eventBus, type AppEvent, type EventTopic } from '../services/event-bus';
 import { featureFlagsService } from '../services/feature-flags.service';
 import { governanceConfigService } from '../services/governance-config.service';

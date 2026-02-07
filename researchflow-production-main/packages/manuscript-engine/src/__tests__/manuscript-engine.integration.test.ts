@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { initializeManuscriptEngine } from '../../index';
 import type {
   SectionPromptContext,

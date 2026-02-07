@@ -58,7 +58,7 @@ export async function getElementContrastRatio(el: Locator): Promise<number | nul
   const colors = await el.evaluate((node) => {
     const style = window.getComputedStyle(node);
     let bg = style.backgroundColor;
-    let fg = style.color;
+    const fg = style.color;
     if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
       let parent: Element | null = node.parentElement;
       while (parent && (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent')) {

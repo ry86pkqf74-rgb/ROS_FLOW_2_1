@@ -16,11 +16,12 @@
  * - POST /api/manuscript/validate/section
  */
 
-import { requireAuth } from '../middleware/auth';
-import { Router, Request, Response } from 'express';
-import { logAction } from '../services/audit-service';
 import { validateWordBudget, DEFAULT_BUDGETS } from '@researchflow/manuscript-engine';
 import { phiEngine } from '@researchflow/phi-engine';
+import { Router, Request, Response } from 'express';
+
+import { requireAuth } from '../middleware/auth';
+import { logAction } from '../services/audit-service';
 import {
   runSectionVerifyGate,
   runIMRaDPipeline,

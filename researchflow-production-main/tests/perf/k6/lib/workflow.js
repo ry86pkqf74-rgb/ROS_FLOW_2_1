@@ -5,6 +5,7 @@
  */
 
 import http from 'k6/http';
+
 import { recordStageTransition } from './metrics.js';
 
 /**

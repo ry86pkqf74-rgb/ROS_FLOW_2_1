@@ -7,21 +7,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import all Phase G services
-import { clusterStatusService } from '../services/clusterStatusService';
-import { predictiveScalingService } from '../services/predictiveScalingService';
-import { metricsCollectorService } from '../services/metricsCollectorService';
-import { dataShardingService } from '../services/dataShardingService';
-import { edgeComputingService } from '../services/edgeComputingService';
-import { verticalScalingService } from '../services/verticalScalingService';
-import { haToggleService } from '../services/haToggleService';
-import { performanceAnalyzerService } from '../services/performanceAnalyzerService';
-import { optimizationSuggestionService } from '../services/optimizationSuggestionService';
-import { devSimulationService } from '../services/devSimulationService';
 import { chaosEngineeringService } from '../services/chaosEngineeringService';
-import { schedulerSimulatorService } from '../services/schedulerSimulatorService';
-import { multiCloudService } from '../services/multiCloudService';
-import { serverlessTriggerService } from '../services/serverlessTriggerService';
+import { clusterStatusService } from '../services/clusterStatusService';
 import { costMonitoringService } from '../services/costMonitoringService';
+import { dataShardingService } from '../services/dataShardingService';
+import { devSimulationService } from '../services/devSimulationService';
+import { edgeComputingService } from '../services/edgeComputingService';
+import { haToggleService } from '../services/haToggleService';
+import { metricsCollectorService } from '../services/metricsCollectorService';
+import { multiCloudService } from '../services/multiCloudService';
+import { optimizationSuggestionService } from '../services/optimizationSuggestionService';
+import { performanceAnalyzerService } from '../services/performanceAnalyzerService';
+import { predictiveScalingService } from '../services/predictiveScalingService';
+import { schedulerSimulatorService } from '../services/schedulerSimulatorService';
+import { serverlessTriggerService } from '../services/serverlessTriggerService';
+import { verticalScalingService } from '../services/verticalScalingService';
 
 // ============================================================================
 // Section 1: Real-Time Monitoring Dashboard (Tasks 116, 117, 118, 122, 129, 130)

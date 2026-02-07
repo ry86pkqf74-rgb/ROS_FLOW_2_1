@@ -1,13 +1,14 @@
-import { type Express } from "express";
-import type { PluginOption } from "vite";
-import { type Server } from "http";
 import fs from "fs";
-import path from "path";
-import { nanoid } from "nanoid";
-import react from "@vitejs/plugin-react";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { type Server } from "http";
 import { createRequire } from "module";
+import path from "path";
 import { pathToFileURL } from "url";
+
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import react from "@vitejs/plugin-react";
+import { type Express } from "express";
+import { nanoid } from "nanoid";
+import type { PluginOption } from "vite";
 
 export async function setupVite(server: Server, app: Express) {
   const rootDir = path.resolve(import.meta.dirname, "..", "..");

@@ -4,10 +4,12 @@
  * Validates the complete flow from Python-style request through the bridge
  */
 
-import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert';
-import request from 'supertest';
+import { test, describe, beforeEach } from 'node:test';
+
 import express from 'express';
+import request from 'supertest';
+
 import aiBridgeRoutes from '../ai-bridge';
 
 // Create test app with full middleware stack

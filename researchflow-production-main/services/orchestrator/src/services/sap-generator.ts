@@ -3,7 +3,6 @@
  * Auto-generates comprehensive SAP from Topic Declaration
  */
 
-import { v4 as uuid } from 'uuid';
 import type {
   StatisticalPlan,
   PrimaryAnalysis,
@@ -17,6 +16,7 @@ import type {
   MissingDataMechanism,
   MissingDataApproach
 } from '@researchflow/core/types/sap';
+import { v4 as uuid } from 'uuid';
 
 export interface TopicDeclarationForSAP {
   id: string;

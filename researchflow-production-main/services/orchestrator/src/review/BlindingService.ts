@@ -10,9 +10,10 @@
  * - Reversible blinding with audit trail
  */
 
+import crypto from 'crypto';
+
 import { db } from '../../db';
 import { logAction } from '../services/audit-service';
-import crypto from 'crypto';
 
 export interface Author {
   name: string;

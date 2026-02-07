@@ -12,13 +12,14 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireAuth as isAuthenticated } from '../middleware/auth.js';
 import { resolveOrgContext, requireOrgMember } from '../middleware/org-context';
-import { semanticSearchService } from '../services/semanticSearchService';
-import { hybridSearchService } from '../services/hybridSearchService';
 import { embeddingService } from '../services/embeddingService';
 import { featureFlagsService } from '../services/featureFlagsService';
+import { hybridSearchService } from '../services/hybridSearchService';
+import { semanticSearchService } from '../services/semanticSearchService';
 
 const router = Router();
 

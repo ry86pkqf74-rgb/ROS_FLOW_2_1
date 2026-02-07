@@ -3,11 +3,13 @@
  * Task T53: Export all journal-specific templates
  */
 
-import { NEJM_TEMPLATE } from './nejm.template';
+import type { ManuscriptTemplate } from '../imrad-templates';
+
+import { BMJ_TEMPLATE } from './bmj.template';
 import { JAMA_TEMPLATE } from './jama.template';
 import { LANCET_TEMPLATE } from './lancet.template';
-import { BMJ_TEMPLATE } from './bmj.template';
-import type { ManuscriptTemplate } from '../imrad-templates';
+import { NEJM_TEMPLATE } from './nejm.template';
+
 
 export const JOURNAL_TEMPLATES = {
   nejm: NEJM_TEMPLATE,

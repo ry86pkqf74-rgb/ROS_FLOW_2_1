@@ -1,10 +1,14 @@
+import { Activity, Box, MessageSquare, Cpu, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
+
+import { ModelCard } from "@/components/ModelCard";
+import { StatusIndicator } from "@/components/StatusIndicator";
+import { Button } from "@/components/ui/button";
 import { useOllamaModels } from "@/hooks/use-ollama";
 import { useSessions } from "@/hooks/use-sessions";
-import { StatusIndicator } from "@/components/StatusIndicator";
-import { ModelCard } from "@/components/ModelCard";
-import { Activity, Box, MessageSquare, Cpu, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+
+
+
 
 function StatCard({ icon: Icon, label, value, subtext }: any) {
   return (

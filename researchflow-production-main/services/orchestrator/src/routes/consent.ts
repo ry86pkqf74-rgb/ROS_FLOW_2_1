@@ -9,13 +9,14 @@
  * - GET /api/consent/export - GDPR data export
  */
 
-import { Router, type Request, type Response } from 'express';
-import { db } from '../../db';
 import { userConsents, auditLogs } from '@researchflow/core/schema';
 import { eq, and, desc, isNull } from 'drizzle-orm';
-import { logAction } from '../services/audit-service';
-import { requirePermission } from '../middleware/rbac';
+import { Router, type Request, type Response } from 'express';
+
+import { db } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 

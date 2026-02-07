@@ -4,6 +4,7 @@
  */
 
 import type { Citation } from '../types/citation.types';
+
 import { citationFormatterService, type CitationFormat } from './citation-formatter.service';
 
 export interface ReferencesBuilderRequest {

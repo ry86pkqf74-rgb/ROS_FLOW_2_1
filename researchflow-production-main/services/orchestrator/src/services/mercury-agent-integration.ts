@@ -19,6 +19,7 @@ import {
   type MercuryStructuredOutputSchema,
   type MercuryCoderRequestOptions,
 } from '@researchflow/ai-router';
+
 import { getAgentById, getAgentsForStage, type PhaseAgentDefinition } from './phase-chat/registry';
 
 // ============================================================================

@@ -14,9 +14,12 @@
  * @module websocket/manager
  */
 
-import { WebSocketServer, WebSocket as WsSocket } from 'ws';
 import type { Server as HttpServer } from 'http';
+
+import { WebSocketServer, WebSocket as WsSocket } from 'ws';
+
 import { eventBus, AppEvent } from '../services/event-bus';
+
 import {
   AnyWebSocketEvent,
   isValidWebSocketEvent,

@@ -4,8 +4,9 @@
  * Tests for external reviewer share links with secure token generation.
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import crypto from 'crypto';
+
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock token generation
 const generateToken = () => crypto.randomBytes(32).toString('hex');

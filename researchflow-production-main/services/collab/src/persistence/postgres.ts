@@ -6,6 +6,7 @@
  */
 
 import { Pool } from "pg";
+
 import type { PersistenceAdapter } from "./index.js";
 
 /**

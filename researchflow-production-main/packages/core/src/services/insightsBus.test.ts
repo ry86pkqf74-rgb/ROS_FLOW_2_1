@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { InsightsBus, getInsightsBus, shutdownInsightsBus } from './insightsBus';
+
 import {
   AIInvocationEvent,
   GovernanceMode,
@@ -15,6 +15,8 @@ import {
   InvocationStatus,
   createAIInvocationEvent,
 } from '../events';
+
+import { InsightsBus, getInsightsBus, shutdownInsightsBus } from './insightsBus';
 
 // Mock ioredis
 vi.mock('ioredis', () => {

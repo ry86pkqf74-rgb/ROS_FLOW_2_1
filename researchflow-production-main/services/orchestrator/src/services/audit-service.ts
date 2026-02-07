@@ -1,8 +1,10 @@
 import { createHash } from 'crypto';
-import { db } from '../../db';
+
 import { auditLogs } from '@researchflow/core/schema';
 import { desc } from 'drizzle-orm';
 import { and, eq } from 'drizzle-orm';
+
+import { db } from '../../db';
 
 // NOTE: Audit logging must be best-effort and MUST NOT break primary request flows.
 // In dev/service-auth flows we may have stateless JWT identities that are not present
@@ -12,7 +14,7 @@ function isPgForeignKeyViolation(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
   // pg uses `code` (string) for SQLSTATE.
   // 23503 = foreign_key_violation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const code = (err as any).code;
   return code === '23503';
 }

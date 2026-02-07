@@ -6,8 +6,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../utils/logger';
 import { register, Counter, Histogram, Gauge } from 'prom-client';
+
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ai-bridge-metrics');
 

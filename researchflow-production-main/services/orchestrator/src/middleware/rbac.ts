@@ -7,7 +7,6 @@
  * Priority: P0 - CRITICAL
  */
 
-import { Request, Response, NextFunction } from 'express';
 import type {
   User as CoreUser,
   RoleName,
@@ -20,6 +19,8 @@ import {
   hasMinimumRole,
   InsufficientPermissionsError
 } from "@researchflow/core"
+import { Request, Response, NextFunction } from 'express';
+
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('rbac');

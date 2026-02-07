@@ -3,16 +3,20 @@
  * INF-12: Integration tests for artifact CRUD with RBAC enforcement
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
-import express, { Express } from 'express';
 import { createServer } from 'http';
+
+import express, { Express } from 'express';
+import request from 'supertest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+
 import { syntheticArtifacts, SYNTHETIC_RESEARCH_ID } from '../fixtures/synthetic-artifacts';
-import { TEST_USERS, ALL_ROLES, getRoleHeader } from '../utils/rbac-mock';
 import { computeSha256 } from '../utils/hash-determinism';
+import { TEST_USERS, ALL_ROLES, getRoleHeader } from '../utils/rbac-mock';
+
+import { requireRole } from '@apps/api-node/src/middleware/rbac';
 import type { Role } from '@packages/core/types/roles';
 import { ROLES } from '@packages/core/types/roles';
-import { requireRole } from '@apps/api-node/src/middleware/rbac';
 
 /**
  * Artifact Endpoints Integration Tests

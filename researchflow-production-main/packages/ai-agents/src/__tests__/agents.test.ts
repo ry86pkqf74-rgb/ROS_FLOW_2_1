@@ -3,11 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createAgent, BaseAgent } from '../index.js';
+
 import { ConferenceScoutAgent } from '../agents/ConferenceScoutAgent.js';
 import { DataExtractionAgent } from '../agents/DataExtractionAgent.js';
-import { StatisticalAnalysisAgent } from '../agents/StatisticalAnalysisAgent.js';
 import { ManuscriptDraftingAgent } from '../agents/ManuscriptDraftingAgent.js';
+import { StatisticalAnalysisAgent } from '../agents/StatisticalAnalysisAgent.js';
+import { createAgent, BaseAgent } from '../index.js';
 
 describe('Agent Factory', () => {
   describe('createAgent', () => {

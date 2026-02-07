@@ -5,10 +5,11 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
-import { GovernancePage } from './pages/governance.page';
 import { BasePage } from './pages/base.page';
+import { GovernancePage } from './pages/governance.page';
 
 test.describe('Policy Enforcement', () => {
   test.beforeEach(async ({ page }) => {

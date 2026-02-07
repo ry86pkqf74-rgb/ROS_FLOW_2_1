@@ -526,7 +526,7 @@ class AgentClient {
         throw new Error('No response body for SSE stream');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const reader = (response.body as any).getReader() as { read(): Promise<{ done: boolean; value?: Uint8Array }> };
       const decoder = new TextDecoder();
       let buffer = '';
@@ -650,7 +650,7 @@ class AgentClient {
         };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const reader = (response.body as any).getReader() as { read(): Promise<{ done: boolean; value?: Uint8Array }> };
       const decoder = new TextDecoder();
       let buffer = '';
@@ -850,7 +850,7 @@ class AgentClient {
         yield* innerGen;
         return;
       }
-      let first = await self.circuitBreaker.execute(() => innerGen!.next());
+      const first = await self.circuitBreaker.execute(() => innerGen!.next());
       if (first.done) return;
       yield first.value;
       try {

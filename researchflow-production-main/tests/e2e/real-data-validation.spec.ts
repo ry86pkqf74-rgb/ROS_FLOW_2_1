@@ -5,9 +5,10 @@
  * the complete statistical analysis workflow under realistic conditions.
  */
 
-import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+
+import { test, expect } from '@playwright/test';
 
 // Real dataset configurations for testing
 const REAL_DATASETS = {

@@ -8,6 +8,7 @@
  */
 
 import Redis from 'ioredis';
+
 import { AIInvocationEvent, AI_INVOCATION_EVENT_TYPE } from '../events';
 
 // ============================================

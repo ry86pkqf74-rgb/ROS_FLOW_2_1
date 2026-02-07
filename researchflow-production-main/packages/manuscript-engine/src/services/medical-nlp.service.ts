@@ -6,6 +6,7 @@
  */
 
 import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+
 import type { MedicalNLPResult, MedicalEntity, TerminologyIssue } from '../types';
 
 export class MedicalNLPService {

@@ -3,8 +3,9 @@
  * Enforces strict separation between DEMO and LIVE modes
  */
 
-import { Request, Response, NextFunction } from 'express';
 import { AppMode, MODE_CONFIGS } from '@researchflow/core';
+import { Request, Response, NextFunction } from 'express';
+
 import { createLogger } from '../src/utils/logger';
 
 const logger = createLogger('mode-guard');

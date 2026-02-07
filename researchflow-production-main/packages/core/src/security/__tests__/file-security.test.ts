@@ -8,10 +8,11 @@
  * - Zip bombs
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import {
   SecurityError,

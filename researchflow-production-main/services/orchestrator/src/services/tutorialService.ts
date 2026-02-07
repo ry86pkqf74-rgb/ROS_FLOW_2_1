@@ -5,9 +5,11 @@
  * PHI-SAFE: Tutorials contain only UI guidance, no sensitive data.
  */
 
-import { db } from '../../db';
 import { tutorialAssets, userOnboarding } from '@researchflow/core/schema';
 import { eq, and, or, isNull, desc } from 'drizzle-orm';
+
+import { db } from '../../db';
+
 import { featureFlagsService } from './featureFlagsService';
 
 export type SubscriptionTier = 'FREE' | 'PRO' | 'TEAM' | 'ENTERPRISE';

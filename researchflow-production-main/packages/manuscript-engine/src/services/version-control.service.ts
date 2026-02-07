@@ -4,6 +4,7 @@
  */
 
 import { nanoid } from 'nanoid';
+
 import type { ManuscriptVersion, SectionContent, IMRaDSection } from '../types';
 
 export interface VersionDiff {

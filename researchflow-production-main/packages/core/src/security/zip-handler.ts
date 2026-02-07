@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+
 import { SecurityError } from './errors';
 import { isPathWithinBase, sanitizePath, validateZipEntryPath } from './path-sanitizer';
 

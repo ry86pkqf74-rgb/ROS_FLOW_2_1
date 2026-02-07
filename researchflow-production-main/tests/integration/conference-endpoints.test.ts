@@ -9,11 +9,15 @@
  * - /api/ros/conference/requirements (conference guidelines)
  */
 
-import { describe, it, expect, beforeAll, vi } from 'vitest';
-import request from 'supertest';
-import express, { Express, Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
+
+import express, { Express, Request, Response, NextFunction } from 'express';
+import request from 'supertest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
+
+
 import { TEST_USERS, getRoleHeader } from '../utils/rbac-mock';
+
 import type { Role } from '@packages/core/types/roles';
 
 describe('Conference Endpoints Integration Tests', () => {

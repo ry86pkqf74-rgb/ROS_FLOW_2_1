@@ -9,9 +9,6 @@
  * 4. User's default org (first active membership)
  */
 
-import { Request, Response, NextFunction, RequestHandler } from "express";
-import { eq, and } from "drizzle-orm";
-import { db } from "../../db";
 import {
   organizations,
   orgMemberships,
@@ -26,6 +23,10 @@ import {
   orgRoleHasCapability,
   orgRoleMeetsMinimum,
 } from "@researchflow/core/types/organization";
+import { eq, and } from "drizzle-orm";
+import { Request, Response, NextFunction, RequestHandler } from "express";
+
+import { db } from "../../db";
 import { logAction } from "../services/audit-service";
 
 /**
@@ -48,7 +49,7 @@ export function resolveOrgContext(): RequestHandler {
       }
 
       // Resolution order: header > query > session > default
-      let orgId =
+      const orgId =
         (req.headers["x-org-id"] as string) ||
         (req.query.orgId as string) ||
         (req.session as any)?.selectedOrgId;

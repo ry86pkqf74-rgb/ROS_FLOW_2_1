@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import {
   DataMapperService,
   DataTaggerService,
@@ -6,6 +5,7 @@ import {
   DataCitationService
 } from '@researchflow/manuscript-engine';
 import type { ClinicalDataset } from '@researchflow/manuscript-engine';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 const createSyntheticDataset = (): ClinicalDataset => ({
   id: 'test-001',

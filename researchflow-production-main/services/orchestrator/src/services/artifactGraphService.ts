@@ -6,11 +6,12 @@
  * - Querying graph with bounded depth
  * - Detecting outdated nodes
  */
-import { pool } from "../../db";
-import { db } from "../../db";
 import { artifactEdges, artifacts, artifactVersions } from "@researchflow/core/schema";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+
+import { db } from "../../db";
+import { pool } from "../../db";
 
 export type RelationType = 
   | 'derived_from' 
@@ -337,7 +338,7 @@ export async function listEdges(
   researchId: string,
   options?: { relationType?: RelationType }
 ): Promise<GraphEdge[]> {
-  let query = db
+  const query = db
     .select()
     .from(artifactEdges)
     .where(and(

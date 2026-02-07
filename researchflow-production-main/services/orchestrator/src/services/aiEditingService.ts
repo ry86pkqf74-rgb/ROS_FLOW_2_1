@@ -2,11 +2,15 @@
  * AI-Assisted Editing Loops with RAG integration
  */
 
-import { db } from "../../db";
-import { sql } from "drizzle-orm";
-import { config } from "../config/env";
-import { scanForPhi, redactPhiInData } from "./phi-protection";
 import { createHash, randomUUID } from "crypto";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "../../db";
+import { config } from "../config/env";
+
+import { scanForPhi, redactPhiInData } from "./phi-protection";
+
 
 export interface EditingSuggestion {
   sectionId: string;

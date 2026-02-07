@@ -10,13 +10,15 @@
  * - High risk (LIVE + PHI medium/high): Requires escalated STEWARD approval
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { db } from '../../db';
+import type { User as CoreUser } from '@researchflow/core';
 import { ethicsApprovals, auditLogs } from '@researchflow/core/schema';
 import { eq, and, gte } from 'drizzle-orm';
+import { Request, Response, NextFunction } from 'express';
+
+import { db } from '../../db';
 import { logAction } from '../services/audit-service';
 import { scanForPhi } from '../services/phi-protection';
-import type { User as CoreUser } from '@researchflow/core';
+
 
 // Re-use Express User augmentation from governance-gates
 declare global {

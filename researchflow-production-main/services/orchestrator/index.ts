@@ -1,15 +1,12 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+
 import { createServer } from "http";
+
 import cors from "cors";
 import dotenv from "dotenv";
-import { createLogger, type LogLevel } from "./src/utils/logger";
-import healthRouter from "./src/routes/health";
-import recoveryRouter from "./src/routes/recovery";
-import backupRouter from "./src/routes/backup-recovery";
-import securityRouter from "./src/routes/security";
-import complianceRouter from "./src/routes/compliance";
+import express, { type Request, Response, NextFunction } from "express";
+
+import { registerRoutes } from "./routes";
 import {
   createDefaultLimiter,
   createAuthLimiter,
@@ -19,17 +16,23 @@ import {
   closeRedisClient,
 } from "./src/middleware/rateLimit";
 import { AdvancedErrorRecovery } from "./src/middleware/recovery";
-import { BackupRecoveryService } from "./src/services/backup-recovery.service";
-import { serviceAuthMiddleware } from "./src/middleware/service-auth";
 import { SecurityEnhancementMiddleware } from "./src/middleware/security-enhancements";
-import { ComplianceAuditService } from "./src/services/compliance-audit.service";
-import { optionalAuth } from "./src/services/authService";
 import {
   configureSecurityHeaders,
   cspViolationReporter,
   apiSecurityHeaders,
   initializeSecurityHeadersLogging,
 } from "./src/middleware/securityHeaders";
+import { serviceAuthMiddleware } from "./src/middleware/service-auth";
+import backupRouter from "./src/routes/backup-recovery";
+import complianceRouter from "./src/routes/compliance";
+import healthRouter from "./src/routes/health";
+import recoveryRouter from "./src/routes/recovery";
+import securityRouter from "./src/routes/security";
+import { optionalAuth } from "./src/services/authService";
+import { BackupRecoveryService } from "./src/services/backup-recovery.service";
+import { ComplianceAuditService } from "./src/services/compliance-audit.service";
+import { createLogger, type LogLevel } from "./src/utils/logger";
 
 // Load environment variables
 dotenv.config();

@@ -13,12 +13,13 @@
  * HTTP bridge between frontend and worker.
  */
 
+import type { Queue } from 'bullmq';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { logAction } from '../services/audit-service';
-import { requirePermission } from '../middleware/rbac';
+
 import { asyncHandler } from '../middleware/asyncHandler';
-import type { Queue } from 'bullmq';
+import { requirePermission } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 

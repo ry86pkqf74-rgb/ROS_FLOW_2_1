@@ -4,6 +4,13 @@
  */
 
 import {
+  invariantNoPHI,
+  invariantValidJSON,
+  invariantMaxSize,
+  invariantNonEmpty,
+  invariantRequiredFields,
+} from './invariants';
+import {
   ArtifactType,
   ValidationRule,
   ValidationSuite,
@@ -18,13 +25,6 @@ import {
   VALID_ENVIRONMENTS,
 } from './types';
 
-import {
-  invariantNoPHI,
-  invariantValidJSON,
-  invariantMaxSize,
-  invariantNonEmpty,
-  invariantRequiredFields,
-} from './invariants';
 
 export function createValidationSuite(
   name: string,

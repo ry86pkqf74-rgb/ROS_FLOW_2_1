@@ -10,7 +10,8 @@
  * @module services/analytics.service
  */
 
-import { db } from '../../db';
+import { createHash } from 'crypto';
+
 import {
   analyticsEvents,
   ANALYTICS_EVENT_NAMES,
@@ -18,7 +19,10 @@ import {
   type GovernanceMode,
 } from '@researchflow/core/schema';
 import { sql, desc, count, gte, lte, and, eq } from 'drizzle-orm';
-import { createHash } from 'crypto';
+
+import { db } from '../../db';
+
+
 import { logAction } from './audit-service';
 
 // Import PHI scanning if available

@@ -1,7 +1,10 @@
 import crypto from "crypto";
-import { db } from "../../db";
+
 import { topics, Topic, InsertTopic } from "@researchflow/core/schema";
 import { eq, desc, and, ne } from "drizzle-orm";
+
+import { db } from "../../db";
+
 import { createAuditEntry } from "./auditService";
 
 interface TopicContentForHash {

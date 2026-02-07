@@ -5,7 +5,6 @@
  * @packageDocumentation
  */
 
-import { db } from '../../db';
 import {
   workflows,
   workflowVersions,
@@ -13,11 +12,13 @@ import {
   workflowPolicies,
   workflowRunCheckpoints,
 } from '@researchflow/core/schema';
-import { eq, and, desc } from 'drizzle-orm';
 import type {
   WorkflowDefinition,
   WorkflowPolicy,
 } from '@researchflow/core/types/workflow';
+import { eq, and, desc } from 'drizzle-orm';
+
+import { db } from '../../db';
 
 // =====================
 // TYPES

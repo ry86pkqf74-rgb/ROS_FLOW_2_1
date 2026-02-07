@@ -1,6 +1,6 @@
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@researchflow/core/schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
 // Allow running without DATABASE_URL in test environments
 // Tests that need DB will skip or mock when not available

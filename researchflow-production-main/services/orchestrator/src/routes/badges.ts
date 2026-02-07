@@ -5,10 +5,11 @@
  * Awards badges for various research milestones.
  */
 
-import { Router, Request, Response } from 'express';
-import { db } from '../../db';
 import { badges, userBadges, users } from '@researchflow/core/types/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+
+import { db } from '../../db';
 import { requireAuth } from '../middleware/governance';
 
 const router = Router();

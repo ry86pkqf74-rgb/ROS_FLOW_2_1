@@ -5,9 +5,10 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
-import { E2E_USERS } from './fixtures/users.fixture';
 import { MOCK_PHI } from './fixtures/phi-data.fixture';
+import { E2E_USERS } from './fixtures/users.fixture';
 import { BasePage } from './pages/base.page';
 
 test.describe('PHI Redaction', () => {

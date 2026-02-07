@@ -11,6 +11,13 @@
  */
 
 import { getMercuryCoderProvider, type MercuryResponse } from '@researchflow/ai-router';
+
+import {
+  LinearConfig,
+  createLinearIssue,
+  addLinearComment,
+  assignAIAgentToIssue,
+} from './linearService';
 import {
   NotionConfig,
   createAgentTask,
@@ -18,12 +25,6 @@ import {
   logDeployment,
   type AgentTaskStatus,
 } from './notionService';
-import {
-  LinearConfig,
-  createLinearIssue,
-  addLinearComment,
-  assignAIAgentToIssue,
-} from './linearService';
 import {
   SlackConfig,
   notifyAIAgentTask,

@@ -5,15 +5,16 @@
  * Includes generation, selection, and persistence.
  */
 
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { requireAuth } from '../middleware/governance';
 import {
   ManuscriptIdeationInputSchema,
   ManuscriptIdeationOutputSchema,
   ProposalSelectionSchema,
   type ManuscriptProposal
 } from '@packages/core/types';
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
+import { requireAuth } from '../middleware/governance';
 
 const router = Router();
 

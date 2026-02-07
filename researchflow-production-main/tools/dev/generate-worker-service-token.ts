@@ -13,6 +13,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+
 import { jwtConfig } from '../../services/orchestrator/src/config/jwt';
 
 const DEV_SECRET = 'development-secret-key-not-for-production';

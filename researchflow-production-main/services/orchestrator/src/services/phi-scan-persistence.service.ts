@@ -5,9 +5,10 @@
  * Replaces in-memory Map storage for production use.
  */
 
-import { db } from '../../db';
 import { phiScanResults } from '@researchflow/core/schema';
 import { eq } from 'drizzle-orm';
+
+import { db } from '../../db';
 
 // Types matching the route definitions
 interface ScanResult {

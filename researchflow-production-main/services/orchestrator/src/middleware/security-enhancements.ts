@@ -3,10 +3,12 @@
  * Enterprise-grade security with TLS 1.3, JWT management, and DDoS protection
  */
 
+import crypto from 'crypto';
+
 import { Request, Response, NextFunction } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+
 import { createLogger } from '../utils/logger';
 
 interface SecurityConfig {
@@ -249,7 +251,7 @@ export class SecurityEnhancementMiddleware {
     // For now, using in-memory tracking as proof-of-concept
     
     const key = `rate_limit:${identifier}`;
-    let requestCount = 0;
+    const requestCount = 0;
     
     // Simplified rate limit check
     // In production, implement sliding window with Redis

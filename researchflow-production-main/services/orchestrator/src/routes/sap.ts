@@ -3,24 +3,28 @@
  * Endpoints for creating, managing, and executing SAPs
  */
 
-import { Router, Request, Response } from 'express';
-import { eq, and, desc } from 'drizzle-orm';
-import { v4 as uuid } from 'uuid';
 import { createHash } from 'crypto';
-import { db } from '../../db';
+
 import { statisticalPlans, topics, artifacts } from '@researchflow/core/schema';
+import type { StatisticalPlan, CreateSAPRequest, UpdateSAPRequest } from '@researchflow/core/types/sap';
+import { eq, and, desc } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+import { v4 as uuid } from 'uuid';
+
+
+import { db } from '../../db';
+import { blockAIInDemo } from '../../middleware/mode-guard';
+import {
+  generateFullMethodsText,
+  generateStatisticalMethodsDocument
+} from '../../utils/methods-generator';
 import {
   generateSAPFromTopic,
   validateSAP,
   suggestSubgroupAnalyses,
   type TopicDeclarationForSAP
 } from '../services/sap-generator';
-import {
-  generateFullMethodsText,
-  generateStatisticalMethodsDocument
-} from '../../utils/methods-generator';
-import { blockAIInDemo } from '../../middleware/mode-guard';
-import type { StatisticalPlan, CreateSAPRequest, UpdateSAPRequest } from '@researchflow/core/types/sap';
+
 
 const router = Router();
 

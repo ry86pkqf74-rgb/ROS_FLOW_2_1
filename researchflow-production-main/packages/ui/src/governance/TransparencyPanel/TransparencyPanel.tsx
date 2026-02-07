@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { 
   Eye, 
   Clock, 
@@ -9,6 +8,8 @@ import {
   ChevronUp,
   ExternalLink 
 } from 'lucide-react';
+import * as React from 'react';
+
 import { cn } from '../../utils/cn';
 import { ModelTierBadge, type ModelTier } from '../ModelTierBadge';
 

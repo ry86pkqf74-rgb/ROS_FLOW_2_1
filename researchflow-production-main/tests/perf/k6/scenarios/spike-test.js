@@ -3,8 +3,9 @@
  * Run with: k6 run scenarios/spike-test.js
  */
 
-import http from 'k6/http';
 import { check, sleep, group } from 'k6';
+import http from 'k6/http';
+
 import { getAuthHeaders } from '../lib/auth.js';
 import { getStages, completeStage } from '../lib/workflow.js';
 

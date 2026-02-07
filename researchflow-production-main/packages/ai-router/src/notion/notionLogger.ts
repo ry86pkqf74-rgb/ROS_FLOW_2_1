@@ -8,6 +8,7 @@
  */
 
 import { Client } from '@notionhq/client';
+
 import type { AIProvider, AITaskType, ModelTier } from '../types';
 
 // ============================================================================

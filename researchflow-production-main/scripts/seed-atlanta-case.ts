@@ -9,11 +9,12 @@
  *   npm run db:seed:atlanta
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import * as path from 'path';
-import * as fs from 'fs';
 
 // Import schema tables
 import {

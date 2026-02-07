@@ -10,12 +10,14 @@
  * @version 1.0.0
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
-import { requireRole } from '../middleware/rbac';
-import { db } from '../../db.js';
 import { desc, eq, and, sql, gte, lte } from 'drizzle-orm';
-import { eventBus } from '../services/event-bus';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+
+import { db } from '../../db.js';
+import { requireRole } from '../middleware/rbac';
+import { eventBus } from '../services/event-bus';
+
 
 // Async handler wrapper
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {

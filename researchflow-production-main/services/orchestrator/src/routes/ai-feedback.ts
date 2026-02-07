@@ -8,14 +8,15 @@
  * - PUT /api/ai/feedback/:id/review - Mark feedback as reviewed (ADMIN)
  */
 
-import { Router, type Request, type Response } from 'express';
-import { db } from '../../db';
 import { aiOutputFeedback, aiInvocations } from '@researchflow/core/schema';
 import { eq, and, desc, gte, lte, sql, count } from 'drizzle-orm';
-import { logAction } from '../services/audit-service';
-import { requirePermission, requireRole } from '../middleware/rbac';
+import { Router, type Request, type Response } from 'express';
+
+import { db } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission, requireRole } from '../middleware/rbac';
 import { rebuildFeedbackRAG } from '../services/ai-feedback-rag.service';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 

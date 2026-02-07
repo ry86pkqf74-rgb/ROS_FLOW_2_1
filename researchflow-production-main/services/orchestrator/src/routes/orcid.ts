@@ -10,12 +10,13 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+
+import { createGovernanceLogEntry } from '../../utils/governance-log';
 import {
   getOrcidService,
   OrcidNotConfiguredError,
   OrcidApiError
 } from '../services/orcid';
-import { createGovernanceLogEntry } from '../../utils/governance-log';
 
 // Simple async handler wrapper
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {

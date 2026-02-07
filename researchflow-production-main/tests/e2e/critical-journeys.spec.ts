@@ -8,12 +8,14 @@
  * 4. Failure scenarios (AI provider failure, offline mode)
  */
 
+import * as path from 'path';
+
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, loginAsRole, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
-import { PipelinePage } from './pages/pipeline.page';
 import { BasePage } from './pages/base.page';
-import * as path from 'path';
+import { PipelinePage } from './pages/pipeline.page';
 
 test.describe('Critical Journeys', () => {
   test.beforeEach(async ({ page }) => {

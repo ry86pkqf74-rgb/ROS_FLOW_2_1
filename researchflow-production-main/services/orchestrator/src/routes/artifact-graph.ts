@@ -8,10 +8,11 @@
  * - GET /api/ros/artifact-edges - List edges for research
  */
 import { Router, Request, Response } from "express";
-import { requireRole } from "../middleware/rbac";
-import { createAuditEntry } from "../services/auditService";
-import * as artifactGraphService from "../services/artifactGraphService";
 import { z } from "zod";
+
+import { requireRole } from "../middleware/rbac";
+import * as artifactGraphService from "../services/artifactGraphService";
+import { createAuditEntry } from "../services/auditService";
 
 const router = Router();
 

@@ -8,8 +8,9 @@
  * - Cross-org access prevention
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import {
   OrgRole,
   OrgCapability,

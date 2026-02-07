@@ -9,6 +9,8 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
+import { logAuthEvent } from '../services/audit-service';
 import {
   authService,
   RegisterSchema,
@@ -17,9 +19,8 @@ import {
   optionalAuth
 } from '../services/authService';
 import { sessionService } from '../services/sessionService';
-import { logAuthEvent } from '../services/audit-service';
-import { getRequestMetadata } from '../utils/request-metadata';
 import { createLogger } from '../utils/logger';
+import { getRequestMetadata } from '../utils/request-metadata';
 
 const router = Router();
 const logger = createLogger('auth-routes');

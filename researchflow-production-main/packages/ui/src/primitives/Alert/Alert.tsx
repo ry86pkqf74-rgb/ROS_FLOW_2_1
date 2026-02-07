@@ -1,5 +1,6 @@
-import * as React from 'react';
 import { AlertCircle, CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
+import * as React from 'react';
+
 import { cn } from '../../utils/cn';
 
 // figma: fileKey=PENDING nodeId=PENDING

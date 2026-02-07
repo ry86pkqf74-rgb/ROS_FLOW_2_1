@@ -11,6 +11,7 @@
  */
 
 import { db } from '../../db';
+
 import { logAction } from './audit-service';
 
 export interface Phrase {

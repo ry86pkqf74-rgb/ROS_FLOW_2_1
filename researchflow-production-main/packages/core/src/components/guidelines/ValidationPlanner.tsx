@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+
 import type {
   SystemCard,
   ValidationBlueprint,

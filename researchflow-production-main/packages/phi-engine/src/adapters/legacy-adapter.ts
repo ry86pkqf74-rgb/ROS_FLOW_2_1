@@ -6,6 +6,7 @@
  */
 
 import crypto from 'crypto';
+
 import type { PhiFinding, RiskLevel, ScanContext } from '../types';
 
 // Legacy types from phi-scanner.ts

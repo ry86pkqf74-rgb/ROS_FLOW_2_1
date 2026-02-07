@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { generateOpenApiSpec } from '../services/openApiService';
+
 import {
   listCommunityLinks,
   getCommunityLink,
@@ -16,6 +16,7 @@ import {
   getFooterSections,
   getHelpCenterConfig,
 } from '../services/communityService';
+import { generateOpenApiSpec } from '../services/openApiService';
 
 export const helpRouter = Router();
 

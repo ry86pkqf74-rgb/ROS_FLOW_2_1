@@ -9,8 +9,9 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { ArtifactGraphService } from '../../services/artifact-graph.service';
+
 import { requireActiveAccount, requireRole } from '../../middleware/rbac';
+import { ArtifactGraphService } from '../../services/artifact-graph.service';
 
 const router = Router();
 const artifactGraphService = new ArtifactGraphService();

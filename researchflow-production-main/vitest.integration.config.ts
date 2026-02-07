@@ -1,5 +1,6 @@
-import { defineConfig } from 'vitest/config';
 import { fileURLToPath, URL } from 'node:url';
+
+import { defineConfig } from 'vitest/config';
 
 /** Integration tests with DATABASE_URL and REDIS_URL (service containers). */
 export default defineConfig({

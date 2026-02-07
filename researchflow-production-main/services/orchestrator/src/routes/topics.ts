@@ -1,9 +1,16 @@
-import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db } from "../../db";
 import { topics } from "@researchflow/core/schema";
+import type { PICOConversionRequest } from "@researchflow/core/types/topic-declaration";
+import { eq } from "drizzle-orm";
+import { Router } from "express";
+
+import { db } from "../../db";
 import { asyncHandler } from "../middleware/errorHandler";
 import { requireRole, logAuditEvent, ROLES } from "../middleware/rbac";
+import {
+  convertQuickEntryToPICO,
+  detectEffectiveEntryMode,
+  hasValidQuickEntryFields,
+} from "../services/topic-converter";
 import {
   createTopic,
   updateTopic,
@@ -12,12 +19,7 @@ import {
   getCurrentTopic,
   getTopicById,
 } from "../services/topicService";
-import {
-  convertQuickEntryToPICO,
-  detectEffectiveEntryMode,
-  hasValidQuickEntryFields,
-} from "../services/topic-converter";
-import type { PICOConversionRequest } from "@researchflow/core/types/topic-declaration";
+
 
 const router = Router();
 

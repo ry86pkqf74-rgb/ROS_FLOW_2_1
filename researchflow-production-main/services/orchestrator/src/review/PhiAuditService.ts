@@ -10,9 +10,10 @@
  * Generates comprehensive audit reports for governance dashboard.
  */
 
+import { scrubLog } from '@researchflow/phi-engine';
+
 import { db } from '../../db';
 import { logAction } from '../services/audit-service';
-import { scrubLog } from '@researchflow/phi-engine';
 
 export interface PhiFinding {
   type: string;

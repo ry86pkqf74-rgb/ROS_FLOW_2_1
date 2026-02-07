@@ -12,8 +12,9 @@
  */
 
 import { ChromaClient, Collection, IncludeEnum } from 'chromadb';
-import type { DocumentMetadata, SearchResult, VectorDocument } from './types.js';
+
 import { DocumentEmbedder } from './embedder.js';
+import type { DocumentMetadata, SearchResult, VectorDocument } from './types.js';
 
 export interface ChromaConfig {
   url: string;

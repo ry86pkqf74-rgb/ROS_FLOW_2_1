@@ -7,12 +7,15 @@
  * - Resolution workflow
  * - Assignment
  */
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import { comments, artifacts, artifactVersions } from "@researchflow/core/schema";
+import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
-import { createHash } from "crypto";
+
+import { db } from "../../db";
+
 
 export type CommentAnchorType = 
   | 'text_selection' 
@@ -217,7 +220,7 @@ export async function listComments(
     versionId?: string;
   }
 ): Promise<CommentWithThread[]> {
-  let baseQuery = db
+  const baseQuery = db
     .select()
     .from(comments)
     .where(and(

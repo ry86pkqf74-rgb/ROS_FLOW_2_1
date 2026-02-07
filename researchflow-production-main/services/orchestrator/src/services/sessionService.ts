@@ -6,6 +6,7 @@
  */
 
 import crypto from 'crypto';
+
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('session-service');

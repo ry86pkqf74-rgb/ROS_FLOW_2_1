@@ -1,16 +1,16 @@
-import { Router, Request, Response } from 'express';
 import { raw } from 'body-parser';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 
 // Import service modules
 import {
-  LinearWebhookPayload,
-  verifyLinearWebhookSignature,
-  createLinearIssue,
-  updateLinearIssue,
-  addLinearComment,
-} from '../services/linearService';
-
+  CursorCodeChangeEvent,
+  CursorAgentTriggerEvent,
+} from '../../packages/cursor-integration/src';
+import {
+  DockerWebhookPayload,
+  verifyDockerWebhook,
+} from '../services/dockerRegistryService';
 import {
   FigmaWebhookPayload,
   verifyFigmaWebhookPasscode,
@@ -18,12 +18,13 @@ import {
   postFigmaComment,
   postAIDesignReview,
 } from '../services/figmaService';
-
 import {
-  DockerWebhookPayload,
-  verifyDockerWebhook,
-} from '../services/dockerRegistryService';
-
+  LinearWebhookPayload,
+  verifyLinearWebhookSignature,
+  createLinearIssue,
+  updateLinearIssue,
+  addLinearComment,
+} from '../services/linearService';
 import {
   SlackSlashCommand,
   SlackInteractivePayload,
@@ -32,11 +33,6 @@ import {
   postSlackMessage,
   notifyAIAgentTask,
 } from '../services/slackService';
-
-import {
-  CursorCodeChangeEvent,
-  CursorAgentTriggerEvent,
-} from '../../packages/cursor-integration/src';
 
 const router = Router();
 

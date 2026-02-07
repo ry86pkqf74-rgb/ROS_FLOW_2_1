@@ -1,3 +1,5 @@
+import { createHash } from "crypto";
+
 import { 
   users,
   type UpsertUser,
@@ -44,9 +46,9 @@ import {
   fileUploads,
   researchSessions,
 } from "@researchflow/core/schema";
-import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
-import { createHash } from "crypto";
+
+import { db } from "./db";
 
 // Infer User type from the users table
 type User = typeof users.$inferSelect;

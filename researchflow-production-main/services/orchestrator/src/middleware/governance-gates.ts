@@ -1,10 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
-import { db } from '../../db';
+import type { User as CoreUser } from '@researchflow/core';
 import { approvalGates, phiIncidents } from '@researchflow/core/schema';
 import { eq, and, gte } from 'drizzle-orm';
+import { Request, Response, NextFunction } from 'express';
+
+import { db } from '../../db';
 import { logAction } from '../services/audit-service';
 import { scanForPhi } from '../services/phi-protection';
-import type { User as CoreUser } from '@researchflow/core';
+
 
 // Extend Express to include user type from our core package
 // This augments the empty User interface from passport

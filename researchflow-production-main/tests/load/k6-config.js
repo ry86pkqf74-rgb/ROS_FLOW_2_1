@@ -1,6 +1,6 @@
+import { check, sleep } from 'k6';
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check, sleep } from 'k6';
 
 // Base URL for the API (override in CI with BASE_URL secret/var)
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';

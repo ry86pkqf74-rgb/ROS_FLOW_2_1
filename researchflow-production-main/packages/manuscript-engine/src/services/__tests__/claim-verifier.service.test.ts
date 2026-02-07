@@ -4,12 +4,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import type { ClaimVerificationResult } from '../../types';
 import {
   ClaimVerifierService,
   getClaimVerifier,
   type VerificationContext,
 } from '../claim-verifier.service';
-import type { ClaimVerificationResult } from '../../types';
 
 // Mock the AI router
 const mockRoute = vi.fn();

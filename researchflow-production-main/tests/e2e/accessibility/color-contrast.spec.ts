@@ -3,8 +3,9 @@
  * Text 4.5:1 / large 3:1, UI 3:1, focus indicator, color-only info, dark mode.
  */
 
-import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from '@playwright/test';
+
 import { loginAs, setMode } from '../fixtures';
 import { E2E_USERS } from '../fixtures/users.fixture';
 

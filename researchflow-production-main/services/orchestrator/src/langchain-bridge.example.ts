@@ -556,7 +556,7 @@ async function example9_advancedProgressHandling(): Promise<void> {
  * Proper cleanup when bridge is no longer needed
  */
 async function example10_cleanupAndResourceManagement(): Promise<void> {
-  let bridge = getLangChainBridge();
+  const bridge = getLangChainBridge();
 
   try {
     // Use bridge

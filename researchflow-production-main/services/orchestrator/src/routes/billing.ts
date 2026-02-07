@@ -8,23 +8,24 @@
  * - GET /api/billing/usage - Get usage statistics
  */
 
-import { Router, Request, Response } from "express";
-import { eq, and, count } from "drizzle-orm";
-import { db } from "../../db";
 import { orgMemberships, researchProjects } from "@researchflow/core/schema";
-import { asyncHandler } from "../middleware/asyncHandler";
-import {
-  resolveOrgContext,
-  requireOrgId,
-  requireOrgCapability,
-} from "../middleware/org-context";
 import {
   SubscriptionTier,
   SUBSCRIPTION_TIERS,
   TIER_LIMITS,
 } from "@researchflow/core/types/organization";
-import { logAction } from "../services/audit-service";
+import { eq, and, count } from "drizzle-orm";
+import { Router, Request, Response } from "express";
+
+import { db } from "../../db";
+import { asyncHandler } from "../middleware/asyncHandler";
 import { requireAuth as isAuthenticated } from "../middleware/auth.js";
+import {
+  resolveOrgContext,
+  requireOrgId,
+  requireOrgCapability,
+} from "../middleware/org-context";
+import { logAction } from "../services/audit-service";
 import {
   getOrgSubscription,
   createCheckoutSession,

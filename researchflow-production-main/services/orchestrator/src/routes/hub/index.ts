@@ -7,13 +7,14 @@
  */
 
 import { Router } from 'express';
-import pagesRoutes from './pages';
-import databasesRoutes from './databases';
-import tasksRoutes from './tasks';
-import goalsRoutes from './goals';
-import projectionsRoutes from './projections';
-import milestonesRoutes from './milestones';
+
 import calendarRoutes from './calendar';
+import databasesRoutes from './databases';
+import goalsRoutes from './goals';
+import milestonesRoutes from './milestones';
+import pagesRoutes from './pages';
+import projectionsRoutes from './projections';
+import tasksRoutes from './tasks';
 import workflowRunsRoutes from './workflow-runs';
 
 const router = Router();

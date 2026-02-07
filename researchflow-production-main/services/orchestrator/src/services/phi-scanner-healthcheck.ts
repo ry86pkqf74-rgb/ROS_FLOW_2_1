@@ -12,6 +12,7 @@
  */
 
 import { config } from '../config/env';
+
 import { scanForPhi, redactPhiInData } from './phi-protection';
 
 export interface HealthCheckResult {

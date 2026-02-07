@@ -8,6 +8,13 @@
  */
 
 import crypto from 'crypto';
+
+import {
+  getModelRouter,
+  type AIRouterRequest,
+  type AIRouterResponse,
+  type ModelTier,
+} from '@researchflow/ai-router';
 import type { Topic } from '@researchflow/core/schema';
 import type {
   EnhancedResearchBrief,
@@ -16,19 +23,15 @@ import type {
   ResearchBriefMetadata,
 } from '@researchflow/core/types/research-brief';
 import type { PICOElements } from '@researchflow/core/types/topic-declaration';
-import {
-  getModelRouter,
-  type AIRouterRequest,
-  type AIRouterResponse,
-  type ModelTier,
-} from '@researchflow/ai-router';
+
 import { getGovernanceMode } from '../middleware/governanceMode';
+import { checkAICallAllowed, getTelemetry } from '../utils/telemetry';
+
 import {
   convertQuickEntryToPICO,
   detectEffectiveEntryMode,
   hasValidPICOElements,
 } from './topic-converter';
-import { checkAICallAllowed, getTelemetry } from '../utils/telemetry';
 
 const PROMPT_VERSION = '2.0.0';
 

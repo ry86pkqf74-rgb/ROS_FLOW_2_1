@@ -1,5 +1,6 @@
-import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";
+
+import OpenAI, { toFile } from "openai";
 
 export const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,

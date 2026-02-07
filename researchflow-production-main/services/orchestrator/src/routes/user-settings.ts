@@ -5,8 +5,9 @@
  */
 
 import { Router, type Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth.js';
 import { z } from 'zod';
+
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 

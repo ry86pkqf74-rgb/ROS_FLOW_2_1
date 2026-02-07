@@ -12,9 +12,10 @@
  *   await collector.writeReport('cost-report.json');
  */
 
-import { Page, APIResponse } from '@playwright/test';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { Page, APIResponse } from '@playwright/test';
 
 // =============================================================================
 // Types

@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { ArtifactGraphService } from '../artifact-graph.service';
 
 // Mock database module

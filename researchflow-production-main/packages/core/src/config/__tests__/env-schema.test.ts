@@ -5,8 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { envSchema, validateEnv, validateEnvSafe, getEnvValidationReport } from '../env-schema';
 import { z } from 'zod';
+
+import { envSchema, validateEnv, validateEnvSafe, getEnvValidationReport } from '../env-schema';
 
 describe('envSchema', () => {
   const originalEnv = process.env;

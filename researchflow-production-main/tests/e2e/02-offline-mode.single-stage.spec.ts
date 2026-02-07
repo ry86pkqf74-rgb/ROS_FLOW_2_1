@@ -5,8 +5,10 @@
  * Verifies local processing without external API calls.
  */
 
-import { test, expect } from '@playwright/test';
 import path from 'path';
+
+import { test, expect } from '@playwright/test';
+
 import {
   loginAsDevUser,
   TEST_USERS,

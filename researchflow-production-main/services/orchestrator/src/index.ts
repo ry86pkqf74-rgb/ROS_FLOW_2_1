@@ -7,19 +7,29 @@
  * Priority: P0 - CRITICAL (Phase 2 Integration)
  */
 
-import express from 'express';
 import { createServer } from 'http';
-import WebSocket, { WebSocketServer } from 'ws';
-import cors from 'cors';
+
 import compression from 'compression';
-import { nanoid } from 'nanoid';
+import cors from 'cors';
 import dotenv from 'dotenv';
-import governanceRoutes from './routes/governance.js';
-import datasetRoutes from './routes/datasets.js';
+import express from 'express';
+import { nanoid } from 'nanoid';
+import WebSocket, { WebSocketServer } from 'ws';
+
+import { CollaborationWebSocketServer } from './collaboration/websocket-server';
+import { mockAuthMiddleware } from './middleware/auth.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { configureSecurityHeaders, cspViolationReporter, createSecurityHeadersMiddleware, initializeSecurityHeadersLogging } from './middleware/securityHeaders.js';
+import aiAgentProxyRoutes from './routes/ai-agent-proxy';
+import aiBridgeRoutes from './routes/ai-bridge';
+import aiExtractionRoutes from './routes/ai-extraction';
+import aiProvidersRoutes from './routes/aiProviders';
 import conferenceRoutes from './routes/conference.js';
-import webhooksRoutes from './routes/webhooks.js';
+import datasetRoutes from './routes/datasets.js';
+import governanceRoutes from './routes/governance.js';
 import orcidRoutes from './routes/orcid';
 import artifactsV2Routes from './routes/v2/artifacts.routes';
+import webhooksRoutes from './routes/webhooks.js';
 import ideasRoutes from './routes/docs-first/ideas.js';
 import topicBriefsRoutes from './routes/docs-first/topic-briefs.js';
 import venuesRoutes from './routes/docs-first/venues.js';
@@ -34,7 +44,6 @@ import phaseGRoutes from './routes/phaseG';
 // Phase H Routes (Tasks 136-150)
 import helpRoutes from './routes/help';
 import pluginsRoutes from './routes/plugins';
-import aiProvidersRoutes from './routes/aiProviders';
 import ecosystemIntegrationsRoutes from './routes/ecosystemIntegrations';
 import googleDriveRoutes from './routes/google-drive';
 import literatureIntegrationsRoutes from './routes/literature-integrations';
@@ -56,23 +65,21 @@ import manuscriptBranchesRoutes, { manuscriptBranchingRoutes } from './routes/ma
 import manuscriptsRoutes from './routes/manuscripts';  // Canonical manuscript CRUD (Track M)
 // Audit Improvements: New modular routes
 import authRoutes from './routes/auth';
-import workflowStagesRoutes from './routes/workflow-stages';
 import workflowStagesExecuteRoutes from './routes/workflow/stages';
+import { closeWorkflowStagesQueue } from './routes/workflow/stages';
+import workflowStagesRoutes from './routes/workflow-stages';
 import workflowsRoutes from './routes/workflows';
 import organizationsRoutes from './routes/organizations';
 import userSettingsRoutes from './routes/user-settings';
 
 // Phase 1: Critical AI & Extraction Routes (Integration Plan)
-import aiExtractionRoutes from './routes/ai-extraction';
 import aiFeedbackRoutes from './routes/ai-feedback';
 import aiRouterRoutes from './routes/ai-router';
 import aiStreamingRoutes from './routes/ai-streaming';
 // Phase 5.5 Stream F: LangGraph Agent LLM Proxy (ROS-30)
-import aiAgentProxyRoutes from './routes/ai-agent-proxy';
 // Phase 5.5 Stream F: LangGraph Chat Agent API (ROS-30)
 import chatAgentRoutes from './routes/chat-agent';
 // AI Bridge: Python Worker ↔ TypeScript Orchestrator Bridge
-import aiBridgeRoutes from './routes/ai-bridge';
 import spreadsheetCellParseRoutes from './routes/spreadsheet-cell-parse';
 import phiScannerRoutes from './routes/phi-scanner';
 
@@ -159,14 +166,9 @@ import manuscriptIdeationRoutes from './routes/manuscript-ideation';
 
 // Collaborative Variable Tagging (Phase Variable Selection)
 import variableSelectionRoutes from './routes/variable-selection';
-
-import { mockAuthMiddleware } from './middleware/auth.js';
 import { optionalAuth } from './services/authService';
-import { errorHandler } from './middleware/errorHandler.js';
-import { CollaborationWebSocketServer } from './collaboration/websocket-server';
-import { webSocketManager } from './websocket/manager';
 import { createLogger } from './utils/logger';
-import { configureSecurityHeaders, cspViolationReporter, createSecurityHeadersMiddleware, initializeSecurityHeadersLogging } from './middleware/securityHeaders.js';
+import { webSocketManager } from './websocket/manager';
 
 // Load environment variables
 dotenv.config();
@@ -709,7 +711,6 @@ setupAgentWebSocketProxy(httpServer);
 import { initPlanningQueues, shutdownPlanningQueues } from './services/planning';
 // Initialize Workflow Stages Worker
 import { initWorkflowStagesWorker, shutdownWorkflowStagesWorker } from './services/workflow-stages/worker';
-import { closeWorkflowStagesQueue } from './routes/workflow/stages';
 
 // SEC-004: PHI Scanner Startup Validation
 import {

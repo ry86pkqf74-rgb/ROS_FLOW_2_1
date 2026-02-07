@@ -1,6 +1,7 @@
+import { EventEmitter } from 'events';
+
 import { Queue, Job } from 'bullmq';
 import { z } from 'zod';
-import { EventEmitter } from 'events';
 
 /**
  * Multi-Tool Orchestration Dispatcher

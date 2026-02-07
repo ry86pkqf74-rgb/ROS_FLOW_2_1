@@ -1,4 +1,5 @@
 import { v4 as uuid } from 'uuid';
+
 import type { GeneratedChart } from './visualization.service';
 
 export interface FigureEmbed {

@@ -9,12 +9,13 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
+import { logAction } from '../services/auditService.js';
 import {
   getPreferencesService,
   UserPreferencesSchema,
   DEFAULT_PREFERENCES,
 } from '../services/preferences.service.js';
-import { logAction } from '../services/auditService.js';
 
 const router = Router();
 

@@ -7,9 +7,10 @@
  * comments are indexed.
  */
 
-import { db } from '../../db';
 import { aiOutputFeedback, aiInvocations } from '@researchflow/core/schema';
 import { eq, gte } from 'drizzle-orm';
+
+import { db } from '../../db';
 import { config } from '../config/env';
 
 const RAG_COLLECTION = 'ai_feedback_guidance';

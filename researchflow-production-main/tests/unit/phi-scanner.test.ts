@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import { RegexPhiScanner, scan, redact, hasPhi } from '@researchflow/phi-engine';
 
 describe('PHI Scanner - Core Interface', () => {

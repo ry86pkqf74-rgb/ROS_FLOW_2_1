@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
 import {
   AGENT_REGISTRY,
   STAGE_TO_AGENTS,

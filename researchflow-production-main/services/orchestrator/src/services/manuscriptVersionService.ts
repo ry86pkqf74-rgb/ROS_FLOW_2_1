@@ -3,9 +3,12 @@
  * Features: Branch creation, three-way merge, diff generation, AI suggestions
  */
 
-import { db } from "../../db";
-import { sql } from "drizzle-orm";
 import { createHash } from "crypto";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "../../db";
+
 import { logAction } from "./audit-service";
 
 export interface ManuscriptBranch {

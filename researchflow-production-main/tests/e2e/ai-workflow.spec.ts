@@ -298,7 +298,7 @@ test.describe('AI Workflow - WebSocket Agent Status', () => {
     await page.goto(`${BASE_URL}/workflows`, { waitUntil: 'domcontentloaded' });
 
     // Monitor page console for WebSocket messages
-    let statusMessages: string[] = [];
+    const statusMessages: string[] = [];
     page.on('console', (msg) => {
       if (msg.text().includes('agent') || msg.text().includes('status')) {
         statusMessages.push(msg.text());

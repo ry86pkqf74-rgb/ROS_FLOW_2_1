@@ -5,10 +5,11 @@
  * to the audit trail with hash chain integrity.
  */
 
+import type { Request } from 'express';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { logAuthEvent, verifyAuditChain } from '../services/orchestrator/src/services/audit-service';
 import { getRequestMetadata, getClientIpAddress, getUserAgent } from '../services/orchestrator/src/utils/request-metadata';
-import type { Request } from 'express';
 
 describe('Audit Logging for Authentication Events', () => {
 

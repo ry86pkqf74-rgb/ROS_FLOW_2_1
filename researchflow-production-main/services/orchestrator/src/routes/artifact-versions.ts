@@ -8,16 +8,19 @@
  * - POST /api/ros/artifacts/:artifactId/restore/:versionId - Restore version
  * - GET /api/ros/artifacts/:artifactId/versions/:versionId/diff - Get diff
  */
-import { Router, Request, Response } from "express";
-import { requireRole } from "../middleware/rbac";
-import { createAuditEntry } from "../services/auditService";
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import { artifacts, artifactVersions } from "@researchflow/core/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { Router, Request, Response } from "express";
 import { nanoid } from "nanoid";
-import { createHash } from "crypto";
-import * as diffService from "../services/diffService";
 import { z } from "zod";
+
+import { db } from "../../db";
+import { requireRole } from "../middleware/rbac";
+import { createAuditEntry } from "../services/auditService";
+import * as diffService from "../services/diffService";
+
 
 const router = Router();
 
@@ -64,7 +67,7 @@ router.get(
 
       const { branch, limit, offset } = parseResult.data;
 
-      let query = db
+      const query = db
         .select({
           id: artifactVersions.id,
           artifactId: artifactVersions.artifactId,

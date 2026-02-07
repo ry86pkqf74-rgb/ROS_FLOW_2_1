@@ -1,6 +1,7 @@
+import { type OllamaModel } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { Box, HardDrive, Clock, Trash2, Terminal } from "lucide-react";
-import { type OllamaModel } from "@shared/schema";
+
 import { Button } from "@/components/ui/button";
 
 interface ModelCardProps {

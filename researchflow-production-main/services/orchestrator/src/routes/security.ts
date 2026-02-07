@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+
 import { SecurityEnhancementMiddleware } from '../middleware/security-enhancements';
 import { createLogger } from '../utils/logger';
 

@@ -13,6 +13,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
 import { BasePage } from './pages/base.page';
@@ -440,7 +441,7 @@ test.describe('Full 20-Stage Workflow Journey', () => {
 
     // Test desktop viewport
     await page.setViewportSize({ width: 1280, height: 720 });
-    let stageCards = page.locator('[data-testid^="card-stage-"]');
+    const stageCards = page.locator('[data-testid^="card-stage-"]');
     await expect(stageCards.first()).toBeVisible();
 
     // Test tablet viewport

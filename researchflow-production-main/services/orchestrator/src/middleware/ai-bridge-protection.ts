@@ -6,8 +6,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../utils/logger';
+
 import { getAIBridgeConfig } from '../config/ai-bridge.config';
+import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ai-bridge-protection');
 const config = getAIBridgeConfig();

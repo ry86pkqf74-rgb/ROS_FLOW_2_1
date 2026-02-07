@@ -1,7 +1,8 @@
 import express from 'express';
-import { customFieldsService, CustomFieldsSchemaValidator } from '../services/customFieldsService';
-import { asyncHandler } from '../middleware/asyncHandler';
 import { z } from 'zod';
+
+import { asyncHandler } from '../middleware/asyncHandler';
+import { customFieldsService, CustomFieldsSchemaValidator } from '../services/customFieldsService';
 
 const router = express.Router();
 

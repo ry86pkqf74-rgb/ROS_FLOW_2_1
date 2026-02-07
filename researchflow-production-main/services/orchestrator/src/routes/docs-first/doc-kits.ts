@@ -5,10 +5,11 @@
  */
 
 import express, { type Request, type Response } from 'express';
-import { docKitsService } from '../../services/docs-first/doc-kits.service.js';
-import { requirePermission } from '../../middleware/rbac.js';
-import { blockInStandby } from '../../middleware/governance-gates.js';
+
 import { asyncHandler } from '../../middleware/asyncHandler.js';
+import { blockInStandby } from '../../middleware/governance-gates.js';
+import { requirePermission } from '../../middleware/rbac.js';
+import { docKitsService } from '../../services/docs-first/doc-kits.service.js';
 
 const router = express.Router();
 

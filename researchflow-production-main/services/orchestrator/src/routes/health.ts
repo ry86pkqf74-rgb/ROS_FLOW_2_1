@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+
 import { checkPostgres, checkRedis, checkWorker } from "../utils/healthChecks";
 
 const router = Router();

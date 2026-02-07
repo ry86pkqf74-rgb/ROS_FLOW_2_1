@@ -26,10 +26,11 @@
  * @module routes/ecosystem
  */
 
+import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+
 import { db } from '../../db';
-import { sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -235,8 +236,8 @@ router.post('/integrations/:service', async (req: Request, res: Response) => {
     // This is a placeholder - actual implementation depends on each service
 
     let accessToken = null;
-    let refreshToken = null;
-    let tokenExpires = null;
+    const refreshToken = null;
+    const tokenExpires = null;
     let serviceUserId = null;
 
     if (serviceInfo.type === 'oauth' && code) {

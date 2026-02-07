@@ -4,6 +4,7 @@
  */
 
 import { nanoid } from 'nanoid';
+
 import type { Citation, CitationStyle } from '../types';
 
 /**

@@ -6,8 +6,9 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import { E2E_USERS, E2EUser } from '../fixtures/users.fixture';
+
 import { createMockScanResult, MOCK_PHI, ALL_MOCK_PHI } from '../fixtures/phi-data.fixture';
+import { E2E_USERS, E2EUser } from '../fixtures/users.fixture';
 
 // Store for test state that can be modified during tests
 let currentUser: E2EUser | null = null;

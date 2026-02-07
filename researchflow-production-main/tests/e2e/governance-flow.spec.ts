@@ -11,10 +11,11 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+
 import { loginAs, setMode, loginAsRole } from './fixtures';
 import { E2E_USERS } from './fixtures/users.fixture';
-import { GovernancePage } from './pages/governance.page';
 import { BasePage } from './pages/base.page';
+import { GovernancePage } from './pages/governance.page';
 
 test.describe('VAL-004: Governance Flow', () => {
   test.beforeEach(async ({ page }) => {

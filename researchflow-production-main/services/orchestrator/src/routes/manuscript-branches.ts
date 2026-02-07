@@ -6,18 +6,20 @@
  * - GET /api/ros/manuscripts/:artifactId/branches - List branches
  * - POST /api/ros/manuscripts/:artifactId/merge - Merge branches
  */
-import { Router, Request, Response } from "express";
-import { requireRole } from "../middleware/rbac";
-import { createAuditEntry } from "../services/auditService";
-import { db } from "../../db";
+import { createHash } from "crypto";
+
 import { artifacts, artifactVersions } from "@researchflow/core/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { Router, Request, Response } from "express";
 import { nanoid } from "nanoid";
-import { createHash } from "crypto";
-import * as diffService from "../services/diffService";
 import { z } from "zod";
-import manuscriptVersionService from "../services/manuscriptVersionService";
+
+import { db } from "../../db";
+import { requireRole } from "../middleware/rbac";
 import aiEditingService from "../services/aiEditingService";
+import { createAuditEntry } from "../services/auditService";
+import * as diffService from "../services/diffService";
+import manuscriptVersionService from "../services/manuscriptVersionService";
 
 const router = Router();
 export const manuscriptBranchingRoutes = Router();

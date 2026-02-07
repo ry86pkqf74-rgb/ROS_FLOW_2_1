@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DataMapperService } from '../data-mapper.service';
+
 import type { ClinicalDataset } from '../../types';
+import { DataMapperService } from '../data-mapper.service';
 
 describe('DataMapperService', () => {
   let mapper: DataMapperService;

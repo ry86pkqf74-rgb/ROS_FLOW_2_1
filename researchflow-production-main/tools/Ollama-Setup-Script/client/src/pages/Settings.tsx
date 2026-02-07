@@ -1,10 +1,12 @@
-import { useSettings, useUpdateSetting } from "@/hooks/use-settings";
+import { Loader2, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, useEffect } from "react";
-import { Loader2, Save } from "lucide-react";
+import { useSettings, useUpdateSetting } from "@/hooks/use-settings";
+
 
 export default function Settings() {
   const { data: settings, isLoading } = useSettings();

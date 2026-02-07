@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+
 import type { IMRaDSection } from './imrad.types';
 
 export const SectionMoveOperationSchema = z.object({

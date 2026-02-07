@@ -4,8 +4,9 @@
  */
 
 import { EventEmitter } from 'events';
-import fetch from 'node-fetch';
+
 import { Request, Response, NextFunction } from 'express';
+import fetch from 'node-fetch';
 
 interface RecoveryConfig {
   maxRetries: number;

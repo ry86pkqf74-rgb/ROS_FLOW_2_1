@@ -3,12 +3,13 @@
  * Run with: k6 run scenarios/concurrent-users.js --vus 20 --duration 5m
  */
 
+import { check, sleep, group } from 'k6';
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check, sleep, group } from 'k6';
+
 import { login, getAuthHeaders } from '../lib/auth.js';
-import { getStages, completeStage } from '../lib/workflow.js';
 import { userEmail } from '../lib/data.js';
+import { getStages, completeStage } from '../lib/workflow.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3001';
 const WS_URL = __ENV.WS_URL || BASE_URL.replace(/^http/, 'ws');

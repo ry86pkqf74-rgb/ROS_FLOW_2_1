@@ -6,6 +6,7 @@
  */
 
 import Redis from "ioredis";
+
 import type { PersistenceAdapter } from "./index.js";
 
 /**

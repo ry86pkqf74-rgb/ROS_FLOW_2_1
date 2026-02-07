@@ -10,10 +10,11 @@
  * - GET /api/ros/shares/validate - Validate token (public)
  */
 import { Router, Request, Response } from "express";
+import { z } from "zod";
+
 import { requireRole } from "../middleware/rbac";
 import { createAuditEntry } from "../services/auditService";
 import * as shareService from "../services/shareService";
-import { z } from "zod";
 
 const router = Router();
 

@@ -10,9 +10,10 @@
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { logAction } from '../services/audit-service';
-import { requirePermission, requireRole } from '../middleware/rbac';
+
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requirePermission, requireRole } from '../middleware/rbac';
+import { logAction } from '../services/audit-service';
 import {
   saveScanResult,
   getScanResult,
@@ -350,7 +351,7 @@ router.post(
     const { content, findings, redactionStyle } = validation.data;
 
     // Apply redactions
-    let redactedContent = content;
+    const redactedContent = content;
     const appliedRedactions: Array<{ id: string; original: string; redacted: string }> = [];
 
     // Sort findings by offset descending to apply from end to start
@@ -527,7 +528,7 @@ router.put(
     }
 
     // Calculate expiration based on duration
-    let expiresAt = new Date();
+    const expiresAt = new Date();
     switch (accessRequest.duration) {
       case 'session':
         expiresAt.setHours(expiresAt.getHours() + 8);

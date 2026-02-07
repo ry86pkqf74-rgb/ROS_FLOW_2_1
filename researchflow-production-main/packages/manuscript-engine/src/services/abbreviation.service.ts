@@ -37,7 +37,7 @@ export class AbbreviationService {
 
     const abbrevMap = new Map<string, number[]>();
 
-    let index = 0;
+    const index = 0;
     for (const match of matches) {
       const abbrev = match[0];
       const position = match.index!;

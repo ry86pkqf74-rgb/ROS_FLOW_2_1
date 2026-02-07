@@ -1,8 +1,11 @@
-import { Router, Request, Response } from 'express';
 import os from 'os';
+
+import { Router, Request, Response } from 'express';
+import { Pool } from 'pg';
+
 import { getRedisClient, isCacheAvailable } from '../utils/cache.js';
 import { logger } from '../utils/logger.js';
-import { Pool } from 'pg';
+
 
 export type HealthStatus = 'OK' | 'DEGRADED' | 'DOWN';
 

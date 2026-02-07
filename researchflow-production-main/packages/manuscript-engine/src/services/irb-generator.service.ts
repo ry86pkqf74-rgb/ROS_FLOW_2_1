@@ -5,9 +5,10 @@
  * and MethodsPopulatorService to create comprehensive IRB submission materials.
  */
 
+import type { ManuscriptSection } from '../types';
+
 import { ClaudeWriterService } from './claude-writer.service';
 import { MethodsPopulatorService } from './methods-populator.service';
-import type { ManuscriptSection } from '../types';
 
 export interface IrbProtocolRequest {
   studyTitle: string;

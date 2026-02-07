@@ -5,16 +5,17 @@
  * Blocks operations that exceed tier limits.
  */
 
-import { Request, Response, NextFunction, RequestHandler } from "express";
-import { eq, and, count } from "drizzle-orm";
-import { db } from "../../db";
 import { orgMemberships, researchProjects } from "@researchflow/core/schema";
 import {
   SubscriptionTier,
   TIER_LIMITS,
 } from "@researchflow/core/types/organization";
-import { getOrgSubscription } from "../services/stripeService";
+import { eq, and, count } from "drizzle-orm";
+import { Request, Response, NextFunction, RequestHandler } from "express";
+
+import { db } from "../../db";
 import { logAction } from "../services/audit-service";
+import { getOrgSubscription } from "../services/stripeService";
 
 type ResourceType = "members" | "projects" | "aiCalls" | "storage";
 

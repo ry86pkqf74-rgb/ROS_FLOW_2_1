@@ -8,6 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+
 import { config } from '../config/env';
 
 const router = Router();
@@ -234,7 +235,7 @@ class Histogram {
 
     for (const [labelsJson, obs] of this.observations.entries()) {
       const labels = JSON.parse(labelsJson);
-      let cumulative = 0;
+      const cumulative = 0;
 
       for (const bucket of this.buckets) {
         const count = obs.filter((v) => v <= bucket).length;

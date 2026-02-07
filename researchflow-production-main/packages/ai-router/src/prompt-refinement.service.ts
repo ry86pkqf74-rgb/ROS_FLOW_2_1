@@ -13,14 +13,15 @@
  * Last Updated: 2026-01-23
  */
 
-import type { QualityCheck, AITaskType, ModelTier } from './types';
+import * as crypto from 'crypto';
+
 import {
   RefinementRule,
   getApplicableRules,
   formatInstruction,
   getRuleByCheckName,
 } from './refinement-rules';
-import * as crypto from 'crypto';
+import type { QualityCheck, AITaskType, ModelTier } from './types';
 
 /**
  * Refinement context for tracking attempts

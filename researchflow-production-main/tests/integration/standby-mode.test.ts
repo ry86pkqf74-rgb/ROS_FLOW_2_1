@@ -7,13 +7,15 @@
  * x-user-role header for testing RBAC-protected endpoints.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import request from 'supertest';
 import express, { Express } from 'express';
+import request from 'supertest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+
 import { TEST_USERS, getRoleHeader } from '../utils/rbac-mock';
+
+import { requireRole, logAuditEvent } from '@apps/api-node/src/middleware/rbac';
 import type { Role } from '@packages/core/types/roles';
 import { ROLES } from '@packages/core/types/roles';
-import { requireRole, logAuditEvent } from '@apps/api-node/src/middleware/rbac';
 
 describe('STANDBY Mode Enforcement', () => {
   let app: Express;

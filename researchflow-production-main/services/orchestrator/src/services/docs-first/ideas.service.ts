@@ -5,9 +5,10 @@
  * Supports CRUD operations and conversion to Topic Briefs.
  */
 
-import { db } from '../../lib/db.js';
 import { ideas, ideaScorecards, topicBriefs, type Idea, type IdeaScorecard, type InsertIdea } from '@researchflow/core/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
+
+import { db } from '../../lib/db.js';
 import { createAuditEntry } from '../auditService.js';
 
 export class IdeasService {

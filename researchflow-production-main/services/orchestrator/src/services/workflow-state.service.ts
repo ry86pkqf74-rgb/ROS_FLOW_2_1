@@ -10,8 +10,8 @@
  * @module services/workflow-state.service
  */
 
-import { getCacheService, RedisCacheService, RedisClient } from './redis-cache';
 import type { LifecycleState, AuditLogEntry } from './lifecycleService';
+import { getCacheService, RedisCacheService, RedisClient } from './redis-cache';
 
 // Default TTL: 30 days in seconds
 const DEFAULT_TTL_DAYS = 30;

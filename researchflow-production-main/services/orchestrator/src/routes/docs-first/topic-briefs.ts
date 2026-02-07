@@ -4,16 +4,17 @@
  * API endpoints for managing research planning documents and scope freezing.
  */
 
-import express, { type Request, type Response } from 'express';
-import { topicBriefsService } from '../../services/docs-first/topic-briefs.service.js';
-import { scopeFreezeService } from '../../services/docs-first/scope-freeze.service.js';
-import { requirePermission, requireRole } from '../../middleware/rbac.js';
-import { blockInStandby } from '../../middleware/governance-gates.js';
-import { asyncHandler } from '../../middleware/asyncHandler.js';
-import { z } from 'zod';
-import { db } from '../../lib/db.js';
 import { docAnchors } from '@researchflow/core/schema';
 import { eq, desc } from 'drizzle-orm';
+import express, { type Request, type Response } from 'express';
+import { z } from 'zod';
+
+import { db } from '../../lib/db.js';
+import { asyncHandler } from '../../middleware/asyncHandler.js';
+import { blockInStandby } from '../../middleware/governance-gates.js';
+import { requirePermission, requireRole } from '../../middleware/rbac.js';
+import { scopeFreezeService } from '../../services/docs-first/scope-freeze.service.js';
+import { topicBriefsService } from '../../services/docs-first/topic-briefs.service.js';
 
 const router = express.Router();
 

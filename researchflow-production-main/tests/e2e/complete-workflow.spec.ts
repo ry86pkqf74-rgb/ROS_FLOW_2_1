@@ -4,6 +4,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+
 import { TestUser, TestProject } from './fixtures';
 
 test.describe('Complete 20-Stage Workflow', () => {

@@ -6,6 +6,7 @@
  */
 
 import { test as base, Page } from '@playwright/test';
+
 import { E2EUser, E2E_USERS } from './users.fixture';
 
 /**

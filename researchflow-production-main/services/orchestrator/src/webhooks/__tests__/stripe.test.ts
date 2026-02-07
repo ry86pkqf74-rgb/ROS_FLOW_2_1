@@ -2,8 +2,10 @@
  * Stripe Webhook Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { verifyStripeSignature } from '../stripe.js';
 
 describe('Stripe Webhook', () => {
