@@ -110,8 +110,8 @@ fi
 KNOWLEDGE_BASE="smoke-e2e-$(date +%s)"
 REQUEST_ID="smoke-e2e-$$-$(date +%s)"
 
-# --- Step 1: Ingest 2–3 tiny docs ---
-log_info "E2E step 1: Ingest documents into knowledge base $KNOWLEDGE_BASE"
+# --- Step 1: Ingest 3 canonical medical docs (cardio, onco, neuro) ---
+log_info "E2E step 1: Ingest 3 canonical docs into knowledge base $KNOWLEDGE_BASE"
 
 INGEST_BODY=$(jq -n \
   --arg req_id "$REQUEST_ID" \
@@ -122,9 +122,21 @@ INGEST_BODY=$(jq -n \
     inputs: {
       knowledgeBase: $kb,
       documents: [
-        { docId: "doc1", text: "The capital of France is Paris." },
-        { docId: "doc2", text: "Water boils at 100 degrees Celsius at sea level." },
-        { docId: "doc3", text: "The sky is blue." }
+        {
+          docId: "smoke-001",
+          text: "Direct oral anticoagulants (DOACs) such as apixaban reduce stroke risk in atrial fibrillation patients by approximately 70%. The ARISTOTLE trial demonstrated apixaban superiority over warfarin with fewer major bleeding events.",
+          metadata: { domain_id: "domain-cardio", topic: "cardiology" }
+        },
+        {
+          docId: "smoke-002",
+          text: "CAR-T cell therapy targeting CD19 has achieved complete remission rates exceeding 80% in relapsed/refractory B-cell acute lymphoblastic leukemia (ALL). Long-term follow-up shows durable responses in approximately 50% of patients at 12 months.",
+          metadata: { domain_id: "domain-onco", topic: "oncology" }
+        },
+        {
+          docId: "smoke-003",
+          text: "Lecanemab, an anti-amyloid-beta antibody, demonstrated a 27% reduction in cognitive decline over 18 months in the CLARITY-AD trial. The drug targets soluble amyloid-beta protofibrils and received FDA accelerated approval in 2023.",
+          metadata: { domain_id: "domain-neuro", topic: "neurology" }
+        }
       ]
     },
     mode: "DEMO"
@@ -164,16 +176,16 @@ fi
 
 log_info "Ingest passed ✓ (ingestedCount=$INGESTED_COUNT, chunkCount=$CHUNK_COUNT)"
 
-# --- Step 2: Retrieve ---
-log_info "E2E step 2: Retrieve from knowledge base"
+# --- Step 2: Retrieve (Q1: cardiology query) ---
+log_info "E2E step 2: Retrieve from knowledge base (cardiology query)"
 
 RETRIEVE_BODY=$(jq -n \
-  --arg req_id "${REQUEST_ID}-retrieve" \
+  --arg req_id "${REQUEST_ID}-retrieve-q1" \
   --arg kb "$KNOWLEDGE_BASE" \
   '{
     request_id: $req_id,
     task_type: "RAG_RETRIEVE",
-    inputs: { query: "What is the capital of France?", knowledgeBase: $kb },
+    inputs: { query: "stroke prevention anticoagulants atrial fibrillation", knowledgeBase: $kb, topK: 3 },
     mode: "DEMO"
   }')
 
@@ -213,19 +225,48 @@ fi
 
 log_info "Retrieve passed ✓"
 
-# --- Step 3: Verify (one claim supported, one unsupported => overallPass false) ---
-log_info "E2E step 3: Verify claims against grounding"
+# Build a comprehensive grounding pack with all 3 canonical docs for verify.
+# This ensures C2/C3 can be evaluated as "fail" (contradiction) rather than "unclear" (no evidence).
+CANONICAL_GROUNDING=$(jq -n '{
+  chunks: [
+    {
+      chunk_id: "smoke-001-chunk-0",
+      doc_id: "smoke-001",
+      text: "Direct oral anticoagulants (DOACs) such as apixaban reduce stroke risk in atrial fibrillation patients by approximately 70%. The ARISTOTLE trial demonstrated apixaban superiority over warfarin with fewer major bleeding events.",
+      score: 0.95
+    },
+    {
+      chunk_id: "smoke-002-chunk-0",
+      doc_id: "smoke-002",
+      text: "CAR-T cell therapy targeting CD19 has achieved complete remission rates exceeding 80% in relapsed/refractory B-cell acute lymphoblastic leukemia (ALL). Long-term follow-up shows durable responses in approximately 50% of patients at 12 months.",
+      score: 0.90
+    },
+    {
+      chunk_id: "smoke-003-chunk-0",
+      doc_id: "smoke-003",
+      text: "Lecanemab, an anti-amyloid-beta antibody, demonstrated a 27% reduction in cognitive decline over 18 months in the CLARITY-AD trial. The drug targets soluble amyloid-beta protofibrils and received FDA accelerated approval in 2023.",
+      score: 0.90
+    }
+  ]
+}')
+
+# --- Step 3: Verify (C1=pass, C2/C3=fail|unclear => overallPass false) ---
+# C1: "Apixaban reduces stroke risk ~70%" - supported by smoke-001
+# C2: "CAR-T 95% remission" - contradicted (smoke-002 says >80%)
+# C3: "Lecanemab targets tau" - contradicted (smoke-003 says amyloid-beta)
+log_info "E2E step 3: Verify 3 canonical claims against grounding"
 
 VERIFY_BODY=$(jq -n \
   --arg req_id "${REQUEST_ID}-verify" \
-  --argjson gp "$GROUNDING_PACK" \
+  --argjson gp "$CANONICAL_GROUNDING" \
   '{
     request_id: $req_id,
     task_type: "CLAIM_VERIFY",
     inputs: {
       claims: [
-        "The capital of France is Paris.",
-        "The capital of France is London."
+        "Apixaban reduces stroke risk by approximately 70% in AFib patients",
+        "CAR-T therapy achieves 95% remission in ALL",
+        "Lecanemab targets tau protein tangles"
       ],
       groundingPack: $gp,
       governanceMode: "DEMO"
@@ -256,10 +297,10 @@ if [[ "$OVERALL_PASS" == "missing" ]] || [[ "$OVERALL_PASS" == "null" ]]; then
   ci_fail "E2E failed: verify response schema missing required key (outputs.overallPass)."
 fi
 
-# We expect overallPass == false (one claim pass, one fail)
+# We expect overallPass == false (C1 pass, C2/C3 fail or unclear)
 if [[ "$OVERALL_PASS" != "false" ]]; then
   log_error "Verify response body: $VERIFY_JSON"
-  ci_fail "E2E failed: verify returned overallPass=$OVERALL_PASS (expected false for one pass + one fail)."
+  ci_fail "E2E failed: verify returned overallPass=$OVERALL_PASS (expected false: C1=pass, C2/C3=fail|unclear)."
 fi
 
 CLAIM_VERDICTS=$(echo "$VERIFY_JSON" | jq -r '.outputs.claim_verdicts // empty')
@@ -268,7 +309,7 @@ if [[ -z "$CLAIM_VERDICTS" ]] || [[ "$CLAIM_VERDICTS" == "null" ]]; then
   ci_fail "E2E failed: verify response schema missing required key (outputs.claim_verdicts)."
 fi
 
-log_info "Verify passed ✓ (overallPass=false as expected)"
+log_info "Verify passed ✓ (overallPass=false: C1=pass, C2/C3=fail|unclear)"
 
 #############################################
 # 5. Summary
