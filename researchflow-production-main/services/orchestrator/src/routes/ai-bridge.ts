@@ -33,6 +33,7 @@ import {
   enhancedErrorHandlerMiddleware,
   getAIBridgeErrorHandler 
 } from '../middleware/ai-bridge-error-handler';
+import { callRealLLMProvider, streamRealLLMProvider } from '../services/ai-bridge-llm';
 
 const router = Router();
 const logger = createLogger('ai-bridge');
@@ -220,51 +221,24 @@ async function processBatchChunk(
 }
 
 /**
- * Mock LLM call (until actual AI provider integration)
+ * Call real LLM provider via internal routing (env: OPENAI_API_KEY, ANTHROPIC_API_KEY).
+ * Preserves response shape: content, usage, cost, finishReason.
  */
 async function callLLMProvider(
   prompt: string,
   model: string,
-  options: any
+  options: { maxTokens?: number; temperature?: number; taskType?: string }
 ): Promise<{
   content: string;
   usage: { totalTokens: number; promptTokens: number; completionTokens: number };
   cost: { total: number; input: number; output: number };
   finishReason: string;
 }> {
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-  // Mock response based on prompt
-  const promptTokens = Math.ceil(prompt.length / 4);
-  const completionTokens = Math.ceil(promptTokens * 0.7 + Math.random() * 200);
-  const totalTokens = promptTokens + completionTokens;
-
-  // Calculate mock costs based on tier
-  const tierCosts = {
-    economy: { input: 0.0001, output: 0.00015 },
-    standard: { input: 0.001, output: 0.0015 },
-    premium: { input: 0.01, output: 0.015 },
-  };
-
-  const costs = tierCosts.standard; // Default
-  const inputCost = promptTokens * costs.input;
-  const outputCost = completionTokens * costs.output;
-
-  return {
-    content: `[AI Bridge Mock Response for ${options.taskType}]\n\nThis is a simulated response for the prompt: "${prompt.substring(0, 100)}..."\n\nModel: ${model}\nTokens: ${totalTokens}\nTask: ${options.taskType}`,
-    usage: {
-      totalTokens,
-      promptTokens,
-      completionTokens,
-    },
-    cost: {
-      total: inputCost + outputCost,
-      input: inputCost,
-      output: outputCost,
-    },
-    finishReason: 'stop',
-  };
+  return callRealLLMProvider(prompt, model, {
+    maxTokens: options.maxTokens ?? bridgeConfig.limits.maxTokens,
+    temperature: options.temperature ?? bridgeConfig.defaults.temperature,
+    taskType: options.taskType,
+  });
 }
 
 // ============================
@@ -560,60 +534,68 @@ router.post(
         model: routing.model,
       })}\n\n`);
 
-      // Simulate streaming response
-      const fullResponse = await callLLMProvider(prompt, routing.model, options);
-      const words = fullResponse.content.split(' ');
-
-      // Stream words with delays
-      let streamedContent = '';
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i] + ' ';
-        streamedContent += word;
-
+      // Stream using provider's streaming API (env: OPENAI_API_KEY, ANTHROPIC_API_KEY)
+      let fullResponse: { usage: any; cost: any; finishReason: string } | null = null;
+      try {
+        for await (const event of streamRealLLMProvider(prompt, routing.model, {
+          maxTokens: options.maxTokens ?? bridgeConfig.limits.maxTokens,
+          temperature: options.temperature ?? bridgeConfig.defaults.temperature,
+          taskType: options.taskType,
+        })) {
+          if (event.type === 'content') {
+            res.write(`data: ${JSON.stringify({ type: 'content', content: event.content })}\n\n`);
+          } else if (event.type === 'done') {
+            fullResponse = event.response;
+            res.write(`data: ${JSON.stringify({
+              type: 'complete',
+              finalContent: event.response.content,
+              usage: event.response.usage,
+              cost: event.response.cost,
+              model: routing.model,
+              tier: routing.selectedTier,
+              finishReason: event.response.finishReason,
+            })}\n\n`);
+          }
+        }
+      } catch (streamErr) {
+        logger.logError('AI Bridge stream provider error', streamErr as Error, { taskType: options.taskType });
         res.write(`data: ${JSON.stringify({
-          type: 'content',
-          content: word,
-          index: i,
+          type: 'error',
+          error: 'STREAM_FAILED',
+          message: streamErr instanceof Error ? streamErr.message : 'Unknown error',
         })}\n\n`);
-
-        // Add realistic delay
-        await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+        res.end();
+        recordCircuitBreakerOutcome(false);
+        return;
       }
-
-      // Send completion
-      res.write(`data: ${JSON.stringify({
-        type: 'complete',
-        finalContent: streamedContent.trim(),
-        usage: fullResponse.usage,
-        cost: fullResponse.cost,
-        model: routing.model,
-        tier: routing.selectedTier,
-        finishReason: fullResponse.finishReason,
-      })}\n\n`);
 
       res.write('data: [DONE]\n\n');
       res.end();
 
       // Record success and update cost tracking
       recordCircuitBreakerOutcome(true);
-      updateCostTracking(user.id, fullResponse.cost.total);
+      if (fullResponse) {
+        updateCostTracking(user.id, fullResponse.cost.total);
+      }
 
       // Audit log
-      await logAction({
-        eventType: 'AI_BRIDGE_STREAM',
-        action: 'STREAM_COMPLETED',
-        userId: user.id,
-        resourceType: 'ai_bridge',
-        resourceId: metadata?.runId || `stream_${Date.now()}`,
-        details: {
-          taskType: options.taskType,
-          selectedTier: routing.selectedTier,
-          model: routing.model,
-          usage: fullResponse.usage,
-          cost: fullResponse.cost,
-          agentId: metadata?.agentId,
-        },
-      });
+      if (fullResponse) {
+        await logAction({
+          eventType: 'AI_BRIDGE_STREAM',
+          action: 'STREAM_COMPLETED',
+          userId: user.id,
+          resourceType: 'ai_bridge',
+          resourceId: metadata?.runId || `stream_${Date.now()}`,
+          details: {
+            taskType: options.taskType,
+            selectedTier: routing.selectedTier,
+            model: routing.model,
+            usage: fullResponse.usage,
+            cost: fullResponse.cost,
+            agentId: metadata?.agentId,
+          },
+        });
+      }
     } catch (error) {
       recordCircuitBreakerOutcome(false);
       
@@ -630,6 +612,53 @@ router.post(
 
       res.end();
     }
+  })
+);
+
+/**
+ * GET /api/ai-bridge/smoke
+ * Smoke check: confirms real provider execution (non-mock).
+ * Returns realProvider: true when OPENAI_API_KEY or ANTHROPIC_API_KEY is set.
+ * Does not perform a live LLM call unless ?invoke=1 (minimal prompt) for integration checks.
+ */
+router.get(
+  '/smoke',
+  asyncHandler(async (req: Request, res: Response) => {
+    const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
+    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+    const realProvider = hasAnthropic || hasOpenAI;
+
+    if (req.query.invoke === '1' && realProvider) {
+      try {
+        const model = hasAnthropic ? 'claude-3-haiku-20240307' : 'gpt-3.5-turbo';
+        const out = await callRealLLMProvider('Reply with exactly: OK', model, {
+          maxTokens: 10,
+          temperature: 0,
+        });
+        return res.json({
+          realProvider: true,
+          providers: { anthropic: hasAnthropic, openai: hasOpenAI },
+          invoked: true,
+          contentPreview: out.content.slice(0, 100),
+          usage: out.usage,
+          cost: out.cost,
+        });
+      } catch (err) {
+        return res.status(503).json({
+          realProvider: true,
+          invoked: true,
+          error: err instanceof Error ? err.message : 'Invoke failed',
+        });
+      }
+    }
+
+    res.json({
+      realProvider,
+      providers: { anthropic: hasAnthropic, openai: hasOpenAI },
+      message: realProvider
+        ? 'Real LLM provider configured (env). Use ?invoke=1 for a minimal live check.'
+        : 'Set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env for real provider execution.',
+    });
   })
 );
 
@@ -707,6 +736,7 @@ router.get(
         { path: '/invoke', method: 'POST', description: 'Single LLM invocation' },
         { path: '/batch', method: 'POST', description: 'Batch LLM processing' },
         { path: '/stream', method: 'POST', description: 'Streaming LLM responses' },
+        { path: '/smoke', method: 'GET', description: 'Smoke check (real provider config / optional live invoke)' },
         { path: '/health', method: 'GET', description: 'Health check' },
         { path: '/capabilities', method: 'GET', description: 'Capabilities info' },
         { path: '/metrics', method: 'GET', description: 'Prometheus metrics' },
