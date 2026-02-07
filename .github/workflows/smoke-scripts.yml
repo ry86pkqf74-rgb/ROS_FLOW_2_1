@@ -1,0 +1,154 @@
+# Run smoke-stage2.sh and smoke-rag.sh against staging or local compose.
+# Scripts support BASE_URL for staging; unset = local compose.
+name: Smoke Scripts (Stage2 + RAG)
+
+on:
+  workflow_run:
+    workflows: ["Build, Push & Deploy to Hetzner (Full Stack)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Base URL (staging or local). Leave empty to use default deploy URL."
+        required: false
+        default: ""
+      run_local_compose:
+        description: "Run against local compose (start stack in CI)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency: smoke-scripts
+
+env:
+  DEPLOY_URL: ${{ inputs.target_url || secrets.HETZNER_DEPLOY_URL || 'http://178.156.180.37:3001' }}
+
+jobs:
+  # ---- Against staging (or provided URL) ----
+  smoke_rag:
+    name: Smoke RAG
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'workflow_dispatch' && !inputs.run_local_compose) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: "Run smoke-rag.sh"
+        id: smoke_rag
+        run: |
+          echo "::group::Smoke RAG — ${{ env.DEPLOY_URL }}"
+          cd researchflow-production-main
+          chmod +x tools/dev/smoke-rag.sh
+          BASE_URL="${{ env.DEPLOY_URL }}" ./tools/dev/smoke-rag.sh
+          echo "::endgroup::"
+
+      - name: "Smoke RAG failed"
+        if: failure() && steps.smoke_rag.outcome == 'failure'
+        run: |
+          echo "::error::smoke-rag.sh failed against ${{ env.DEPLOY_URL }}"
+          echo "Check health and /api/ros/analysis/capabilities (and optionally /api/ros/vectordb/health)."
+
+  smoke_stage2:
+    name: Smoke Stage2
+    runs-on: ubuntu-latest
+    needs: smoke_rag
+    if: >-
+      (github.event_name == 'workflow_dispatch' && !inputs.run_local_compose) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    timeout-minutes: 10
+    env:
+      BASE_URL: ${{ env.DEPLOY_URL }}
+      WORKER_SERVICE_TOKEN: ${{ secrets.WORKER_SERVICE_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: "Run smoke-stage2.sh"
+        id: smoke_stage2
+        run: |
+          echo "::group::Smoke Stage2 — ${{ env.BASE_URL }}"
+          cd researchflow-production-main
+          chmod +x tools/dev/smoke-stage2.sh
+          ./tools/dev/smoke-stage2.sh
+          echo "::endgroup::"
+
+      - name: "Smoke Stage2 failed"
+        if: failure() && steps.smoke_stage2.outcome == 'failure'
+        run: |
+          echo "::error::smoke-stage2.sh failed against ${{ env.BASE_URL }}"
+          echo "Check POST /api/workflow/stages/2/execute and job status polling."
+
+      - name: "Smoke scripts summary"
+        if: always()
+        run: |
+          echo "## Smoke Scripts (Stage2 + RAG)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Script | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| smoke-rag.sh | ${{ job.status == 'success' && '✅ Pass' || '❌ Fail' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| smoke-stage2.sh | ${{ steps.smoke_stage2.outcome == 'success' && '✅ Pass' || '❌ Fail' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Target:** \`${{ env.BASE_URL }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---- Against local compose (optional; heavy) ----
+  smoke_local_compose:
+    name: Smoke (local compose)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_local_compose
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: "Start Docker Compose"
+        run: |
+          cd researchflow-production-main
+          echo "WORKER_SERVICE_TOKEN=smoke-ci-token" >> .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@postgres:5432/researchflow" >> .env
+          echo "REDIS_URL=redis://redis:6379" >> .env
+          docker compose up -d --build postgres redis migrate
+          sleep 5
+          docker compose up -d --build orchestrator worker agent-stage2-lit
+          echo "Waiting for services..."
+          sleep 15
+          curl -sf http://localhost:3001/health || (docker compose logs --tail=100; exit 1)
+
+      - name: "Run smoke-rag.sh (local)"
+        id: rag_local
+        run: |
+          echo "::group::Smoke RAG (local compose)"
+          cd researchflow-production-main
+          chmod +x tools/dev/smoke-rag.sh
+          ./tools/dev/smoke-rag.sh
+          echo "::endgroup::"
+
+      - name: "Run smoke-stage2.sh (local)"
+        id: stage2_local
+        env:
+          WORKER_SERVICE_TOKEN: smoke-ci-token
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/researchflow
+          REDIS_URL: redis://localhost:6379
+        run: |
+          echo "::group::Smoke Stage2 (local compose)"
+          cd researchflow-production-main
+          chmod +x tools/dev/smoke-stage2.sh
+          ./tools/dev/smoke-stage2.sh
+          echo "::endgroup::"
+
+      - name: "Local compose smoke failed"
+        if: failure()
+        run: |
+          echo "::error::Local compose smoke failed (smoke-rag or smoke-stage2)"
+          cd researchflow-production-main && docker compose logs --tail=80 || true
