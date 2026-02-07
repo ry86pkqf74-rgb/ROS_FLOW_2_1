@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-verify-response",
+  "title": "agent-verify response",
+  "description": "Claim verification with per-claim verdicts and evidence quotes.",
+  "allOf": [{ "$ref": "_base_envelope.json" }],
+  "properties": {
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "claim_verdicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim", "verdict"],
+            "properties": {
+              "claim": { "type": "string" },
+              "verdict": { "type": "string", "enum": ["pass", "fail", "unclear"] },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["chunkId", "quote"],
+                  "properties": {
+                    "chunkId": { "type": "string" },
+                    "quote": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "overallPass": { "type": "boolean" }
+      }
+    }
+  }
+}

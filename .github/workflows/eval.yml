@@ -1,0 +1,40 @@
+name: Agent Eval
+on:
+  pull_request:
+    paths:
+      - 'researchflow-production-main/services/agents/**'
+      - 'researchflow-production-main/services/worker/src/agents/**'
+      - 'researchflow-production-main/tests/eval/**'
+  schedule:
+    - cron: '0 6 * * 1'   # weekly Monday 06:00 UTC
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install eval deps
+        run: pip install -r researchflow-production-main/tests/eval/requirements.txt
+
+      - name: Run schema-only eval (P0 — no LLM calls)
+        run: |
+          cd researchflow-production-main
+          python tests/eval/run_eval.py --all --dry-run --output tests/eval/results/
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.sha }}
+          path: researchflow-production-main/tests/eval/results/
+          retention-days: 30
+
+      - name: Gate — fail if thresholds breached
+        run: |
+          cd researchflow-production-main
+          python tests/eval/run_eval.py --check-results tests/eval/results/

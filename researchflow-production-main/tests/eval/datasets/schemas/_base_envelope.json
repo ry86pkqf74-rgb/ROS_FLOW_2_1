@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-run-response-base",
+  "title": "AgentRunResponse — base envelope",
+  "description": "Shared response shape for agents using the canonical AgentRunResponse envelope (status field).",
+  "type": "object",
+  "required": ["status", "request_id", "outputs"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["ok", "success"]
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outputs": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "provenance": {
+      "type": "object"
+    },
+    "usage": {
+      "type": "object"
+    },
+    "grounding": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/GroundingPack" }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/AgentError" }
+      ]
+    }
+  },
+  "definitions": {
+    "GroundingPack": {
+      "type": "object",
+      "properties": {
+        "sources": { "type": "array" },
+        "citations": { "type": "array", "items": { "type": "string" } },
+        "span_refs": { "type": "array" },
+        "chunks": { "type": "array" },
+        "retrieval_trace": {}
+      }
+    },
+    "AgentError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": {}
+      }
+    }
+  }
+}

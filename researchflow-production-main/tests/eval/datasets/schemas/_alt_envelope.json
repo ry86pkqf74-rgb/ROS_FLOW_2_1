@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-run-response-alt",
+  "title": "AgentResponse — alternate envelope (ok field)",
+  "description": "Alternate response shape for agents using ok boolean (evidence-synth, lit-triage).",
+  "type": "object",
+  "required": ["ok", "request_id", "task_type", "outputs"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "request_id": { "type": "string", "minLength": 1 },
+    "task_type": { "type": "string", "minLength": 1 },
+    "outputs": { "type": "object" },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

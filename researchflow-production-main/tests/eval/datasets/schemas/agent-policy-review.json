@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-policy-review-response",
+  "title": "agent-policy-review response",
+  "description": "Policy/compliance review — bare envelope.",
+  "allOf": [{ "$ref": "_base_envelope.json" }]
+}

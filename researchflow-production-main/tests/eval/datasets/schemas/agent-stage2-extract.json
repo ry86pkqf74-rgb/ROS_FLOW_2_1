@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-stage2-extract-response",
+  "title": "agent-stage2-extract response",
+  "description": "Structured paper extraction with PICO elements and citation refs.",
+  "allOf": [{ "$ref": "_base_envelope.json" }],
+  "properties": {
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "extraction_table": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["doc_id"],
+            "properties": {
+              "doc_id": { "type": "string" },
+              "chunk_id": { "type": ["string", "null"] },
+              "pico": {
+                "type": ["object", "null"],
+                "properties": {
+                  "population": { "type": ["string", "null"] },
+                  "intervention": { "type": ["string", "null"] },
+                  "comparator": { "type": ["string", "null"] },
+                  "outcomes": { "type": "array", "items": { "type": "string" } },
+                  "timeframe": { "type": ["string", "null"] }
+                }
+              },
+              "endpoints": { "type": "array", "items": { "type": "string" } },
+              "sample_size": { "type": ["integer", "string", "null"] },
+              "key_results": {}
+            }
+          }
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["doc_id", "chunk_id"],
+            "properties": {
+              "doc_id": { "type": "string" },
+              "chunk_id": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
