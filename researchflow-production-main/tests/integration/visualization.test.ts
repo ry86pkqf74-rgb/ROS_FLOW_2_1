@@ -85,4 +85,370 @@ describe('Data Visualization Integration', () => {
         research_id: testResearchId,
       };
 
-      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(chartData)\n        .expect(200);\n\n      expect(response.body).toHaveProperty('status', 'completed');\n      expect(response.body).toHaveProperty('request_id');\n      expect(response.body).toHaveProperty('result');\n      expect(response.body.result).toHaveProperty('figure_id');\n      expect(response.body.result).toHaveProperty('image_base64');\n      \n      // Should include database info if storage succeeded\n      if (response.body.result.database_id) {\n        createdFigureIds.push(response.body.result.database_id);\n        expect(response.body.result).toHaveProperty('stored_at');\n      }\n    }, TEST_CONFIG.TIMEOUT);\n\n    test('should generate line chart with confidence bands', async () => {\n      const chartData = {\n        chart_type: 'line_chart',\n        data: {\n          time: [0, 1, 2, 3, 4, 5, 6],\n          value: [10, 12, 11, 14, 13, 15, 16],\n          ci_lower: [8, 10, 9, 12, 11, 13, 14],\n          ci_upper: [12, 14, 13, 16, 15, 17, 18],\n        },\n        config: {\n          title: 'Recovery Timeline',\n          x_label: 'Time (weeks)',\n          y_label: 'Outcome Score',\n          show_confidence_bands: true,\n          journal_style: 'nature',\n          color_palette: 'colorblind_safe',\n        },\n        research_id: testResearchId,\n      };\n\n      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(chartData)\n        .expect(200);\n\n      expect(response.body.result).toHaveProperty('figure_id');\n      expect(response.body.result).toHaveProperty('caption');\n      expect(response.body.result).toHaveProperty('alt_text');\n      \n      if (response.body.result.database_id) {\n        createdFigureIds.push(response.body.result.database_id);\n      }\n    }, TEST_CONFIG.TIMEOUT);\n\n    test('should handle invalid chart data', async () => {\n      const invalidData = {\n        chart_type: 'bar_chart',\n        data: {}, // Empty data\n        config: {},\n        research_id: testResearchId,\n      };\n\n      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(invalidData)\n        .expect(400);\n\n      expect(response.body).toHaveProperty('error');\n      expect(response.body.error).toContain('VISUALIZATION_FAILED');\n    });\n\n    test('should validate request schema', async () => {\n      const invalidRequest = {\n        chart_type: 'invalid_chart_type',\n        data: { x: [1, 2, 3] },\n      };\n\n      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(invalidRequest)\n        .expect(400);\n\n      expect(response.body).toHaveProperty('error', 'INVALID_REQUEST');\n      expect(response.body).toHaveProperty('details');\n    });\n  });\n\n  describe('Figure Management API', () => {\n    let sampleFigureId: string;\n\n    beforeEach(async () => {\n      // Create a sample figure for testing\n      if (figuresService) {\n        const figureInput: FigureCreateInput = {\n          research_id: testResearchId,\n          figure_type: 'bar_chart',\n          title: 'Test Chart',\n          caption: 'A test chart for API testing',\n          alt_text: 'Bar chart showing test data',\n          image_data: Buffer.from('fake-image-data'),\n          image_format: 'png',\n          width: 800,\n          height: 600,\n          dpi: 300,\n          generated_by: 'test_suite',\n        };\n\n        const figure = await figuresService.createFigure(figureInput);\n        sampleFigureId = figure.id;\n        createdFigureIds.push(sampleFigureId);\n      }\n    });\n\n    test('should list figures for research project', async () => {\n      if (!figuresService) {\n        console.warn('Skipping database test - figures service not available');\n        return;\n      }\n\n      const response = await request(app)\n        .get(`/api/visualization/figures/${testResearchId}`)\n        .expect(200);\n\n      expect(response.body).toHaveProperty('research_id', testResearchId);\n      expect(response.body).toHaveProperty('figures');\n      expect(response.body).toHaveProperty('total');\n      expect(response.body.figures).toBeInstanceOf(Array);\n      expect(response.body.figures.length).toBeGreaterThan(0);\n      \n      // Figures should not include image data in list\n      const figure = response.body.figures[0];\n      expect(figure).not.toHaveProperty('image_data');\n      expect(figure).toHaveProperty('has_image_data', true);\n    });\n\n    test('should get specific figure by ID', async () => {\n      if (!figuresService || !sampleFigureId) {\n        console.warn('Skipping database test - figures service not available');\n        return;\n      }\n\n      // Get figure without image data\n      const response1 = await request(app)\n        .get(`/api/visualization/figure/${sampleFigureId}`)\n        .expect(200);\n\n      expect(response1.body).toHaveProperty('id', sampleFigureId);\n      expect(response1.body).toHaveProperty('figure_type', 'bar_chart');\n      expect(response1.body).toHaveProperty('title', 'Test Chart');\n      expect(response1.body).not.toHaveProperty('image_data');\n\n      // Get figure with image data\n      const response2 = await request(app)\n        .get(`/api/visualization/figure/${sampleFigureId}?include_image=true`)\n        .expect(200);\n\n      expect(response2.body).toHaveProperty('image_data');\n      expect(typeof response2.body.image_data).toBe('string');\n    });\n\n    test('should return 404 for non-existent figure', async () => {\n      const fakeId = 'fake-figure-id';\n\n      await request(app)\n        .get(`/api/visualization/figure/${fakeId}`)\n        .expect(404);\n    });\n\n    test('should delete figure', async () => {\n      if (!figuresService || !sampleFigureId) {\n        console.warn('Skipping database test - figures service not available');\n        return;\n      }\n\n      const response = await request(app)\n        .delete(`/api/visualization/figure/${sampleFigureId}`)\n        .expect(200);\n\n      expect(response.body).toHaveProperty('success', true);\n      expect(response.body).toHaveProperty('figure_id', sampleFigureId);\n\n      // Verify figure is deleted\n      await request(app)\n        .get(`/api/visualization/figure/${sampleFigureId}`)\n        .expect(404);\n\n      // Remove from cleanup list since it's already deleted\n      createdFigureIds = createdFigureIds.filter(id => id !== sampleFigureId);\n    });\n\n    test('should get figure statistics', async () => {\n      if (!figuresService) {\n        console.warn('Skipping database test - figures service not available');\n        return;\n      }\n\n      const response = await request(app)\n        .get(`/api/visualization/stats/${testResearchId}`)\n        .expect(200);\n\n      expect(response.body).toHaveProperty('research_id', testResearchId);\n      expect(response.body).toHaveProperty('statistics');\n      expect(response.body.statistics).toHaveProperty('total');\n      expect(response.body.statistics).toHaveProperty('by_type');\n      expect(response.body.statistics).toHaveProperty('by_status');\n      expect(response.body.statistics).toHaveProperty('size_mb');\n    });\n\n    test('should update PHI scan results', async () => {\n      if (!figuresService || !sampleFigureId) {\n        console.warn('Skipping database test - figures service not available');\n        return;\n      }\n\n      const phiScanUpdate = {\n        phi_scan_status: 'PASS',\n        phi_risk_level: 'SAFE',\n        phi_findings: [],\n      };\n\n      const response = await request(app)\n        .patch(`/api/visualization/figure/${sampleFigureId}/phi-scan`)\n        .send(phiScanUpdate)\n        .expect(200);\n\n      expect(response.body).toHaveProperty('success', true);\n      expect(response.body).toHaveProperty('phi_scan_status', 'PASS');\n      expect(response.body).toHaveProperty('phi_risk_level', 'SAFE');\n    });\n  });\n\n  describe('Service Health and Capabilities', () => {\n    test('should return visualization capabilities', async () => {\n      const response = await request(app)\n        .get('/api/visualization/capabilities')\n        .expect(200);\n\n      expect(response.body).toHaveProperty('chart_types');\n      expect(response.body.chart_types).toBeInstanceOf(Array);\n      expect(response.body.chart_types).toContain('bar_chart');\n      expect(response.body.chart_types).toContain('line_chart');\n      \n      expect(response.body).toHaveProperty('journal_styles');\n      expect(response.body).toHaveProperty('color_palettes');\n      expect(response.body).toHaveProperty('export_formats');\n    });\n\n    test('should return service health status', async () => {\n      const response = await request(app)\n        .get('/api/visualization/health')\n        .expect(200);\n\n      expect(response.body).toHaveProperty('service', 'visualization');\n      expect(response.body).toHaveProperty('stage', 8);\n      expect(response.body).toHaveProperty('worker_status');\n      expect(response.body).toHaveProperty('timestamp');\n      \n      // Status should be healthy or degraded\n      expect(['healthy', 'degraded']).toContain(response.body.status);\n    });\n  });\n\n  describe('Error Handling', () => {\n    test('should handle worker service unavailable', async () => {\n      // Mock worker service failure by using invalid URL\n      const originalEnv = process.env.WORKER_URL;\n      process.env.WORKER_URL = 'http://invalid-url:9999';\n      \n      const chartData = {\n        chart_type: 'bar_chart',\n        data: { group: ['A', 'B'], value: [1, 2] },\n        research_id: testResearchId,\n      };\n\n      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(chartData)\n        .expect(503);\n\n      expect(response.body).toHaveProperty('error', 'SERVICE_UNAVAILABLE');\n      \n      // Restore original environment\n      process.env.WORKER_URL = originalEnv;\n    });\n\n    test('should handle database unavailable gracefully', async () => {\n      // If database is not available, list should still work\n      const response = await request(app)\n        .get('/api/visualization/figures/nonexistent-research')\n        .expect(res => {\n          // Either 200 (working) or 503 (database unavailable)\n          expect([200, 503]).toContain(res.status);\n        });\n\n      if (response.status === 503) {\n        expect(response.body).toHaveProperty('error', 'DATABASE_UNAVAILABLE');\n      }\n    });\n  });\n\n  describe('Performance and Load', () => {\n    test('should handle multiple concurrent chart requests', async () => {\n      const requests = Array.from({ length: 3 }, (_, i) => {\n        return request(app)\n          .post('/api/visualization/generate')\n          .send({\n            chart_type: 'bar_chart',\n            data: {\n              group: [`A${i}`, `B${i}`, `C${i}`],\n              value: [Math.random() * 10, Math.random() * 10, Math.random() * 10],\n            },\n            config: {\n              title: `Concurrent Test Chart ${i}`,\n              dpi: 72, // Minimal DPI for speed\n            },\n            research_id: `${testResearchId}_concurrent_${i}`,\n          });\n      });\n\n      const responses = await Promise.all(requests);\n      \n      // All should succeed\n      responses.forEach(response => {\n        expect(response.status).toBe(200);\n        expect(response.body).toHaveProperty('status', 'completed');\n        \n        // Track created figures for cleanup\n        if (response.body.result?.database_id) {\n          createdFigureIds.push(response.body.result.database_id);\n        }\n      });\n    }, TEST_CONFIG.TIMEOUT * 2);\n\n    test('should respect timeout limits', async () => {\n      // This test might be skipped if worker is too fast\n      const chartData = {\n        chart_type: 'scatter_plot',\n        data: {\n          x: Array.from({ length: 10000 }, () => Math.random()),\n          y: Array.from({ length: 10000 }, () => Math.random()),\n        },\n        config: {\n          title: 'Large Dataset Test',\n          dpi: 300,\n        },\n        research_id: testResearchId,\n      };\n\n      // Should complete within reasonable time\n      const startTime = Date.now();\n      const response = await request(app)\n        .post('/api/visualization/generate')\n        .send(chartData)\n        .timeout(TEST_CONFIG.TIMEOUT);\n      \n      const duration = Date.now() - startTime;\n      \n      if (response.status === 200) {\n        expect(duration).toBeLessThan(TEST_CONFIG.TIMEOUT);\n        expect(response.body).toHaveProperty('duration_ms');\n        expect(response.body.duration_ms).toBeGreaterThan(0);\n        \n        if (response.body.result?.database_id) {\n          createdFigureIds.push(response.body.result.database_id);\n        }\n      }\n    }, TEST_CONFIG.TIMEOUT + 5000);\n  });\n});"
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(chartData)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('status', 'completed');
+      expect(response.body).toHaveProperty('request_id');
+      expect(response.body).toHaveProperty('result');
+      expect(response.body.result).toHaveProperty('figure_id');
+      expect(response.body.result).toHaveProperty('image_base64');
+      
+      // Should include database info if storage succeeded
+      if (response.body.result.database_id) {
+        createdFigureIds.push(response.body.result.database_id);
+        expect(response.body.result).toHaveProperty('stored_at');
+      }
+    }, TEST_CONFIG.TIMEOUT);
+
+    test('should generate line chart with confidence bands', async () => {
+      const chartData = {
+        chart_type: 'line_chart',
+        data: {
+          time: [0, 1, 2, 3, 4, 5, 6],
+          value: [10, 12, 11, 14, 13, 15, 16],
+          ci_lower: [8, 10, 9, 12, 11, 13, 14],
+          ci_upper: [12, 14, 13, 16, 15, 17, 18],
+        },
+        config: {
+          title: 'Recovery Timeline',
+          x_label: 'Time (weeks)',
+          y_label: 'Outcome Score',
+          show_confidence_bands: true,
+          journal_style: 'nature',
+          color_palette: 'colorblind_safe',
+        },
+        research_id: testResearchId,
+      };
+
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(chartData)
+        .expect(200);
+
+      expect(response.body.result).toHaveProperty('figure_id');
+      expect(response.body.result).toHaveProperty('caption');
+      expect(response.body.result).toHaveProperty('alt_text');
+      
+      if (response.body.result.database_id) {
+        createdFigureIds.push(response.body.result.database_id);
+      }
+    }, TEST_CONFIG.TIMEOUT);
+
+    test('should handle invalid chart data', async () => {
+      const invalidData = {
+        chart_type: 'bar_chart',
+        data: {}, // Empty data
+        config: {},
+        research_id: testResearchId,
+      };
+
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('VISUALIZATION_FAILED');
+    });
+
+    test('should validate request schema', async () => {
+      const invalidRequest = {
+        chart_type: 'invalid_chart_type',
+        data: { x: [1, 2, 3] },
+      };
+
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(invalidRequest)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'INVALID_REQUEST');
+      expect(response.body).toHaveProperty('details');
+    });
+  });
+
+  describe('Figure Management API', () => {
+    let sampleFigureId: string;
+
+    beforeEach(async () => {
+      // Create a sample figure for testing
+      if (figuresService) {
+        const figureInput: FigureCreateInput = {
+          research_id: testResearchId,
+          figure_type: 'bar_chart',
+          title: 'Test Chart',
+          caption: 'A test chart for API testing',
+          alt_text: 'Bar chart showing test data',
+          image_data: Buffer.from('fake-image-data'),
+          image_format: 'png',
+          width: 800,
+          height: 600,
+          dpi: 300,
+          generated_by: 'test_suite',
+        };
+
+        const figure = await figuresService.createFigure(figureInput);
+        sampleFigureId = figure.id;
+        createdFigureIds.push(sampleFigureId);
+      }
+    });
+
+    test('should list figures for research project', async () => {
+      if (!figuresService) {
+        console.warn('Skipping database test - figures service not available');
+        return;
+      }
+
+      const response = await request(app)
+        .get(`/api/visualization/figures/${testResearchId}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('research_id', testResearchId);
+      expect(response.body).toHaveProperty('figures');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.figures).toBeInstanceOf(Array);
+      expect(response.body.figures.length).toBeGreaterThan(0);
+      
+      // Figures should not include image data in list
+      const figure = response.body.figures[0];
+      expect(figure).not.toHaveProperty('image_data');
+      expect(figure).toHaveProperty('has_image_data', true);
+    });
+
+    test('should get specific figure by ID', async () => {
+      if (!figuresService || !sampleFigureId) {
+        console.warn('Skipping database test - figures service not available');
+        return;
+      }
+
+      // Get figure without image data
+      const response1 = await request(app)
+        .get(`/api/visualization/figure/${sampleFigureId}`)
+        .expect(200);
+
+      expect(response1.body).toHaveProperty('id', sampleFigureId);
+      expect(response1.body).toHaveProperty('figure_type', 'bar_chart');
+      expect(response1.body).toHaveProperty('title', 'Test Chart');
+      expect(response1.body).not.toHaveProperty('image_data');
+
+      // Get figure with image data
+      const response2 = await request(app)
+        .get(`/api/visualization/figure/${sampleFigureId}?include_image=true`)
+        .expect(200);
+
+      expect(response2.body).toHaveProperty('image_data');
+      expect(typeof response2.body.image_data).toBe('string');
+    });
+
+    test('should return 404 for non-existent figure', async () => {
+      const fakeId = 'fake-figure-id';
+
+      await request(app)
+        .get(`/api/visualization/figure/${fakeId}`)
+        .expect(404);
+    });
+
+    test('should delete figure', async () => {
+      if (!figuresService || !sampleFigureId) {
+        console.warn('Skipping database test - figures service not available');
+        return;
+      }
+
+      const response = await request(app)
+        .delete(`/api/visualization/figure/${sampleFigureId}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('figure_id', sampleFigureId);
+
+      // Verify figure is deleted
+      await request(app)
+        .get(`/api/visualization/figure/${sampleFigureId}`)
+        .expect(404);
+
+      // Remove from cleanup list since it's already deleted
+      createdFigureIds = createdFigureIds.filter(id => id !== sampleFigureId);
+    });
+
+    test('should get figure statistics', async () => {
+      if (!figuresService) {
+        console.warn('Skipping database test - figures service not available');
+        return;
+      }
+
+      const response = await request(app)
+        .get(`/api/visualization/stats/${testResearchId}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('research_id', testResearchId);
+      expect(response.body).toHaveProperty('statistics');
+      expect(response.body.statistics).toHaveProperty('total');
+      expect(response.body.statistics).toHaveProperty('by_type');
+      expect(response.body.statistics).toHaveProperty('by_status');
+      expect(response.body.statistics).toHaveProperty('size_mb');
+    });
+
+    test('should update PHI scan results', async () => {
+      if (!figuresService || !sampleFigureId) {
+        console.warn('Skipping database test - figures service not available');
+        return;
+      }
+
+      const phiScanUpdate = {
+        phi_scan_status: 'PASS',
+        phi_risk_level: 'SAFE',
+        phi_findings: [],
+      };
+
+      const response = await request(app)
+        .patch(`/api/visualization/figure/${sampleFigureId}/phi-scan`)
+        .send(phiScanUpdate)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('phi_scan_status', 'PASS');
+      expect(response.body).toHaveProperty('phi_risk_level', 'SAFE');
+    });
+  });
+
+  describe('Service Health and Capabilities', () => {
+    test('should return visualization capabilities', async () => {
+      const response = await request(app)
+        .get('/api/visualization/capabilities')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('chart_types');
+      expect(response.body.chart_types).toBeInstanceOf(Array);
+      expect(response.body.chart_types).toContain('bar_chart');
+      expect(response.body.chart_types).toContain('line_chart');
+      
+      expect(response.body).toHaveProperty('journal_styles');
+      expect(response.body).toHaveProperty('color_palettes');
+      expect(response.body).toHaveProperty('export_formats');
+    });
+
+    test('should return service health status', async () => {
+      const response = await request(app)
+        .get('/api/visualization/health')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('service', 'visualization');
+      expect(response.body).toHaveProperty('stage', 8);
+      expect(response.body).toHaveProperty('worker_status');
+      expect(response.body).toHaveProperty('timestamp');
+      
+      // Status should be healthy or degraded
+      expect(['healthy', 'degraded']).toContain(response.body.status);
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('should handle worker service unavailable', async () => {
+      // Mock worker service failure by using invalid URL
+      const originalEnv = process.env.WORKER_URL;
+      process.env.WORKER_URL = 'http://invalid-url:9999';
+      
+      const chartData = {
+        chart_type: 'bar_chart',
+        data: { group: ['A', 'B'], value: [1, 2] },
+        research_id: testResearchId,
+      };
+
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(chartData)
+        .expect(503);
+
+      expect(response.body).toHaveProperty('error', 'SERVICE_UNAVAILABLE');
+      
+      // Restore original environment
+      process.env.WORKER_URL = originalEnv;
+    });
+
+    test('should handle database unavailable gracefully', async () => {
+      // If database is not available, list should still work
+      const response = await request(app)
+        .get('/api/visualization/figures/nonexistent-research')
+        .expect(res => {
+          // Either 200 (working) or 503 (database unavailable)
+          expect([200, 503]).toContain(res.status);
+        });
+
+      if (response.status === 503) {
+        expect(response.body).toHaveProperty('error', 'DATABASE_UNAVAILABLE');
+      }
+    });
+  });
+
+  describe('Performance and Load', () => {
+    test('should handle multiple concurrent chart requests', async () => {
+      const requests = Array.from({ length: 3 }, (_, i) => {
+        return request(app)
+          .post('/api/visualization/generate')
+          .send({
+            chart_type: 'bar_chart',
+            data: {
+              group: [`A${i}`, `B${i}`, `C${i}`],
+              value: [Math.random() * 10, Math.random() * 10, Math.random() * 10],
+            },
+            config: {
+              title: `Concurrent Test Chart ${i}`,
+              dpi: 72, // Minimal DPI for speed
+            },
+            research_id: `${testResearchId}_concurrent_${i}`,
+          });
+      });
+
+      const responses = await Promise.all(requests);
+      
+      // All should succeed
+      responses.forEach(response => {
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('status', 'completed');
+        
+        // Track created figures for cleanup
+        if (response.body.result?.database_id) {
+          createdFigureIds.push(response.body.result.database_id);
+        }
+      });
+    }, TEST_CONFIG.TIMEOUT * 2);
+
+    test('should respect timeout limits', async () => {
+      // This test might be skipped if worker is too fast
+      const chartData = {
+        chart_type: 'scatter_plot',
+        data: {
+          x: Array.from({ length: 10000 }, () => Math.random()),
+          y: Array.from({ length: 10000 }, () => Math.random()),
+        },
+        config: {
+          title: 'Large Dataset Test',
+          dpi: 300,
+        },
+        research_id: testResearchId,
+      };
+
+      // Should complete within reasonable time
+      const startTime = Date.now();
+      const response = await request(app)
+        .post('/api/visualization/generate')
+        .send(chartData)
+        .timeout(TEST_CONFIG.TIMEOUT);
+      
+      const duration = Date.now() - startTime;
+      
+      if (response.status === 200) {
+        expect(duration).toBeLessThan(TEST_CONFIG.TIMEOUT);
+        expect(response.body).toHaveProperty('duration_ms');
+        expect(response.body.duration_ms).toBeGreaterThan(0);
+        
+        if (response.body.result?.database_id) {
+          createdFigureIds.push(response.body.result.database_id);
+        }
+      }
+    }, TEST_CONFIG.TIMEOUT + 5000);
+  });
+});"

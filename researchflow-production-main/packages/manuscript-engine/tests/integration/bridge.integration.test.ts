@@ -5,94 +5,95 @@
  * manuscript-engine services via HTTP API.
  */
 
+import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
 // Mock the manuscript-engine services
-jest.mock('../../../src/services', () => ({
+vi.mock('../../../src/services', () => ({
   // Existing services
   claudeWriterService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   abstractGeneratorService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   introductionBuilderService: {
-    build: jest.fn(),
+    build: vi.fn(),
   },
   methodsPopulatorService: {
-    populate: jest.fn(),
+    populate: vi.fn(),
   },
   irbGeneratorService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   resultsScaffoldService: {
-    scaffold: jest.fn(),
+    scaffold: vi.fn(),
   },
   discussionBuilderService: {
-    build: jest.fn(),
+    build: vi.fn(),
   },
   titleGeneratorService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   keywordGeneratorService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   referencesBuilderService: {
-    build: jest.fn(),
+    build: vi.fn(),
   },
   acknowledgmentsService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   coiDisclosureService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   authorManagerService: {
-    getAuthors: jest.fn(),
-    addAuthor: jest.fn(),
+    getAuthors: vi.fn(),
+    addAuthor: vi.fn(),
   },
   visualizationService: {
-    generate: jest.fn(),
+    generate: vi.fn(),
   },
   citationManagerService: {
-    cite: jest.fn(),
+    cite: vi.fn(),
   },
   exportService: {
-    export: jest.fn(),
+    export: vi.fn(),
   },
   peerReviewService: {
-    review: jest.fn(),
+    review: vi.fn(),
   },
   grammarCheckerService: {
-    check: jest.fn(),
+    check: vi.fn(),
   },
   readabilityService: {
-    analyze: jest.fn(),
+    analyze: vi.fn(),
   },
   complianceCheckerService: {
-    check: jest.fn(),
+    check: vi.fn(),
   },
   pubmedService: {
-    search: jest.fn(),
+    search: vi.fn(),
   },
   semanticScholarService: {
-    search: jest.fn(),
+    search: vi.fn(),
   },
   arxivService: {
-    search: jest.fn(),
+    search: vi.fn(),
   },
 
   toneAdjusterService: {
-    adjust: jest.fn(),
+    adjust: vi.fn(),
   },
   paraphraseService: {
-    paraphrase: jest.fn(),
+    paraphrase: vi.fn(),
   },
   sentenceBuilderService: {
-    build: jest.fn(),
+    build: vi.fn(),
   },
   synonymFinderService: {
-    find: jest.fn(),
+    find: vi.fn(),
   },
 }))
 
@@ -283,13 +284,6 @@ describe('Bridge Router Integration Tests', () => {
               background: 'Background information...',
             },
           },
-          'discussion-builder': {
-            build: {
-              manuscriptId: req.body.manuscriptId || 'ms-001',
-              discussion: 'Generated discussion...',
-              keyPoints: ['point1', 'point2'],
-            },
-          },
           'title-generator': {
             generate: {
               manuscriptId: req.body.manuscriptId || 'ms-001',
@@ -422,7 +416,7 @@ describe('Bridge Router Integration Tests', () => {
   });
 
   describe('Health endpoint', () => {
-    it('should return ok status and available services', async () => {
+    test('should return ok status and available services', async () => {
       const response = await request(app).get('/api/services/health');
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('ok');
@@ -431,7 +425,7 @@ describe('Bridge Router Integration Tests', () => {
   });
 
   describe('Service endpoints', () => {
-    it('should call claude-writer.generate', async () => {
+    test('should call claude-writer.generate', async () => {
       const response = await request(app)
         .post('/api/services/claude-writer/generate')
         .send({ manuscriptId: 'ms-001', prompt: 'Test prompt' });
@@ -441,7 +435,7 @@ describe('Bridge Router Integration Tests', () => {
       expect(response.body.data).toHaveProperty('content');
     });
 
-    it('should call pubmed.search', async () => {
+    test('should call pubmed.search', async () => {
       const response = await request(app)
         .post('/api/services/pubmed/search')
         .send({ query: 'test query' });
@@ -451,7 +445,7 @@ describe('Bridge Router Integration Tests', () => {
       expect(response.body.data).toHaveProperty('results');
     });
 
-    it('should return 404 for unknown service', async () => {
+    test('should return 404 for unknown service', async () => {
       const response = await request(app)
         .post('/api/services/unknown-service/method')
         .send({});
@@ -461,7 +455,7 @@ describe('Bridge Router Integration Tests', () => {
       expect(response.body).toHaveProperty('availableServices');
     });
 
-    it('should return 404 for unknown method', async () => {
+    test('should return 404 for unknown method', async () => {
       const response = await request(app)
         .post('/api/services/claude-writer/unknown-method')
         .send({});
@@ -474,7 +468,7 @@ describe('Bridge Router Integration Tests', () => {
 });
 
 describe('Final PHI Scan Service', () => {
-  it('should call final-phi-scan.scan', async () => {
+  test('should call final-phi-scan.scan', async () => {
     const response = await request(app)
       .post('/api/services/final-phi-scan/scan')
       .send({ manuscriptId: 'ms-001' });
@@ -484,7 +478,7 @@ describe('Final PHI Scan Service', () => {
 });
 
 describe('Plagiarism Check Service', () => {
-  it('should call plagiarism-check.check', async () => {
+  test('should call plagiarism-check.check', async () => {
     const response = await request(app)
       .post('/api/services/plagiarism-check/check')
       .send({ manuscriptId: 'ms-001', text: 'Sample text' });
@@ -494,7 +488,7 @@ describe('Plagiarism Check Service', () => {
 });
 
 describe('Lit Review Service', () => {
-  it('should call lit-review.generate', async () => {
+  test('should call lit-review.generate', async () => {
     const response = await request(app)
       .post('/api/services/lit-review/generate')
       .send({ manuscriptId: 'ms-001', topic: 'treatment efficacy' });
@@ -504,7 +498,7 @@ describe('Lit Review Service', () => {
 });
 
 describe('Lit Matrix Service', () => {
-  it('should call lit-matrix.generate', async () => {
+  test('should call lit-matrix.generate', async () => {
     const response = await request(app)
       .post('/api/services/lit-matrix/generate')
       .send({ manuscriptId: 'ms-001', studies: ['study1', 'study2'] });
@@ -514,7 +508,7 @@ describe('Lit Matrix Service', () => {
 });
 
 describe('Tone Adjuster Service', () => {
-  it('should call tone-adjuster.adjust', async () => {
+  test('should call tone-adjuster.adjust', async () => {
     const response = await request(app)
       .post('/api/services/tone-adjuster/adjust')
       .send({ text: 'Hey, this is cool!', tone: 'formal' });
@@ -524,7 +518,7 @@ describe('Tone Adjuster Service', () => {
 });
 
 describe('Paraphrase Service', () => {
-  it('should call paraphrase.paraphrase', async () => {
+  test('should call paraphrase.paraphrase', async () => {
     const response = await request(app)
       .post('/api/services/paraphrase/paraphrase')
       .send({ text: 'The study showed significant results.' });
@@ -534,7 +528,7 @@ describe('Paraphrase Service', () => {
 });
 
 describe('Sentence Builder Service', () => {
-  it('should call sentence-builder.build', async () => {
+  test('should call sentence-builder.build', async () => {
     const response = await request(app)
       .post('/api/services/sentence-builder/build')
       .send({ components: ['subject', 'verb', 'object'] });
@@ -544,7 +538,7 @@ describe('Sentence Builder Service', () => {
 });
 
 describe('Synonym Finder Service', () => {
-  it('should call synonym-finder.find', async () => {
+  test('should call synonym-finder.find', async () => {
     const response = await request(app)
       .post('/api/services/synonym-finder/find')
       .send({ word: 'important', context: 'academic' });

@@ -16,4 +16,494 @@ const mockPool = {
 
 describe('FiguresService', () => {
   let service: FiguresService;
-  const testResearchId = 'test-research-123';\n  const testFigureId = 'test-figure-456';\n\n  beforeEach(() => {\n    service = new FiguresService(mockPool);\n    vi.clearAllMocks();\n  });\n\n  describe('createFigure', () => {\n    test('should create figure successfully', async () => {\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'bar_chart',\n        title: 'Test Chart',\n        image_data: Buffer.from('test-data'),\n        size_bytes: 100,\n        dpi: 300,\n        chart_config: '{}',\n        phi_findings: '[]',\n        metadata: '{}',\n        created_at: new Date(),\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      const input: FigureCreateInput = {\n        research_id: testResearchId,\n        figure_type: 'bar_chart',\n        title: 'Test Chart',\n        image_data: Buffer.from('test-data'),\n        generated_by: 'test',\n      };\n\n      const result = await service.createFigure(input);\n\n      expect(result.id).toBe(testFigureId);\n      expect(result.research_id).toBe(testResearchId);\n      expect(result.figure_type).toBe('bar_chart');\n      expect(result.title).toBe('Test Chart');\n      expect(result.size_bytes).toBe(100);\n      \n      // Verify database call\n      expect(mockPool.query).toHaveBeenCalledTimes(1);\n      const [query, values] = (mockPool.query as any).mock.calls[0];\n      expect(query).toContain('INSERT INTO figures');\n      expect(values).toContain(testResearchId);\n      expect(values).toContain('bar_chart');\n      expect(values).toContain('Test Chart');\n    });\n\n    test('should handle missing optional fields', async () => {\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'line_chart',\n        title: null,\n        caption: null,\n        image_data: Buffer.from('data'),\n        size_bytes: 50,\n        chart_config: '{}',\n        phi_findings: '[]',\n        metadata: '{}',\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      const input: FigureCreateInput = {\n        research_id: testResearchId,\n        figure_type: 'line_chart',\n        image_data: Buffer.from('data'),\n        generated_by: 'test',\n      };\n\n      const result = await service.createFigure(input);\n\n      expect(result.id).toBe(testFigureId);\n      expect(result.title).toBeNull();\n      expect(result.caption).toBeNull();\n    });\n\n    test('should calculate size_bytes from image_data', async () => {\n      const imageData = Buffer.from('test-image-data-larger');\n      const expectedSize = imageData.length;\n\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'scatter_plot',\n        image_data: imageData,\n        size_bytes: expectedSize,\n        chart_config: '{}',\n        phi_findings: '[]',\n        metadata: '{}',\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      const input: FigureCreateInput = {\n        research_id: testResearchId,\n        figure_type: 'scatter_plot',\n        image_data: imageData,\n        generated_by: 'test',\n      };\n\n      await service.createFigure(input);\n\n      // Verify size_bytes was calculated correctly\n      const [, values] = (mockPool.query as any).mock.calls[0];\n      const sizeBytesIndex = 8; // Based on the INSERT query order\n      expect(values[sizeBytesIndex]).toBe(expectedSize);\n    });\n\n    test('should handle database errors', async () => {\n      (mockPool.query as any).mockRejectedValueOnce(\n        new Error('Database connection failed')\n      );\n\n      const input: FigureCreateInput = {\n        research_id: testResearchId,\n        figure_type: 'bar_chart',\n        image_data: Buffer.from('data'),\n        generated_by: 'test',\n      };\n\n      await expect(service.createFigure(input)).rejects.toThrow(\n        'Database connection failed'\n      );\n    });\n  });\n\n  describe('getFigureById', () => {\n    test('should retrieve figure by ID', async () => {\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'box_plot',\n        title: 'Box Plot Title',\n        chart_config: '{\"show_outliers\": true}',\n        phi_findings: '[{\"type\": \"test\"}]',\n        metadata: '{\"version\": \"1.0\"}',\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      const result = await service.getFigureById(testFigureId);\n\n      expect(result).not.toBeNull();\n      expect(result!.id).toBe(testFigureId);\n      expect(result!.figure_type).toBe('box_plot');\n      \n      // Verify JSON parsing\n      expect(result!.chart_config).toEqual({ show_outliers: true });\n      expect(result!.phi_findings).toEqual([{ type: 'test' }]);\n      expect(result!.metadata).toEqual({ version: '1.0' });\n      \n      // Verify database query\n      expect(mockPool.query).toHaveBeenCalledWith(\n        expect.stringContaining('SELECT * FROM figures'),\n        [testFigureId]\n      );\n    });\n\n    test('should return null for non-existent figure', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [],\n      });\n\n      const result = await service.getFigureById('non-existent-id');\n\n      expect(result).toBeNull();\n    });\n\n    test('should handle database errors', async () => {\n      (mockPool.query as any).mockRejectedValueOnce(\n        new Error('Connection timeout')\n      );\n\n      await expect(\n        service.getFigureById(testFigureId)\n      ).rejects.toThrow('Connection timeout');\n    });\n  });\n\n  describe('listFigures', () => {\n    test('should list figures with default options', async () => {\n      const mockFigures = [\n        {\n          id: 'fig-1',\n          research_id: testResearchId,\n          figure_type: 'bar_chart',\n          chart_config: '{}',\n          phi_findings: '[]',\n          metadata: '{}',\n          created_at: new Date('2024-01-01'),\n        },\n        {\n          id: 'fig-2',\n          research_id: testResearchId,\n          figure_type: 'line_chart',\n          chart_config: '{}',\n          phi_findings: '[]',\n          metadata: '{}',\n          created_at: new Date('2024-01-02'),\n        },\n      ];\n\n      // Mock count query\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [{ count: '2' }],\n      });\n\n      // Mock list query\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: mockFigures,\n      });\n\n      const result = await service.listFigures();\n\n      expect(result.total).toBe(2);\n      expect(result.figures).toHaveLength(2);\n      expect(result.figures[0].id).toBe('fig-1');\n      expect(result.figures[1].id).toBe('fig-2');\n      \n      // Verify default pagination\n      expect(mockPool.query).toHaveBeenCalledTimes(2);\n      const [, listValues] = (mockPool.query as any).mock.calls[1];\n      expect(listValues).toContain(50); // default limit\n      expect(listValues).toContain(0);  // default offset\n    });\n\n    test('should filter by research_id', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '1' }] });\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });\n\n      await service.listFigures({ research_id: testResearchId });\n\n      // Verify WHERE clause includes research_id\n      const [countQuery, countValues] = (mockPool.query as any).mock.calls[0];\n      expect(countQuery).toContain('WHERE');\n      expect(countQuery).toContain('research_id = $');\n      expect(countValues).toContain(testResearchId);\n    });\n\n    test('should filter by figure_type and phi_scan_status', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '0' }] });\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });\n\n      await service.listFigures({\n        figure_type: 'forest_plot',\n        phi_scan_status: 'PASS',\n        limit: 10,\n        offset: 20,\n      });\n\n      const [countQuery, countValues] = (mockPool.query as any).mock.calls[0];\n      expect(countQuery).toContain('figure_type = $');\n      expect(countQuery).toContain('phi_scan_status = $');\n      expect(countValues).toContain('forest_plot');\n      expect(countValues).toContain('PASS');\n\n      const [listQuery, listValues] = (mockPool.query as any).mock.calls[1];\n      expect(listValues).toContain(10); // custom limit\n      expect(listValues).toContain(20); // custom offset\n    });\n\n    test('should include deleted figures when requested', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '1' }] });\n      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });\n\n      await service.listFigures({ include_deleted: true });\n\n      const [countQuery] = (mockPool.query as any).mock.calls[0];\n      expect(countQuery).not.toContain('deleted_at IS NULL');\n    });\n  });\n\n  describe('updatePhiScanResult', () => {\n    test('should update PHI scan results successfully', async () => {\n      const mockUpdatedFigure = {\n        id: testFigureId,\n        phi_scan_status: 'PASS',\n        phi_risk_level: 'SAFE',\n        phi_findings: '[{\"status\": \"clean\"}]',\n        chart_config: '{}',\n        metadata: '{}',\n        updated_at: new Date(),\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockUpdatedFigure],\n      });\n\n      const result = await service.updatePhiScanResult(\n        testFigureId,\n        'PASS',\n        'SAFE',\n        [{ status: 'clean' }]\n      );\n\n      expect(result).not.toBeNull();\n      expect(result!.phi_scan_status).toBe('PASS');\n      expect(result!.phi_risk_level).toBe('SAFE');\n      expect(result!.phi_findings).toEqual([{ status: 'clean' }]);\n      \n      // Verify database query\n      const [query, values] = (mockPool.query as any).mock.calls[0];\n      expect(query).toContain('UPDATE figures');\n      expect(query).toContain('phi_scan_status = $2');\n      expect(values).toContain(testFigureId);\n      expect(values).toContain('PASS');\n      expect(values).toContain('SAFE');\n    });\n\n    test('should return null for non-existent figure', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [],\n      });\n\n      const result = await service.updatePhiScanResult(\n        'non-existent-id',\n        'FAIL'\n      );\n\n      expect(result).toBeNull();\n    });\n  });\n\n  describe('deleteFigure', () => {\n    test('should soft delete figure successfully', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [{ id: testFigureId }],\n      });\n\n      const result = await service.deleteFigure(testFigureId);\n\n      expect(result).toBe(true);\n      \n      // Verify soft delete query\n      const [query, values] = (mockPool.query as any).mock.calls[0];\n      expect(query).toContain('UPDATE figures');\n      expect(query).toContain('deleted_at = CURRENT_TIMESTAMP');\n      expect(query).toContain('WHERE id = $1 AND deleted_at IS NULL');\n      expect(values).toContain(testFigureId);\n    });\n\n    test('should return false for non-existent figure', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [],\n      });\n\n      const result = await service.deleteFigure('non-existent-id');\n\n      expect(result).toBe(false);\n    });\n  });\n\n  describe('getFigureStats', () => {\n    test('should return figure statistics', async () => {\n      const mockStatsRows = [\n        {\n          total: '5',\n          figure_type: null,\n          phi_scan_status: null,\n          total_size: '1024000',\n        },\n        {\n          total: '3',\n          figure_type: 'bar_chart',\n          phi_scan_status: null,\n          total_size: null,\n        },\n        {\n          total: '2',\n          figure_type: 'line_chart',\n          phi_scan_status: null,\n          total_size: null,\n        },\n        {\n          total: '4',\n          figure_type: null,\n          phi_scan_status: 'PASS',\n          total_size: null,\n        },\n        {\n          total: '1',\n          figure_type: null,\n          phi_scan_status: 'PENDING',\n          total_size: null,\n        },\n      ];\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: mockStatsRows,\n      });\n\n      const result = await service.getFigureStats(testResearchId);\n\n      expect(result.total).toBe(5);\n      expect(result.total_size_bytes).toBe(1024000);\n      expect(result.by_type).toEqual({\n        bar_chart: 3,\n        line_chart: 2,\n      });\n      expect(result.by_status).toEqual({\n        PASS: 4,\n        PENDING: 1,\n      });\n\n      // Verify query includes ROLLUP\n      const [query, values] = (mockPool.query as any).mock.calls[0];\n      expect(query).toContain('GROUP BY ROLLUP');\n      expect(values).toContain(testResearchId);\n    });\n\n    test('should handle empty statistics', async () => {\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [],\n      });\n\n      const result = await service.getFigureStats(testResearchId);\n\n      expect(result.total).toBe(0);\n      expect(result.total_size_bytes).toBe(0);\n      expect(result.by_type).toEqual({});\n      expect(result.by_status).toEqual({});\n    });\n  });\n\n  describe('createFiguresService factory function', () => {\n    test('should create service with pool', () => {\n      const service = createFiguresService(mockPool);\n      \n      expect(service).toBeInstanceOf(FiguresService);\n      expect(service).toHaveProperty('createFigure');\n      expect(service).toHaveProperty('getFigureById');\n      expect(service).toHaveProperty('listFigures');\n    });\n  });\n\n  describe('JSON parsing', () => {\n    test('should handle invalid JSON gracefully', async () => {\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'bar_chart',\n        chart_config: 'invalid json',\n        phi_findings: '[]',\n        metadata: '{}',\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      // Should throw an error due to invalid JSON\n      await expect(\n        service.getFigureById(testFigureId)\n      ).rejects.toThrow();\n    });\n\n    test('should handle already parsed objects', async () => {\n      const mockFigureRow = {\n        id: testFigureId,\n        research_id: testResearchId,\n        figure_type: 'bar_chart',\n        chart_config: { already: 'parsed' },\n        phi_findings: [{ already: 'parsed' }],\n        metadata: { version: '2.0' },\n      };\n\n      (mockPool.query as any).mockResolvedValueOnce({\n        rows: [mockFigureRow],\n      });\n\n      const result = await service.getFigureById(testFigureId);\n\n      expect(result!.chart_config).toEqual({ already: 'parsed' });\n      expect(result!.phi_findings).toEqual([{ already: 'parsed' }]);\n      expect(result!.metadata).toEqual({ version: '2.0' });\n    });\n  });\n});"
+  const testResearchId = 'test-research-123';
+  const testFigureId = 'test-figure-456';
+
+  beforeEach(() => {
+    service = new FiguresService(mockPool);
+    vi.clearAllMocks();
+  });
+
+  describe('createFigure', () => {
+    test('should create figure successfully', async () => {
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'bar_chart',
+        title: 'Test Chart',
+        image_data: Buffer.from('test-data'),
+        size_bytes: 100,
+        dpi: 300,
+        chart_config: '{}',
+        phi_findings: '[]',
+        metadata: '{}',
+        created_at: new Date(),
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      const input: FigureCreateInput = {
+        research_id: testResearchId,
+        figure_type: 'bar_chart',
+        title: 'Test Chart',
+        image_data: Buffer.from('test-data'),
+        generated_by: 'test',
+      };
+
+      const result = await service.createFigure(input);
+
+      expect(result.id).toBe(testFigureId);
+      expect(result.research_id).toBe(testResearchId);
+      expect(result.figure_type).toBe('bar_chart');
+      expect(result.title).toBe('Test Chart');
+      expect(result.size_bytes).toBe(100);
+      
+      // Verify database call
+      expect(mockPool.query).toHaveBeenCalledTimes(1);
+      const [query, values] = (mockPool.query as any).mock.calls[0];
+      expect(query).toContain('INSERT INTO figures');
+      expect(values).toContain(testResearchId);
+      expect(values).toContain('bar_chart');
+      expect(values).toContain('Test Chart');
+    });
+
+    test('should handle missing optional fields', async () => {
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'line_chart',
+        title: null,
+        caption: null,
+        image_data: Buffer.from('data'),
+        size_bytes: 50,
+        chart_config: '{}',
+        phi_findings: '[]',
+        metadata: '{}',
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      const input: FigureCreateInput = {
+        research_id: testResearchId,
+        figure_type: 'line_chart',
+        image_data: Buffer.from('data'),
+        generated_by: 'test',
+      };
+
+      const result = await service.createFigure(input);
+
+      expect(result.id).toBe(testFigureId);
+      expect(result.title).toBeNull();
+      expect(result.caption).toBeNull();
+    });
+
+    test('should calculate size_bytes from image_data', async () => {
+      const imageData = Buffer.from('test-image-data-larger');
+      const expectedSize = imageData.length;
+
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'scatter_plot',
+        image_data: imageData,
+        size_bytes: expectedSize,
+        chart_config: '{}',
+        phi_findings: '[]',
+        metadata: '{}',
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      const input: FigureCreateInput = {
+        research_id: testResearchId,
+        figure_type: 'scatter_plot',
+        image_data: imageData,
+        generated_by: 'test',
+      };
+
+      await service.createFigure(input);
+
+      // Verify size_bytes was calculated correctly
+      const [, values] = (mockPool.query as any).mock.calls[0];
+      const sizeBytesIndex = 8; // Based on the INSERT query order
+      expect(values[sizeBytesIndex]).toBe(expectedSize);
+    });
+
+    test('should handle database errors', async () => {
+      (mockPool.query as any).mockRejectedValueOnce(
+        new Error('Database connection failed')
+      );
+
+      const input: FigureCreateInput = {
+        research_id: testResearchId,
+        figure_type: 'bar_chart',
+        image_data: Buffer.from('data'),
+        generated_by: 'test',
+      };
+
+      await expect(service.createFigure(input)).rejects.toThrow(
+        'Database connection failed'
+      );
+    });
+  });
+
+  describe('getFigureById', () => {
+    test('should retrieve figure by ID', async () => {
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'box_plot',
+        title: 'Box Plot Title',
+        chart_config: '{"show_outliers": true}',
+        phi_findings: '[{"type": "test"}]',
+        metadata: '{"version": "1.0"}',
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      const result = await service.getFigureById(testFigureId);
+
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe(testFigureId);
+      expect(result!.figure_type).toBe('box_plot');
+      
+      // Verify JSON parsing
+      expect(result!.chart_config).toEqual({ show_outliers: true });
+      expect(result!.phi_findings).toEqual([{ type: 'test' }]);
+      expect(result!.metadata).toEqual({ version: '1.0' });
+      
+      // Verify database query
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT * FROM figures'),
+        [testFigureId]
+      );
+    });
+
+    test('should return null for non-existent figure', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await service.getFigureById('non-existent-id');
+
+      expect(result).toBeNull();
+    });
+
+    test('should handle database errors', async () => {
+      (mockPool.query as any).mockRejectedValueOnce(
+        new Error('Connection timeout')
+      );
+
+      await expect(
+        service.getFigureById(testFigureId)
+      ).rejects.toThrow('Connection timeout');
+    });
+  });
+
+  describe('listFigures', () => {
+    test('should list figures with default options', async () => {
+      const mockFigures = [
+        {
+          id: 'fig-1',
+          research_id: testResearchId,
+          figure_type: 'bar_chart',
+          chart_config: '{}',
+          phi_findings: '[]',
+          metadata: '{}',
+          created_at: new Date('2024-01-01'),
+        },
+        {
+          id: 'fig-2',
+          research_id: testResearchId,
+          figure_type: 'line_chart',
+          chart_config: '{}',
+          phi_findings: '[]',
+          metadata: '{}',
+          created_at: new Date('2024-01-02'),
+        },
+      ];
+
+      // Mock count query
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [{ count: '2' }],
+      });
+
+      // Mock list query
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: mockFigures,
+      });
+
+      const result = await service.listFigures();
+
+      expect(result.total).toBe(2);
+      expect(result.figures).toHaveLength(2);
+      expect(result.figures[0].id).toBe('fig-1');
+      expect(result.figures[1].id).toBe('fig-2');
+      
+      // Verify default pagination
+      expect(mockPool.query).toHaveBeenCalledTimes(2);
+      const [, listValues] = (mockPool.query as any).mock.calls[1];
+      expect(listValues).toContain(50); // default limit
+      expect(listValues).toContain(0);  // default offset
+    });
+
+    test('should filter by research_id', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '1' }] });
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await service.listFigures({ research_id: testResearchId });
+
+      // Verify WHERE clause includes research_id
+      const [countQuery, countValues] = (mockPool.query as any).mock.calls[0];
+      expect(countQuery).toContain('WHERE');
+      expect(countQuery).toContain('research_id = $');
+      expect(countValues).toContain(testResearchId);
+    });
+
+    test('should filter by figure_type and phi_scan_status', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '0' }] });
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await service.listFigures({
+        figure_type: 'forest_plot',
+        phi_scan_status: 'PASS',
+        limit: 10,
+        offset: 20,
+      });
+
+      const [countQuery, countValues] = (mockPool.query as any).mock.calls[0];
+      expect(countQuery).toContain('figure_type = $');
+      expect(countQuery).toContain('phi_scan_status = $');
+      expect(countValues).toContain('forest_plot');
+      expect(countValues).toContain('PASS');
+
+      const [listQuery, listValues] = (mockPool.query as any).mock.calls[1];
+      expect(listValues).toContain(10); // custom limit
+      expect(listValues).toContain(20); // custom offset
+    });
+
+    test('should include deleted figures when requested', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [{ count: '1' }] });
+      (mockPool.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await service.listFigures({ include_deleted: true });
+
+      const [countQuery] = (mockPool.query as any).mock.calls[0];
+      expect(countQuery).not.toContain('deleted_at IS NULL');
+    });
+  });
+
+  describe('updatePhiScanResult', () => {
+    test('should update PHI scan results successfully', async () => {
+      const mockUpdatedFigure = {
+        id: testFigureId,
+        phi_scan_status: 'PASS',
+        phi_risk_level: 'SAFE',
+        phi_findings: '[{"status": "clean"}]',
+        chart_config: '{}',
+        metadata: '{}',
+        updated_at: new Date(),
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockUpdatedFigure],
+      });
+
+      const result = await service.updatePhiScanResult(
+        testFigureId,
+        'PASS',
+        'SAFE',
+        [{ status: 'clean' }]
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.phi_scan_status).toBe('PASS');
+      expect(result!.phi_risk_level).toBe('SAFE');
+      expect(result!.phi_findings).toEqual([{ status: 'clean' }]);
+      
+      // Verify database query
+      const [query, values] = (mockPool.query as any).mock.calls[0];
+      expect(query).toContain('UPDATE figures');
+      expect(query).toContain('phi_scan_status = $2');
+      expect(values).toContain(testFigureId);
+      expect(values).toContain('PASS');
+      expect(values).toContain('SAFE');
+    });
+
+    test('should return null for non-existent figure', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await service.updatePhiScanResult(
+        'non-existent-id',
+        'FAIL'
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteFigure', () => {
+    test('should soft delete figure successfully', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [{ id: testFigureId }],
+      });
+
+      const result = await service.deleteFigure(testFigureId);
+
+      expect(result).toBe(true);
+      
+      // Verify soft delete query
+      const [query, values] = (mockPool.query as any).mock.calls[0];
+      expect(query).toContain('UPDATE figures');
+      expect(query).toContain('deleted_at = CURRENT_TIMESTAMP');
+      expect(query).toContain('WHERE id = $1 AND deleted_at IS NULL');
+      expect(values).toContain(testFigureId);
+    });
+
+    test('should return false for non-existent figure', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await service.deleteFigure('non-existent-id');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getFigureStats', () => {
+    test('should return figure statistics', async () => {
+      const mockStatsRows = [
+        {
+          total: '5',
+          figure_type: null,
+          phi_scan_status: null,
+          total_size: '1024000',
+        },
+        {
+          total: '3',
+          figure_type: 'bar_chart',
+          phi_scan_status: null,
+          total_size: null,
+        },
+        {
+          total: '2',
+          figure_type: 'line_chart',
+          phi_scan_status: null,
+          total_size: null,
+        },
+        {
+          total: '4',
+          figure_type: null,
+          phi_scan_status: 'PASS',
+          total_size: null,
+        },
+        {
+          total: '1',
+          figure_type: null,
+          phi_scan_status: 'PENDING',
+          total_size: null,
+        },
+      ];
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: mockStatsRows,
+      });
+
+      const result = await service.getFigureStats(testResearchId);
+
+      expect(result.total).toBe(5);
+      expect(result.total_size_bytes).toBe(1024000);
+      expect(result.by_type).toEqual({
+        bar_chart: 3,
+        line_chart: 2,
+      });
+      expect(result.by_status).toEqual({
+        PASS: 4,
+        PENDING: 1,
+      });
+
+      // Verify query includes ROLLUP
+      const [query, values] = (mockPool.query as any).mock.calls[0];
+      expect(query).toContain('GROUP BY ROLLUP');
+      expect(values).toContain(testResearchId);
+    });
+
+    test('should handle empty statistics', async () => {
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await service.getFigureStats(testResearchId);
+
+      expect(result.total).toBe(0);
+      expect(result.total_size_bytes).toBe(0);
+      expect(result.by_type).toEqual({});
+      expect(result.by_status).toEqual({});
+    });
+  });
+
+  describe('createFiguresService factory function', () => {
+    test('should create service with pool', () => {
+      const service = createFiguresService(mockPool);
+      
+      expect(service).toBeInstanceOf(FiguresService);
+      expect(service).toHaveProperty('createFigure');
+      expect(service).toHaveProperty('getFigureById');
+      expect(service).toHaveProperty('listFigures');
+    });
+  });
+
+  describe('JSON parsing', () => {
+    test('should handle invalid JSON gracefully', async () => {
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'bar_chart',
+        chart_config: 'invalid json',
+        phi_findings: '[]',
+        metadata: '{}',
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      // Should throw an error due to invalid JSON
+      await expect(
+        service.getFigureById(testFigureId)
+      ).rejects.toThrow();
+    });
+
+    test('should handle already parsed objects', async () => {
+      const mockFigureRow = {
+        id: testFigureId,
+        research_id: testResearchId,
+        figure_type: 'bar_chart',
+        chart_config: { already: 'parsed' },
+        phi_findings: [{ already: 'parsed' }],
+        metadata: { version: '2.0' },
+      };
+
+      (mockPool.query as any).mockResolvedValueOnce({
+        rows: [mockFigureRow],
+      });
+
+      const result = await service.getFigureById(testFigureId);
+
+      expect(result!.chart_config).toEqual({ already: 'parsed' });
+      expect(result!.phi_findings).toEqual([{ already: 'parsed' }]);
+      expect(result!.metadata).toEqual({ version: '2.0' });
+    });
+  });
+});"
