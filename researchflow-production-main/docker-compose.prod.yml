@@ -92,6 +92,7 @@ services:
   # Orchestrator - Node.js API (Production)
   # ===================
   orchestrator:
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:${IMAGE_TAG}
     build:
       context: .
       dockerfile: services/orchestrator/Dockerfile
@@ -190,6 +191,7 @@ services:
   # Worker - Python FastAPI (Production)
   # ===================
   worker:
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/worker:${IMAGE_TAG}
     build:
       context: ./services/worker
       dockerfile: Dockerfile
@@ -269,6 +271,7 @@ services:
   # Guideline Engine - Python FastAPI (Production)
   # ===================
   guideline-engine:
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/guideline-engine:${IMAGE_TAG}
     build:
       context: ./packages/guideline-engine
       dockerfile: Dockerfile
@@ -326,6 +329,7 @@ services:
   #   VITE_AGENT_WS_URL=
   # ===================
   web:
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/web:${IMAGE_TAG}
     build:
       context: .
       dockerfile: services/web/Dockerfile
@@ -379,6 +383,7 @@ services:
   # Collab - Real-time Collaboration Server (Production)
   # ===================
   collab:
+    image: ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/collab:${IMAGE_TAG}
     build:
       context: .
       dockerfile: services/collab/Dockerfile
