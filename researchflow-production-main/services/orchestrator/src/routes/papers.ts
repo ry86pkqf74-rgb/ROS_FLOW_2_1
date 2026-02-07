@@ -36,7 +36,7 @@ import { sql, eq, desc, and, ilike, or } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { nanoid } from 'nanoid';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../../db';
 import { requireAuth } from '../middleware/auth.js';

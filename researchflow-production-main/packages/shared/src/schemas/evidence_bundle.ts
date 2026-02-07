@@ -6,7 +6,7 @@
  * @version 1.0.0
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Performance Metric Schema
 export const PerformanceMetricSchema = z.object({

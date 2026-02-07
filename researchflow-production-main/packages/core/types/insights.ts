@@ -6,7 +6,7 @@
  * All events are designed to be PHI-safe (no raw patient data).
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Import base types from schema (these are exported via schema.ts in index.ts)
 import {

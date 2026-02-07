@@ -8,7 +8,7 @@
  * - Generic webhook support for other platforms
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ─────────────────────────────────────────────────────────────
 // Types & Schemas

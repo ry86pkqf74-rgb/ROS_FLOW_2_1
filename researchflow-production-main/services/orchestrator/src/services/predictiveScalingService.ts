@@ -9,7 +9,7 @@
  * - Uses current metrics and HPA configuration for predictions
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { clusterStatusService } from './clusterStatusService';
 

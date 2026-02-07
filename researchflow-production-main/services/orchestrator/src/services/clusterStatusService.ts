@@ -10,7 +10,7 @@
  * - Node resource utilization
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================================================
 // Types & Schemas

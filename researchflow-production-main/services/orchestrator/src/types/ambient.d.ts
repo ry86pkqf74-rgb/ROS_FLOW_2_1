@@ -57,12 +57,6 @@ declare module 'dotenv' {
   export function config(options?: any): any;
 }
 
-// Zod
-declare module 'zod' {
-  export const z: any;
-  export type ZodSchema = any;
-}
-
 // UUID
 declare module 'uuid' {
   export function v4(): string;

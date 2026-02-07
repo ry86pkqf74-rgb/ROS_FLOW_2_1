@@ -7,7 +7,7 @@
 
 import { sql } from 'drizzle-orm';
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../../db.js';
 import { requireRole } from '../middleware/rbac';

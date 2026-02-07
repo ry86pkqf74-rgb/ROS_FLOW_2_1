@@ -9,7 +9,7 @@
 
 import { scan } from '@researchflow/phi-engine';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { generateStructured } from '../../llm-router';
 import { asyncHandler } from '../middleware/asyncHandler';

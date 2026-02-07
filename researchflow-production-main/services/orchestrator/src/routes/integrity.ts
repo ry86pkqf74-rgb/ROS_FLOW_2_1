@@ -25,7 +25,7 @@
 
 import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../../db';
 

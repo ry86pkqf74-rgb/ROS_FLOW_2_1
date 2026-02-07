@@ -9,7 +9,7 @@
  * - Actionable recommendations with priority ranking
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { haToggleService } from './haToggleService';
 import { metricsCollectorService } from './metricsCollectorService';

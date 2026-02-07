@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { visualizationConfig } from '../config/visualization.config';
 import { logAction } from '../services/audit-service';

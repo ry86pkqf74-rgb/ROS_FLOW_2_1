@@ -12,7 +12,7 @@ import {
   type ManuscriptProposal
 } from '@packages/core/types';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 const router = Router();
 

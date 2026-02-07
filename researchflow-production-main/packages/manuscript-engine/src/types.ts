@@ -6,7 +6,7 @@
 
 import type { AIRouterRequest } from '@researchflow/ai-router/types';
 import type { AIRouterResponse } from '@researchflow/ai-router/middleware';
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Re-export all types from the types directory for backward compatibility
 export * from './types/index';

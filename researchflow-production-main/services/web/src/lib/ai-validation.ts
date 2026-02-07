@@ -5,7 +5,7 @@
  * Provides runtime type safety and detailed error reporting.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   AIResearchBriefResponseSchema,
   GenerateResearchBriefResponseSchema,

@@ -3,7 +3,7 @@
  * Task T37: Track literature search history for reproducibility
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Search database sources

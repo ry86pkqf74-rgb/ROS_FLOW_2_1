@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import {
   getAgentById,

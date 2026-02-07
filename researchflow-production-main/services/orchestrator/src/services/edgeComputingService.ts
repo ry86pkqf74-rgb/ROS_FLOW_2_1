@@ -10,7 +10,7 @@
  * - Provides fallback to central when edge unavailable
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================================================
 // Types & Schemas

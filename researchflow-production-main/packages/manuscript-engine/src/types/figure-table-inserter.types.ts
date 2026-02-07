@@ -3,7 +3,7 @@
  * Task T49: Types for figure/table insertion in manuscripts
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const FigureTypeSchema = z.enum([
   'chart',

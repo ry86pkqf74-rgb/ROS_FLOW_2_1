@@ -14,7 +14,7 @@ import { artifacts, artifactVersions } from "@researchflow/core/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { Router, Request, Response } from "express";
 import { nanoid } from "nanoid";
-import { z } from "zod";
+import * as z from "zod";
 
 import { db } from "../../db";
 import { requireRole } from "../middleware/rbac";

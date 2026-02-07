@@ -5,7 +5,7 @@
  * orchestrator, worker, and web UI services.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Supported literature search providers

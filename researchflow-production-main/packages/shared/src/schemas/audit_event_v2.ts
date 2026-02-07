@@ -6,7 +6,7 @@
  * @version 2.0.0
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Governance Mode
 export const GovernanceModeSchema = z.enum(['DEMO', 'LIVE']);

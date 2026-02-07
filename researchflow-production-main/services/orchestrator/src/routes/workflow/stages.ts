@@ -11,7 +11,7 @@ import crypto from 'crypto';
 
 import { Queue } from 'bullmq';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { requireAuth } from '../../middleware/auth';
 import { getEvents, isDone } from '../../services/sse-event-store';

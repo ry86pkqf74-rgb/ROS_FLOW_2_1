@@ -7,7 +7,7 @@
  * @module @researchflow/core/types/transparency
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================
 // Enums

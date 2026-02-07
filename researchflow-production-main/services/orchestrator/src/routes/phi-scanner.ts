@@ -9,7 +9,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission, requireRole } from '../middleware/rbac';

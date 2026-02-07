@@ -5,7 +5,7 @@
  * including pages, databases, tasks, goals, and timeline projections.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // =============================================================================
 // Hub Page Schema (Notion-like pages)

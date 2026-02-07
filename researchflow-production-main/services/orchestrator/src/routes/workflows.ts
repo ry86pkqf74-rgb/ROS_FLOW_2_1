@@ -31,7 +31,7 @@ import {
   type WorkflowPolicy,
 } from '@researchflow/core/types';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { requireRole, logAuditEvent } from '../middleware/rbac';
 import * as workflowService from '../services/workflowService';

@@ -10,7 +10,7 @@
  * - Integration with Kubernetes API for actual changes
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================================================
 // Types & Schemas

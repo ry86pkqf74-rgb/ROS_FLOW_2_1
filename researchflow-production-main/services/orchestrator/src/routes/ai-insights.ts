@@ -10,7 +10,7 @@
 
 import { Router, Request, Response } from 'express';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { logAction } from '../services/audit-service';

@@ -10,7 +10,7 @@
 
 import axios from 'axios';
 import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { getAIBridgeConfig } from '../config/ai-bridge.config';
 import { getBatchOptimizer } from '../middleware/ai-bridge-batch-optimizer';

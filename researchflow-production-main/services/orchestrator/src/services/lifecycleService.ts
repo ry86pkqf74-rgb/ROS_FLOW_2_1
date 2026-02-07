@@ -9,7 +9,7 @@
  * @module services/lifecycleService
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Lifecycle states matching ros-backend/src/governance/lifecycle_states.py
 export const LifecycleStateSchema = z.enum([

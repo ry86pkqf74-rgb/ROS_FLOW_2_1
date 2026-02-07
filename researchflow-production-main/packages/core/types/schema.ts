@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm/table";
 import { pgTable, text, varchar, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+import * as z from "zod";
 
 // Import users table from auth models for foreign key references
 import { users, sessions } from "./auth";

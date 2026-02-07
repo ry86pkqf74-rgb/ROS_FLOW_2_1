@@ -17,7 +17,7 @@ import crypto from 'crypto';
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { JwtPayload } from 'jsonwebtoken';
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Import jwt and bcrypt from wrapper module
 // This bypasses tsx module resolution issues with CommonJS packages

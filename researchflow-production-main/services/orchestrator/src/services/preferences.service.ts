@@ -10,7 +10,7 @@
  * Tasks: UI/UX Phase 0 (User Preferences)
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Preference schemas

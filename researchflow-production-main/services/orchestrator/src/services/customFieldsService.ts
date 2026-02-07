@@ -1,6 +1,6 @@
 import { orgCustomFields, entityCustomFieldValues, auditLogs } from '@researchflow/core/types/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../lib/db';
 

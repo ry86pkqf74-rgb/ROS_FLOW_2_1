@@ -10,7 +10,7 @@
  * - What-if scenarios for cluster changes
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================================================
 // Types & Schemas

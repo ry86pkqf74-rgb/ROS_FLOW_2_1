@@ -6,7 +6,7 @@
  * @version 1.0.0
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // DSI Status
 export const DSIStatusSchema = z.enum(['DRAFT', 'VALIDATED', 'APPROVED', 'DEPRECATED']);

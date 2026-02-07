@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { logAuthEvent } from '../services/audit-service';
 import {

@@ -10,7 +10,7 @@
  * - Tracks HA mode state and transitions
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { clusterStatusService } from './clusterStatusService';
 

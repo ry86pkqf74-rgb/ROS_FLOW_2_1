@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { pool } from '../../db';
 import { requireAuth } from '../middleware/auth.js';

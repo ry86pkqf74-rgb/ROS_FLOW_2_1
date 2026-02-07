@@ -5,7 +5,7 @@
  * for multi-tenant support in ResearchFlow.
  */
 
-import { z } from "zod";
+import * as z from "zod";
 
 // =====================
 // ORG ROLE DEFINITIONS
