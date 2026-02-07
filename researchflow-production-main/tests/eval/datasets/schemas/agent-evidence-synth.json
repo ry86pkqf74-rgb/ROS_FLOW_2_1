@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-evidence-synth-response",
+  "title": "agent-evidence-synth response",
+  "description": "Evidence synthesis — uses alternate envelope (ok field).",
+  "allOf": [{ "$ref": "_alt_envelope.json" }]
+}

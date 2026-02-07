@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-lit-retrieval-response",
+  "title": "agent-lit-retrieval response",
+  "description": "Literature retrieval — bare envelope.",
+  "allOf": [{ "$ref": "_base_envelope.json" }]
+}

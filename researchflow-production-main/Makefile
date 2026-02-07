@@ -3,7 +3,7 @@
 
 .PHONY: help dev dev-build dev-logs dev-down build test test-unit test-integration test-e2e \
         lint format db-migrate db-seed db-backup db-backup-prod db-restore db-backup-retention \
-        db-backup-list deploy-staging deploy-production clean \
+        db-backup-list deploy-staging deploy-production clean eval eval-dry \
         qwen-check qwen-review qwen-review-critical qwen-review-high qwen-review-all qwen-segments \
         local-ai-up local-ai-down local-ai-logs local-ai-pull review-pipeline review-and-fix
 
@@ -36,6 +36,8 @@ help:
 	@echo "  make test-integration - Run integration tests"
 	@echo "  make test-e2e     - Run end-to-end tests"
 	@echo "  make rag-smoke    - RAG regression smoke test"
+	@echo "  make eval         - Run full agent eval harness"
+	@echo "  make eval-dry     - Schema-only eval (no LLM calls)"
 	@echo ""
 	@echo "$(GREEN)Code Quality:$(NC)"
 	@echo "  make lint         - Run linters"
@@ -432,4 +434,16 @@ review-and-fix: qwen-review-critical ## Review and create fix plan from results
 		exit 1; \
 	fi; \
 	cat "$$LATEST/summary.json" | jq -r '.results[] | select(.issues | length > 0) | "## \(.segment)\n\(.issues[] | "- [\(.severity)] \(.message)")\n"' > fix-plan-$(shell date +%Y%m%d).md
+
+# ── Agent Evaluation ──────────────────────────────────────────────────────────
+
+eval: ## Run full agent eval harness (requires running agents)
+	@echo "$(BLUE)Running agent evaluation harness…$(NC)"
+	pip install -q -r tests/eval/requirements.txt
+	python tests/eval/run_eval.py --all --output tests/eval/results/
+
+eval-dry: ## Schema-only eval — no LLM calls, no running agents
+	@echo "$(BLUE)Running schema-only eval (dry-run)…$(NC)"
+	pip install -q -r tests/eval/requirements.txt
+	python tests/eval/run_eval.py --all --dry-run --output tests/eval/results/
 	@echo "$(GREEN)Fix plan created: fix-plan-$(shell date +%Y%m%d).md$(NC)"

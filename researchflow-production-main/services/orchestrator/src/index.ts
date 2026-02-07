@@ -85,6 +85,7 @@ import streamRoutes from './routes/stream';
 import analysisExecutionRoutes from './routes/analysis-execution';
 import claimsRoutes from './routes/claims';
 import literatureRoutes from './routes/literature';
+import rosRagRoutes from './routes/ros-rag';
 import meshLookupRoutes from './routes/mesh-lookup';
 import metricsRoutes from './routes/metrics';
 // Phase 5.5: Git-based Version Control for Analysis & Manuscripts
@@ -518,6 +519,7 @@ app.use('/api/stream', streamRoutes);  // SSE event stream
 app.use('/api/ros/analysis', analysisExecutionRoutes);  // Analysis job execution
 app.use('/api/ros/claims', claimsRoutes);  // Claim extraction
 app.use('/api/ros/literature', literatureRoutes);  // Literature search API
+app.use('/api/ros/rag', rosRagRoutes);  // RAG E2E proxy: ingest, retrieve, verify
 app.use('/api/literature/mesh', meshLookupRoutes);  // MeSH term lookup
 app.use('/api/metrics', metricsRoutes);  // Prometheus metrics
 app.use('/api/version', versionControlRoutes);  // Phase 5.5: Git-based version control

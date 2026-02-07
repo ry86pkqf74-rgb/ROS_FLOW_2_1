@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-lit-triage-response",
+  "title": "agent-lit-triage response",
+  "description": "Literature triage — uses alternate envelope (ok field).",
+  "allOf": [{ "$ref": "_alt_envelope.json" }]
+}

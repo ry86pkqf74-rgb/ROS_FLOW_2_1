@@ -1,0 +1,6 @@
+# Eval harness dependencies — keep lightweight
+jsonschema>=4.20
+rouge-score>=0.1.2
+click>=8.1
+tabulate>=0.9
+httpx>=0.25

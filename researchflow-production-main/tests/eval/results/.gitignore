@@ -1,0 +1,3 @@
+# Eval results are generated at runtime — don't commit them
+*.json
+!.gitkeep

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-stage2-synthesize-response",
+  "title": "agent-stage2-synthesize response",
+  "description": "Evidence synthesis with structured citations.",
+  "allOf": [{ "$ref": "_base_envelope.json" }],
+  "properties": {
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "synthesis": { "type": "string" },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key"],
+            "properties": {
+              "key": { "type": "string" },
+              "title": { "type": ["string", "null"] },
+              "authors": { "type": "array", "items": { "type": "string" } },
+              "year": { "type": ["string", "null"] },
+              "doi": { "type": ["string", "null"] },
+              "url": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "papers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "extracted_data": { "type": "object" },
+              "title": { "type": ["string", "null"] },
+              "year": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

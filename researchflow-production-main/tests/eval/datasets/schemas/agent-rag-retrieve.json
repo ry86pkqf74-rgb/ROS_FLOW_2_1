@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-rag-retrieve-response",
+  "title": "agent-rag-retrieve response",
+  "description": "RAG retrieval — bare envelope; results surfaced via grounding pack.",
+  "allOf": [{ "$ref": "_base_envelope.json" }]
+}
