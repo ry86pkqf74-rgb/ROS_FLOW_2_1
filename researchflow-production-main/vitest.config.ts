@@ -10,6 +10,16 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
   ],
+  resolve: {
+    alias: {
+      '@apps/api-node/src': fileURLToPath(
+        new URL('./services/orchestrator/src', import.meta.url)
+      ),
+      '@apps/api-node': fileURLToPath(
+        new URL('./services/orchestrator', import.meta.url)
+      ),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
