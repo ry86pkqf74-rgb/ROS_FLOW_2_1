@@ -23,7 +23,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lint-typecheck-test:
-    name: Lint, typecheck & test
+    name: Lint & test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,15 +60,47 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      # TODO(ci): Temporary — typecheck is non-blocking until types are fixed.
-      # See docs/TYPECHECK_RECOVERY.md for rollback plan. Revert once type errors are resolved.
-      - name: Typecheck
-        id: typecheck
-        run: pnpm run typecheck
-        continue-on-error: true
-
       - name: Unit tests
         run: pnpm run test:unit
+
+  typecheck-advisory:
+    name: Typecheck (advisory)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: researchflow-production-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('researchflow-production-main/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+        continue-on-error: true
 
   integration-tests:
     name: Integration tests (with services)
