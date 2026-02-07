@@ -17,6 +17,38 @@ import { getEvents, isDone } from '../../services/sse-event-store';
 const router = Router();
 
 // Request validation schemas
+const Stage2StudyTypeSchema = z.enum([
+  'clinical_trial',
+  'randomized_controlled_trial',
+  'cohort_study',
+  'case_control_study',
+  'cross_sectional_study',
+  'systematic_review',
+  'meta_analysis',
+  'case_report',
+  'observational_study',
+  'review'
+]);
+
+const Stage2ScreeningCriteriaOverrideSchema = z.object({
+  inclusion: z.array(z.string()).optional(),
+  exclusion: z.array(z.string()).optional(),
+  required_keywords: z.array(z.string()).optional(),
+  excluded_keywords: z.array(z.string()).optional(),
+  study_types_required: z.array(Stage2StudyTypeSchema).optional(),
+  study_types_excluded: z.array(Stage2StudyTypeSchema).optional(),
+  year_min: z.number().int().optional(),
+  year_max: z.number().int().optional(),
+  require_abstract: z.boolean().optional(),
+}).partial();
+
+const Stage2RagConfigSchema = z.object({
+  knowledgeBase: z.string().min(1).max(128).optional(),
+  topK: z.number().int().min(1).max(200).optional(),
+  semanticK: z.number().int().min(1).max(500).optional(),
+  rerankMode: z.enum(['none', 'llm']).optional(),
+}).partial();
+
 const Stage2InputsSchema = z.object({
   query: z.string().optional(),
   databases: z.array(z.enum(['pubmed', 'semantic_scholar'])).default(['pubmed']),
@@ -25,24 +57,17 @@ const Stage2InputsSchema = z.object({
     from: z.number().int().optional(),
     to: z.number().int().optional(),
   }).optional(),
-  study_types: z.array(z.enum([
-    'clinical_trial',
-    'randomized_controlled_trial',
-    'cohort_study',
-    'case_control_study',
-    'cross_sectional_study',
-    'systematic_review',
-    'meta_analysis',
-    'case_report',
-    'observational_study',
-    'review'
-  ])).optional(),
+  study_types: z.array(Stage2StudyTypeSchema).optional(),
   mesh_terms: z.array(z.string()).optional(),
   include_keywords: z.array(z.string()).optional(),
   exclude_keywords: z.array(z.string()).optional(),
   language: z.string().default('en'),
   dedupe: z.boolean().default(true),
   require_abstract: z.boolean().default(true),
+  // Optional overrides used by the Stage 2 orchestrator pipeline
+  knowledgeBase: z.string().min(1).max(128).optional(),
+  criteria: Stage2ScreeningCriteriaOverrideSchema.optional(),
+  rag: Stage2RagConfigSchema.optional(),
 });
 
 const Stage2ExecuteSchema = z.object({

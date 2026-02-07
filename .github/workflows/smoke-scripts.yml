@@ -4,7 +4,9 @@ name: Smoke Scripts (Stage2 + RAG)
 
 on:
   workflow_run:
-    workflows: ["Build, Push & Deploy to Hetzner (Full Stack)"]
+    workflows:
+      - "Build, Push & Deploy to Hetzner (Full Stack)"
+      - "Deploy to Hetzner (CI-gated)"
     types: [completed]
   workflow_dispatch:
     inputs:

@@ -1,8 +1,11 @@
-# Manual deploy only. Auto-deploy is via "Deploy to Hetzner (CI-gated)" after CI passes on main.
-name: Build, Push & Deploy to Hetzner (Full Stack)
+# Deploy to Hetzner (CI-gated) — runs only after CI succeeds on main. Environment: Hetzner production.
+name: Deploy to Hetzner (CI-gated)
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,6 +20,8 @@ env:
 jobs:
   build_and_push:
     name: Build & Push ${{ matrix.service }}
+    # Only run when the triggering CI workflow succeeded on push to main
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -25,11 +30,11 @@ jobs:
           - service: orchestrator
             context: researchflow-production-main
             dockerfile: services/orchestrator/Dockerfile
-            target: development
+            target: production
           - service: worker
             context: researchflow-production-main/services/worker
             dockerfile: Dockerfile
-            target: development
+            target: production
           - service: guideline-engine
             context: researchflow-production-main/packages/guideline-engine
             dockerfile: Dockerfile
@@ -37,7 +42,7 @@ jobs:
           - service: collab
             context: researchflow-production-main
             dockerfile: services/collab/Dockerfile
-            target: development
+            target: production
           - service: web
             context: researchflow-production-main
             dockerfile: services/web/Dockerfile
@@ -54,6 +59,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -73,6 +80,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           tags: |
             type=sha,format=long
             type=raw,value=main
@@ -90,10 +98,11 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-  deploy:
+  deploy_ssh:
     name: Deploy to Hetzner
     needs: build_and_push
     runs-on: ubuntu-latest
+    environment: Hetzner production
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -102,5 +111,5 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            export IMAGE_TAG=sha-${{ github.sha }}
+            export IMAGE_TAG=sha-${{ github.event.workflow_run.head_sha }}
             bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh

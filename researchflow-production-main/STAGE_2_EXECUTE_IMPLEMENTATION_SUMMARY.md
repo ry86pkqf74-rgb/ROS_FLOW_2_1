@@ -32,6 +32,30 @@ Successfully implemented the POST `/api/workflow/stages/2/execute` endpoint with
 - ✅ Supports JWT authentication in production
 - ✅ Falls back to dev mock auth when `ALLOW_MOCK_AUTH=true`
 
+## 🧩 Stage 2 DEMO Pipeline Orchestrator
+
+Stage 2 is orchestrated inside the BullMQ worker as a sequential pipeline:
+
+1. `STAGE_2_LITERATURE_REVIEW` (stage2-lit)
+2. `STAGE2_SCREEN` (dedupe + criteria screen)
+3. `RAG_INGEST` (best-effort in `DEMO`)
+4. `RAG_RETRIEVE` (best-effort in `DEMO`)
+5. `STAGE_2_EXTRACT` (runs from abstracts; uses grounding when available)
+6. `CLAIM_VERIFY` (best-effort in `DEMO`, strict failure in `LIVE`)
+
+### Per-step artifacts
+The worker persists step outputs as artifacts (type `analysis_output`, `application/json`) on `researchId = workflow_id` and `stageId = "2"`:
+
+- `stage2_lit.json`
+- `stage2_screen.json`
+- `rag_ingest.json`
+- `rag_retrieve.json`
+- `stage2_extract.json`
+- `verify.json`
+
+### SSE progress events
+Step lifecycle events are emitted to the Stage 2 SSE store key `stage2:sse:<job_id>` as `event: progress` with `{ step, status }`, plus a terminal `event: complete` (or `event: error` on failure).
+
 ### Request Validation
 - ✅ Zod schema validation for request body
 - ✅ `workflow_id` must be valid UUID format
@@ -46,10 +70,10 @@ Successfully implemented the POST `/api/workflow/stages/2/execute` endpoint with
 - ✅ Graceful queue shutdown
 
 ### Worker Service Communication
-- ✅ Calls Python worker at `/api/workflow/stages/{stage}/execute`
-- ✅ Passes job data: `workflow_id`, `research_question`, `user_id`, `job_id`
-- ✅ Progress tracking (10% → 20% → 80% → 100%)
-- ✅ Error handling with detailed error messages
+- ✅ Stage 2 runs via internal `/api/ai/router/dispatch` and calls specialist agents (`/agents/run/sync`) per pipeline step
+- ✅ Other (non-migrated) stages continue to use the legacy Python worker path: `/api/workflow/stages/{stage}/execute`
+- ✅ Progress tracking through BullMQ job progress + Stage 2 SSE step events
+- ✅ Error handling with step-specific failure codes and DEMO degraded-mode warnings
 
 ## 🔄 API Endpoints
 
@@ -61,7 +85,18 @@ Content-Type: application/json
 
 {
   "workflow_id": "123e4567-e89b-12d3-a456-426614174000",
-  "research_question": "What are the effects of intermittent fasting on cardiovascular health?"
+  "research_question": "What are the effects of intermittent fasting on cardiovascular health?",
+  "mode": "DEMO",
+  "inputs": {
+    "max_results": 25,
+    "include_keywords": ["intermittent fasting", "cardiovascular"],
+    "exclude_keywords": ["pediatric"],
+    "study_types": ["randomized_controlled_trial"],
+    "year_range": { "from": 2015, "to": 2024 },
+    "knowledgeBase": "stage2-123e4567-e89b-12d3-a456-426614174000",
+    "criteria": { "require_abstract": true },
+    "rag": { "topK": 20, "semanticK": 50, "rerankMode": "none" }
+  }
 }
 ```
 

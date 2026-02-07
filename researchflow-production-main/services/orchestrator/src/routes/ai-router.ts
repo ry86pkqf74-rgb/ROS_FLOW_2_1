@@ -220,10 +220,14 @@ router.post(
     // Map task_type to agent service name
     const TASK_TYPE_TO_AGENT: Record<string, string> = {
       STAGE_2_LITERATURE_REVIEW: 'agent-stage2-lit',
+      STAGE2_SCREEN: 'agent-stage2-screen',
       STAGE_2_EXTRACT: 'agent-stage2-extract',
+      // Back-compat alias (some tools/tests use this variant)
+      STAGE2_EXTRACT: 'agent-stage2-extract',
       STAGE2_SYNTHESIZE: 'agent-stage2-synthesize',
       LIT_RETRIEVAL: 'agent-lit-retrieval',
       POLICY_REVIEW: 'agent-policy-review',
+      RAG_INGEST: 'agent-rag-ingest',
       RAG_RETRIEVE: 'agent-rag-retrieve',
       SECTION_WRITE_INTRO: 'agent-intro-writer',
       SECTION_WRITE_METHODS: 'agent-methods-writer',
