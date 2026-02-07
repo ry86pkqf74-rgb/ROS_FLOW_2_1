@@ -1,0 +1,77 @@
+{
+  "_meta": {
+    "description": "Minimal RAG smoke-test dataset: 3 docs, 2 queries, 3 claims",
+    "version": "1.0",
+    "created": "2026-02-06",
+    "source": "docs/RAG_LOOP_ACCEPTANCE_CRITERIA.md §2"
+  },
+  "documents": [
+    {
+      "docId": "smoke-001",
+      "title": "DOAC Stroke Prevention",
+      "source": "cardiology-review-2025",
+      "text": "Direct oral anticoagulants (DOACs) such as apixaban reduce stroke risk in atrial fibrillation patients by approximately 70%. The ARISTOTLE trial demonstrated apixaban's superiority over warfarin with fewer major bleeding events.",
+      "metadata": {
+        "domain_id": "domain-cardio",
+        "permissions": "public",
+        "topic": "cardiology"
+      }
+    },
+    {
+      "docId": "smoke-002",
+      "title": "CAR-T Efficacy in ALL",
+      "source": "oncology-review-2025",
+      "text": "CAR-T cell therapy targeting CD19 has achieved complete remission rates exceeding 80% in relapsed/refractory B-cell acute lymphoblastic leukemia (ALL). Long-term follow-up shows durable responses in approximately 50% of patients at 12 months.",
+      "metadata": {
+        "domain_id": "domain-onco",
+        "permissions": "public",
+        "topic": "oncology"
+      }
+    },
+    {
+      "docId": "smoke-003",
+      "title": "Lecanemab in Early Alzheimer's",
+      "source": "neurology-review-2025",
+      "text": "Lecanemab, an anti-amyloid-beta antibody, demonstrated a 27% reduction in cognitive decline over 18 months in the CLARITY-AD trial. The drug targets soluble amyloid-beta protofibrils and received FDA accelerated approval in 2023.",
+      "metadata": {
+        "domain_id": "domain-neuro",
+        "permissions": "public",
+        "topic": "neurology"
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "Q1",
+      "text": "stroke prevention anticoagulants atrial fibrillation",
+      "expected_domain": "domain-cardio",
+      "min_expected_chunks": 1
+    },
+    {
+      "id": "Q2",
+      "text": "amyloid treatment Alzheimer's cognitive decline",
+      "expected_domain": "domain-neuro",
+      "min_expected_chunks": 1
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "text": "Apixaban reduces stroke risk by approximately 70% in AFib patients",
+      "expected_verdict": "pass",
+      "rationale": "Directly supported by smoke-001"
+    },
+    {
+      "id": "C2",
+      "text": "CAR-T therapy achieves 95% remission in ALL",
+      "expected_verdict": "fail_or_unclear",
+      "rationale": "smoke-002 says >80%, not 95%"
+    },
+    {
+      "id": "C3",
+      "text": "Lecanemab targets tau protein tangles",
+      "expected_verdict": "fail_or_unclear",
+      "rationale": "smoke-003 says amyloid-beta protofibrils, not tau"
+    }
+  ]
+}
