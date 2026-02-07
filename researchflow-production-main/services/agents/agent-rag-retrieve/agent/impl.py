@@ -2,13 +2,15 @@
 agent-rag-retrieve — core implementation.
 
 Retrieves chunks from ChromaDB (semantic search), then applies BM25-lite
-reranking to blend keyword relevance with vector similarity.
+reranking to blend keyword relevance with vector similarity. Optionally
+applies LLM-based reranking via AI Bridge when rerankMode="llm".
 
 Pipeline:
-    1. Parse & validate inputs (query, collection, top_k, filters)
+    1. Parse & validate inputs (query, collection, top_k, filters, rerankMode)
     2. Semantic search via ChromaDB (top-N, default N=50)
     3. BM25-lite reranking over semantic results
-    4. Return blended chunks with both scores in metadata
+    4. (Optional) LLM rerank via AI Bridge when rerankMode="llm"
+    5. Return blended chunks with scores in metadata
 
 PHI-safe logging: only counts / IDs / durations — never chunk content.
 """
@@ -21,6 +23,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from agent.schemas import RetrievalChunk, RetrievalTrace
 from agent.chroma_client import chroma_query
 from agent.bm25_lite import bm25_rerank
+from agent.llm_rerank import llm_rerank
 
 logger = structlog.get_logger(__name__)
 
@@ -29,6 +32,9 @@ DEFAULT_TOP_K = 50       # Semantic window (retrieve more, rerank down)
 DEFAULT_RETURN_K = 20    # Final results after reranking
 DEFAULT_COLLECTION = "researchflow"
 DEFAULT_SEMANTIC_WEIGHT = 0.5
+
+# Valid rerank modes
+RERANK_MODES = {"none", "llm"}
 
 
 def _clamp_int(x: Any, default: int, lo: int, hi: int) -> int:
@@ -41,7 +47,7 @@ def _clamp_int(x: Any, default: int, lo: int, hi: int) -> int:
 
 async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Synchronous retrieval with BM25-lite reranking.
+    Synchronous retrieval with BM25-lite reranking and optional LLM rerank.
 
     Expected inputs:
         query_text (str)        — the search query  [required]
@@ -50,6 +56,7 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         semantic_k (int)        — semantic search window  (default 50)
         semantic_weight (float) — blend weight [0..1]     (default 0.5)
         where (dict)            — ChromaDB metadata filter
+        rerankMode (str)        — "none" (default) or "llm" for LLM-based reranking
     """
     started = time.time()
     request_id = payload.get("request_id", "unknown")
@@ -67,6 +74,14 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         semantic_weight = max(0.0, min(1.0, semantic_weight))
     except (TypeError, ValueError):
         semantic_weight = DEFAULT_SEMANTIC_WEIGHT
+
+    # rerankMode: "none" (default) or "llm"
+    rerank_mode = str(inputs.get("rerankMode") or inputs.get("rerank_mode") or "none").lower()
+    if rerank_mode not in RERANK_MODES:
+        rerank_mode = "none"
+
+    # governance mode for LLM rerank
+    governance_mode = str(payload.get("mode") or "DEMO").upper()
 
     if not query_text:
         return {
@@ -86,6 +101,7 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         semantic_k=semantic_k,
         return_k=return_k,
         semantic_weight=semantic_weight,
+        rerank_mode=rerank_mode,
         has_filter=bool(where),
     )
 
@@ -142,7 +158,36 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         semantic_weight=semantic_weight,
     )
 
-    # ── 3. Build output (capped at return_k) ─────────────────────────
+    # ── 3. Optional LLM rerank ──────────────────────────────────────
+    stages = ["semantic", "bm25"]
+    llm_rerank_k: Optional[int] = None
+
+    if rerank_mode == "llm":
+        try:
+            reranked = await llm_rerank(
+                query=query_text,
+                chunks=reranked,
+                top_k=return_k,
+                request_id=request_id,
+                governance_mode=governance_mode,
+            )
+            stages.append("llm_rerank")
+            llm_rerank_k = len(reranked)
+            logger.info(
+                "llm_rerank_applied",
+                request_id=request_id,
+                output_count=llm_rerank_k,
+            )
+        except Exception as e:
+            logger.warning(
+                "llm_rerank_skipped",
+                request_id=request_id,
+                error=type(e).__name__,
+                error_msg=str(e)[:200],
+            )
+            # Continue with BM25 results
+
+    # ── 4. Build output (capped at return_k) ─────────────────────────
     chunks: List[Dict[str, Any]] = []
     citations: List[str] = []
 
@@ -163,10 +208,10 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
         citations.append(item["id"])
 
     retrieval_trace = RetrievalTrace(
-        stages=["semantic", "bm25"],
+        stages=stages,
         semantic_k=semantic_k,
         bm25_k=semantic_k,     # BM25 scored all semantic hits
-        rerank_k=None,          # No LLM reranker yet
+        rerank_k=llm_rerank_k,
     )
 
     duration_ms = int((time.time() - started) * 1000)
@@ -196,6 +241,7 @@ async def run_sync(payload: Dict[str, Any]) -> Dict[str, Any]:
             "semantic_k": semantic_k,
             "bm25_k": semantic_k,
             "semantic_weight": semantic_weight,
+            "rerank_mode": rerank_mode,
         },
         "usage": {
             "duration_ms": duration_ms,
@@ -210,6 +256,8 @@ async def run_stream(payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], 
     SSE streaming wrapper — yields progress events then final result.
     """
     request_id = payload.get("request_id", "unknown")
+    inputs = payload.get("inputs") or {}
+    rerank_mode = str(inputs.get("rerankMode") or inputs.get("rerank_mode") or "none").lower()
 
     yield {
         "type": "status",
@@ -222,8 +270,16 @@ async def run_stream(payload: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], 
         "type": "status",
         "request_id": request_id,
         "step": "bm25_rerank",
-        "progress": 60,
+        "progress": 50 if rerank_mode == "llm" else 60,
     }
+
+    if rerank_mode == "llm":
+        yield {
+            "type": "status",
+            "request_id": request_id,
+            "step": "llm_rerank",
+            "progress": 80,
+        }
 
     result = await run_sync(payload)
 

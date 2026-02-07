@@ -139,3 +139,66 @@ def test_stream_terminal_event_has_request_id_task_type_status() -> None:
     assert terminal.get("task_type") == TASK_TYPE
     assert terminal.get("status") in ("ok", "success")
     assert "outputs" in terminal or "data" in terminal
+
+
+def test_sync_accepts_rerank_mode_none() -> None:
+    """rerankMode=none is the default and should work without LLM."""
+    payload = {
+        "request_id": "rerank-none-test",
+        "task_type": TASK_TYPE,
+        "inputs": {"query": "test query", "rerankMode": "none"},
+    }
+    r = client.post("/agents/run/sync", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("status") in ("ok", "degraded")
+    # Provenance should show rerank_mode
+    prov = data.get("provenance", {})
+    assert prov.get("rerank_mode") == "none"
+    # Stages should not include llm_rerank
+    stages = prov.get("stages", [])
+    assert "llm_rerank" not in stages
+
+
+def test_sync_rerank_mode_defaults_to_none() -> None:
+    """When rerankMode is omitted, it defaults to none."""
+    payload = {
+        "request_id": "rerank-default-test",
+        "task_type": TASK_TYPE,
+        "inputs": {"query": "test query"},
+    }
+    r = client.post("/agents/run/sync", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    prov = data.get("provenance", {})
+    assert prov.get("rerank_mode") == "none"
+
+
+def test_sync_invalid_rerank_mode_falls_back_to_none() -> None:
+    """Invalid rerankMode values fall back to none."""
+    payload = {
+        "request_id": "rerank-invalid-test",
+        "task_type": TASK_TYPE,
+        "inputs": {"query": "test query", "rerankMode": "invalid_mode"},
+    }
+    r = client.post("/agents/run/sync", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    prov = data.get("provenance", {})
+    assert prov.get("rerank_mode") == "none"
+
+
+def test_stream_with_rerank_mode_llm_emits_llm_step() -> None:
+    """When rerankMode=llm, stream should emit llm_rerank status event."""
+    payload = {
+        "request_id": "stream-llm-rerank",
+        "task_type": TASK_TYPE,
+        "inputs": {"query": "test query", "rerankMode": "llm"},
+    }
+    r = client.post("/agents/run/stream", json=payload)
+    assert r.status_code == 200
+    events = _parse_sse_stream(r.text)
+
+    # Find llm_rerank step event
+    steps = [e["data"].get("step") for e in events if e["data"].get("step")]
+    assert "llm_rerank" in steps
