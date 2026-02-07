@@ -4,7 +4,8 @@
  * Uses Claude API for reasoned paragraph generation with chain-of-thought.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { ManuscriptSection, WritingTone } from '../types';
 import { WritingToneSchema } from '../types';

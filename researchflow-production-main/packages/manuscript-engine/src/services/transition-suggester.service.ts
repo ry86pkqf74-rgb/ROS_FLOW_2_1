@@ -4,7 +4,8 @@
  * Suggests context-aware transitions between sentences and paragraphs.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { TransitionSuggestion } from '../types';
 

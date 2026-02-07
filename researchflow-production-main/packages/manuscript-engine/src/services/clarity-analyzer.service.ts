@@ -4,7 +4,8 @@
  * AI-powered clarity feedback for medical writing.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { ClarityAnalysis, ClarityIssue } from '../types';
 

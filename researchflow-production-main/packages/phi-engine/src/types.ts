@@ -12,7 +12,7 @@ export interface PhiFinding {
   /** PHI type detected */
   type: 'SSN' | 'MRN' | 'DOB' | 'PHONE' | 'EMAIL' | 'NAME' | 'ADDRESS'
        | 'ZIP_CODE' | 'IP_ADDRESS' | 'URL' | 'ACCOUNT' | 'HEALTH_PLAN'
-       | 'LICENSE' | 'DEVICE_ID' | 'AGE_OVER_89';
+       | 'LICENSE' | 'DEVICE_ID' | 'AGE_OVER_89' | 'UNKNOWN';
   /** The matched text value */
   value: string;
   /** Start position in the source text */

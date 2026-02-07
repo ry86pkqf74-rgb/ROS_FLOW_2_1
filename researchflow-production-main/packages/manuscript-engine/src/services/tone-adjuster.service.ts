@@ -4,7 +4,8 @@
  * Adjusts writing tone to match target style (formal/semi-formal/clinical).
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { WritingTone, ToneAdjustmentResult } from '../types';
 import { WritingToneSchema } from '../types';

@@ -5,7 +5,7 @@
  * SECURITY: This service MUST block all operations if PHI is detected or scanning fails
  */
 
-import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine';
+import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine/types';
 
 import type { PHIScanResult, ManuscriptAuditEntry } from '../types';
 

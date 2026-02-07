@@ -3,7 +3,7 @@
  * Comprehensive tests for fail-closed PHI protection
  */
 
-import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine';
+import type { PhiScanner, PhiFinding } from '@researchflow/phi-engine/types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import type { ManuscriptAuditEntry } from '../../types';

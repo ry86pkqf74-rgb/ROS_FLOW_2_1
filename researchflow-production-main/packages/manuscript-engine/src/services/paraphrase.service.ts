@@ -4,7 +4,8 @@
  * AI-assisted paraphrasing with originality checks.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { ParaphraseResult, ParaphraseChange } from '../types';
 

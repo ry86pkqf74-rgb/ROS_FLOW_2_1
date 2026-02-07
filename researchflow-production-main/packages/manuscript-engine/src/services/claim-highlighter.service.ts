@@ -4,7 +4,8 @@
  * Highlights unsubstantiated claims in manuscript text.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { ClaimHighlightResult, HighlightedClaim } from '../types';
 

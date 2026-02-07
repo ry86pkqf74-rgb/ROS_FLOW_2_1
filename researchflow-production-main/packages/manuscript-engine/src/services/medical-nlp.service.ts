@@ -5,7 +5,8 @@
  * Simulates BioBERT/PubMedBERT functionality through AI Router.
  */
 
-import { getModelRouter, type AIRouterRequest } from '@researchflow/ai-router';
+import { getModelRouter } from '@researchflow/ai-router/model-router';
+import type { AIRouterRequest } from '@researchflow/ai-router/types';
 
 import type { MedicalNLPResult, MedicalEntity, TerminologyIssue } from '../types';
 

@@ -8,7 +8,7 @@
  */
 
 import { RegexPhiScanner } from '../regex-scanner';
-import type { PhiFinding, PhiScanner, RiskLevel } from '../types';
+import type { PhiFinding, RiskLevel } from '../types';
 
 /**
  * Presidio analyzer request format
@@ -81,7 +81,8 @@ const PRESIDIO_TYPE_MAP: Record<string, PhiFinding['type']> = {
 /**
  * Presidio-based PHI Scanner
  */
-export class PresidioPhiScanner implements PhiScanner {
+/** Async PHI scanner (Presidio); use RegexPhiScanner for sync PhiScanner interface. */
+export class PresidioPhiScanner {
   private config: PresidioConfig;
   private enabled: boolean;
   private fallbackScanner: RegexPhiScanner;
