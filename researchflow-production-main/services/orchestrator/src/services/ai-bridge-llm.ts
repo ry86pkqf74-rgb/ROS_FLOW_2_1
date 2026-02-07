@@ -7,8 +7,47 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { getAIBridgeConfig, type ProviderMode } from '../config/ai-bridge.config';
 
 const logger = createLogger('ai-bridge-llm');
+
+/** Return the current provider mode from config / env. */
+function getProviderMode(): ProviderMode {
+  return getAIBridgeConfig().defaults.providerMode;
+}
+
+/**
+ * Deterministic mock stub for mock / shadow modes.
+ * Mirrors the Python MockProvider output format so callers see
+ * a structurally identical response regardless of mode.
+ */
+function buildMockResponse(prompt: string, model: string): BridgeLLMResponse {
+  // Simple deterministic hash → seed
+  let hash = 0;
+  for (let i = 0; i < prompt.length; i++) {
+    hash = ((hash << 5) - hash + prompt.charCodeAt(i)) | 0;
+  }
+  const seed = Math.abs(hash);
+  const lines: string[] = [];
+  const n = 3 + (seed % 5); // 3-7 lines
+  for (let i = 0; i < n; i++) {
+    const label = ['A', 'B', 'C'][i % 3];
+    lines.push(`- Mock output line ${i + 1}: ${label}${(seed + i * 137) % 999}`);
+  }
+  const text = lines.join('\n');
+  const promptTokens = Math.ceil(prompt.length / 4);
+  const completionTokens = Math.ceil(text.length / 4);
+  return {
+    content: text,
+    usage: {
+      totalTokens: promptTokens + completionTokens,
+      promptTokens,
+      completionTokens,
+    },
+    cost: { total: 0, input: 0, output: 0 },
+    finishReason: 'stop',
+  };
+}
 
 export interface BridgeLLMResponse {
   content: string;
@@ -184,13 +223,12 @@ async function callOpenAI(
 }
 
 /**
- * Execute real LLM call using the appropriate provider based on model id.
- * Uses OPENAI_API_KEY and ANTHROPIC_API_KEY from environment.
+ * Internal: dispatch to the correct real provider.
  */
-export async function callRealLLMProvider(
+async function dispatchRealProvider(
   prompt: string,
   model: string,
-  options: BridgeLLMOptions = {}
+  options: BridgeLLMOptions
 ): Promise<BridgeLLMResponse> {
   if (isAnthropicModel(model)) {
     return callAnthropic(prompt, model, options);
@@ -204,13 +242,56 @@ export async function callRealLLMProvider(
 }
 
 /**
- * Stream real LLM response from provider and yield content chunks.
- * Yields { type: 'content', content: string } then { type: 'done', response: BridgeLLMResponse }.
+ * Execute LLM call respecting AI_BRIDGE_PROVIDER_MODE.
+ *
+ *  mock   → deterministic stub, zero cost, no network
+ *  shadow → real call fires (logged) but mock response returned
+ *  real   → real provider response returned
  */
-export async function* streamRealLLMProvider(
+export async function callRealLLMProvider(
   prompt: string,
   model: string,
   options: BridgeLLMOptions = {}
+): Promise<BridgeLLMResponse> {
+  const mode = getProviderMode();
+  logger.info('callRealLLMProvider', { mode, model });
+
+  if (mode === 'mock') {
+    return buildMockResponse(prompt, model);
+  }
+
+  if (mode === 'shadow') {
+    // Fire real call in background for comparison logging
+    dispatchRealProvider(prompt, model, options)
+      .then((real) => {
+        logger.info('shadow-mode real response', {
+          model,
+          tokens: real.usage.totalTokens,
+          cost: real.cost.total,
+          latencyNote: 'async, not user-facing',
+        });
+      })
+      .catch((err) => {
+        logger.warn('shadow-mode real call failed', {
+          model,
+          error: (err as Error).message,
+        });
+      });
+    // Return mock to caller immediately
+    return buildMockResponse(prompt, model);
+  }
+
+  // mode === 'real'
+  return dispatchRealProvider(prompt, model, options);
+}
+
+/**
+ * Internal: stream from the real provider.
+ */
+async function* dispatchRealStream(
+  prompt: string,
+  model: string,
+  options: BridgeLLMOptions
 ): AsyncGenerator<
   { type: 'content'; content: string } | { type: 'done'; response: BridgeLLMResponse },
   void,
@@ -410,4 +491,58 @@ export async function* streamRealLLMProvider(
   throw new Error(
     `Unsupported model "${model}" for streaming. Use a claude-* or gpt-* model id.`
   );
+}
+
+/**
+ * Stream LLM response respecting AI_BRIDGE_PROVIDER_MODE.
+ *
+ *  mock   → yields mock content in one chunk, zero cost
+ *  shadow → real stream fires (logged) but mock response yielded
+ *  real   → real provider stream yielded
+ */
+export async function* streamRealLLMProvider(
+  prompt: string,
+  model: string,
+  options: BridgeLLMOptions = {}
+): AsyncGenerator<
+  { type: 'content'; content: string } | { type: 'done'; response: BridgeLLMResponse },
+  void,
+  unknown
+> {
+  const mode = getProviderMode();
+  logger.info('streamRealLLMProvider', { mode, model });
+
+  if (mode === 'mock' || mode === 'shadow') {
+    if (mode === 'shadow') {
+      // Fire real stream in background for comparison
+      (async () => {
+        try {
+          let tokens = 0;
+          for await (const chunk of dispatchRealStream(prompt, model, options)) {
+            if (chunk.type === 'done') {
+              tokens = chunk.response.usage.totalTokens;
+              logger.info('shadow-mode stream real done', {
+                model,
+                tokens,
+                cost: chunk.response.cost.total,
+              });
+            }
+          }
+        } catch (err) {
+          logger.warn('shadow-mode stream real failed', {
+            model,
+            error: (err as Error).message,
+          });
+        }
+      })();
+    }
+    // Yield mock in a single chunk
+    const mock = buildMockResponse(prompt, model);
+    yield { type: 'content', content: mock.content };
+    yield { type: 'done', response: mock };
+    return;
+  }
+
+  // mode === 'real' → delegate to real stream
+  yield* dispatchRealStream(prompt, model, options);
 }

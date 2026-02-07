@@ -26,6 +26,11 @@ export const AI_BRIDGE_CONFIG = {
     temperature: 0.7,
     requirePhiCompliance: true,
     costTrackingEnabled: true,
+    // Provider mode: 'mock' | 'shadow' | 'real'
+    // mock   – deterministic stubs, zero cost (default)
+    // shadow – real call fires but mock response returned (for comparison)
+    // real   – real provider response returned to caller
+    providerMode: (process.env.AI_BRIDGE_PROVIDER_MODE || 'mock') as 'mock' | 'shadow' | 'real',
   },
   
   // Supported task types and their configurations
@@ -198,6 +203,16 @@ export function getAIBridgeConfig() {
       blockAtDollars: parseFloat(process.env.AI_BRIDGE_COST_LIMIT)
     };
   }
+
+  if (process.env.AI_BRIDGE_PROVIDER_MODE) {
+    const mode = process.env.AI_BRIDGE_PROVIDER_MODE as ProviderMode;
+    if (['mock', 'shadow', 'real'].includes(mode)) {
+      config.defaults = {
+        ...config.defaults,
+        providerMode: mode,
+      };
+    }
+  }
   
   return config;
 }
@@ -206,5 +221,6 @@ export function getAIBridgeConfig() {
 export type TaskType = keyof typeof AI_BRIDGE_CONFIG.taskTypes;
 export type ModelTier = keyof typeof AI_BRIDGE_CONFIG.tierMappings;
 export type GovernanceMode = 'DEMO' | 'LIVE';
+export type ProviderMode = 'mock' | 'shadow' | 'real';
 
 export default AI_BRIDGE_CONFIG;

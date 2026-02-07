@@ -139,6 +139,8 @@ services:
       - INSIGHTS_STREAM_NAME=ros:insights
       - INSIGHTS_TLS_REQUIRED=true
       - INSIGHTS_MAX_LEN=100000
+      # AI Bridge Provider Mode: mock | shadow | real (default mock for safe rollout)
+      - AI_BRIDGE_PROVIDER_MODE=${AI_BRIDGE_PROVIDER_MODE:-mock}
       # AI Providers (keys from .env.production)
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -212,6 +214,8 @@ services:
       # PHI Governance
       - PHI_SCAN_ENABLED=true
       - PHI_FAIL_CLOSED=true
+      # AI Bridge Provider Mode: mock | shadow | real (default mock for safe rollout)
+      - AI_BRIDGE_PROVIDER_MODE=${AI_BRIDGE_PROVIDER_MODE:-mock}
       # AI Keys
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}

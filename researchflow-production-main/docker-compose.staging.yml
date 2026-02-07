@@ -106,6 +106,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # Feature Flags - CRITICAL FOR STAGE 1 TESTING
       - FEATURE_ENABLE_NEW_STAGE_1=${ENABLE_NEW_STAGE_1:-true}
+      # AI Bridge Provider Mode: mock | shadow | real
+      - AI_BRIDGE_PROVIDER_MODE=${AI_BRIDGE_PROVIDER_MODE:-mock}
       # Monitoring
       - LOG_LEVEL=debug
       - AUDIT_LOG_ENABLED=true
@@ -151,6 +153,8 @@ services:
       - GOVERNANCE_MODE=DEMO  # Allows Stage 1 testing with AI
       # Feature Flags - CRITICAL
       - ENABLE_NEW_STAGE_1=${ENABLE_NEW_STAGE_1:-true}
+      # AI Bridge Provider Mode: mock | shadow | real
+      - AI_BRIDGE_PROVIDER_MODE=${AI_BRIDGE_PROVIDER_MODE:-mock}
       # AI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
