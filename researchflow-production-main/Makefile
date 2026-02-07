@@ -439,11 +439,13 @@ review-and-fix: qwen-review-critical ## Review and create fix plan from results
 
 eval: ## Run full agent eval harness (requires running agents)
 	@echo "$(BLUE)Running agent evaluation harness…$(NC)"
-	pip install -q -r tests/eval/requirements.txt
-	python tests/eval/run_eval.py --all --output tests/eval/results/
+	@command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; \
+	$$PY -m pip install -q -r tests/eval/requirements.txt; \
+	$$PY tests/eval/run_eval.py --all --output tests/eval/results/
 
 eval-dry: ## Schema-only eval — no LLM calls, no running agents
 	@echo "$(BLUE)Running schema-only eval (dry-run)…$(NC)"
-	pip install -q -r tests/eval/requirements.txt
-	python tests/eval/run_eval.py --all --dry-run --output tests/eval/results/
-	@echo "$(GREEN)Fix plan created: fix-plan-$(shell date +%Y%m%d).md$(NC)"
+	@command -v python3 >/dev/null 2>&1 && PY=python3 || PY=python; \
+	$$PY -m pip install -q -r tests/eval/requirements.txt; \
+	$$PY tests/eval/run_eval.py --all --dry-run --output tests/eval/results/
+	@echo "$(GREEN)Evaluation complete!$(NC)"

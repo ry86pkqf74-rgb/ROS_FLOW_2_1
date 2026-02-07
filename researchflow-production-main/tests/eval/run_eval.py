@@ -71,7 +71,18 @@ def cli(
 
     output_dir = pathlib.Path(output) if output else RESULTS_DIR
 
-    # ── Dry-run / P0 schema-only mode ────────────────────────────────────
+    # ── Dataset evaluation mode (with or without dry-run) ───────────────
+    if agent and dataset:
+        mode = "dry-run" if dry_run else "live"
+        click.echo(f"🧪 Evaluating {agent} against {dataset} ({mode})…\n")
+        results = evaluate_dataset(agent, pathlib.Path(dataset), dry_run=dry_run)
+        _print_results(results)
+        out_path = write_results(results, output_dir)
+        click.echo(f"\n📄 Results written to {out_path}")
+        _exit_on_failures(results)
+        return
+
+    # ── Dry-run / P0 schema-only mode (no dataset) ───────────────────────
     if dry_run:
         agents = [agent] if agent else (list_available_schemas() if run_all else None)
         if not agents:
@@ -80,16 +91,6 @@ def cli(
 
         click.echo(f"🔍 Schema-only validation for {len(agents)} agent(s)…\n")
         results = evaluate_schema_only(agents)
-        _print_results(results)
-        out_path = write_results(results, output_dir)
-        click.echo(f"\n📄 Results written to {out_path}")
-        _exit_on_failures(results)
-        return
-
-    # ── Dataset evaluation mode ──────────────────────────────────────────
-    if agent and dataset:
-        click.echo(f"🧪 Evaluating {agent} against {dataset}…\n")
-        results = evaluate_dataset(agent, pathlib.Path(dataset))
         _print_results(results)
         out_path = write_results(results, output_dir)
         click.echo(f"\n📄 Results written to {out_path}")
