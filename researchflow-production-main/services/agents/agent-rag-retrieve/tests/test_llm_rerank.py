@@ -75,8 +75,10 @@ class TestBuildRerankPrompt:
         chunks = [{"id": "long", "text": "x" * 3000}]
         prompt = _build_rerank_prompt("q", chunks, top_k=10)
 
-        # Text should be truncated to 1500 chars
-        assert len(prompt) < 2000
+        # Text should be truncated to 1500 chars (plus ~500 chars template)
+        # Verify truncation occurred: 3000 chars input -> 1500 chars in prompt
+        assert "x" * 1500 in prompt
+        assert "x" * 1501 not in prompt
 
 
 class TestLlmRerank:
@@ -201,3 +203,148 @@ class TestLlmRerank:
         # Remaining chunks have llmRank = None
         assert result[1]["metadata"]["llmRank"] is None
         assert result[2]["metadata"]["llmRank"] is None
+
+
+class TestCandidateSetIntegrity:
+    """Tests that prove output chunk IDs are always a subset of input chunk IDs."""
+
+    @pytest.mark.asyncio
+    async def test_output_ids_subset_of_input_ids_on_success(self) -> None:
+        """Output chunk IDs must be a subset of input chunk IDs when LLM succeeds."""
+        input_chunks = [
+            {"id": "chunk-alpha", "text": "Alpha content", "score": 0.9, "metadata": {}},
+            {"id": "chunk-beta", "text": "Beta content", "score": 0.8, "metadata": {}},
+            {"id": "chunk-gamma", "text": "Gamma content", "score": 0.7, "metadata": {}},
+        ]
+        input_ids = {ch["id"] for ch in input_chunks}
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            # LLM returns valid reordering
+            mock_invoke.return_value = ["chunk-gamma", "chunk-alpha", "chunk-beta"]
+
+            result = await llm_rerank("test query", input_chunks, top_k=10)
+
+        output_ids = {ch["id"] for ch in result}
+        assert output_ids <= input_ids, f"Output IDs {output_ids} not subset of input IDs {input_ids}"
+
+    @pytest.mark.asyncio
+    async def test_output_ids_subset_of_input_ids_on_hallucination(self) -> None:
+        """Even when LLM hallucinates IDs, output must only contain valid input IDs."""
+        input_chunks = [
+            {"id": "valid-1", "text": "Valid one", "score": 0.9, "metadata": {}},
+            {"id": "valid-2", "text": "Valid two", "score": 0.8, "metadata": {}},
+        ]
+        input_ids = {ch["id"] for ch in input_chunks}
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            # LLM hallucinates IDs that don't exist
+            mock_invoke.return_value = [
+                "hallucinated-id-1",
+                "valid-2",
+                "hallucinated-id-2",
+                "totally-fake",
+                "valid-1",
+            ]
+
+            result = await llm_rerank("test query", input_chunks, top_k=10)
+
+        output_ids = {ch["id"] for ch in result}
+        assert output_ids <= input_ids, f"Hallucinated IDs leaked through: {output_ids - input_ids}"
+        # Should still return both valid chunks
+        assert "valid-1" in output_ids
+        assert "valid-2" in output_ids
+
+    @pytest.mark.asyncio
+    async def test_output_ids_subset_of_input_ids_on_failure(self) -> None:
+        """On LLM failure, output must still only contain valid input IDs."""
+        input_chunks = [
+            {"id": "fallback-a", "text": "A", "score": 0.9, "metadata": {}},
+            {"id": "fallback-b", "text": "B", "score": 0.8, "metadata": {}},
+        ]
+        input_ids = {ch["id"] for ch in input_chunks}
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            mock_invoke.side_effect = ConnectionError("Network failure")
+
+            result = await llm_rerank("test query", input_chunks, top_k=10)
+
+        output_ids = {ch["id"] for ch in result}
+        assert output_ids <= input_ids, f"Output IDs {output_ids} not subset of input IDs {input_ids}"
+
+
+class TestStableOutputSchema:
+    """Tests that prove output schema is stable regardless of rerank mode/outcome."""
+
+    REQUIRED_CHUNK_KEYS = {"id", "text", "score", "metadata"}
+
+    @pytest.mark.asyncio
+    async def test_schema_stable_on_llm_success(self) -> None:
+        """Chunk schema is stable when LLM rerank succeeds."""
+        chunks = [
+            {"id": "s1", "text": "Success chunk", "score": 0.9, "metadata": {"source": "test"}},
+        ]
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            mock_invoke.return_value = ["s1"]
+
+            result = await llm_rerank("query", chunks, top_k=5)
+
+        assert len(result) == 1
+        chunk = result[0]
+        # Verify all required keys present
+        assert self.REQUIRED_CHUNK_KEYS <= set(chunk.keys()), f"Missing keys: {self.REQUIRED_CHUNK_KEYS - set(chunk.keys())}"
+        # Verify metadata has llmRank (integer when ranked)
+        assert "llmRank" in chunk["metadata"]
+        assert isinstance(chunk["metadata"]["llmRank"], int)
+
+    @pytest.mark.asyncio
+    async def test_schema_stable_on_llm_failure(self) -> None:
+        """Chunk schema is stable when LLM rerank fails (fallback)."""
+        chunks = [
+            {"id": "f1", "text": "Fallback chunk", "score": 0.9, "metadata": {"source": "test"}},
+        ]
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            mock_invoke.side_effect = TimeoutError("LLM timeout")
+
+            result = await llm_rerank("query", chunks, top_k=5)
+
+        assert len(result) == 1
+        chunk = result[0]
+        # Verify all required keys present
+        assert self.REQUIRED_CHUNK_KEYS <= set(chunk.keys()), f"Missing keys: {self.REQUIRED_CHUNK_KEYS - set(chunk.keys())}"
+        # Verify metadata has llmRank (None when fallback)
+        assert "llmRank" in chunk["metadata"]
+        assert chunk["metadata"]["llmRank"] is None
+
+    @pytest.mark.asyncio
+    async def test_schema_stable_on_partial_ranking(self) -> None:
+        """Chunk schema is stable when LLM returns partial ranking."""
+        chunks = [
+            {"id": "p1", "text": "Partial 1", "score": 0.9, "metadata": {}},
+            {"id": "p2", "text": "Partial 2", "score": 0.8, "metadata": {}},
+            {"id": "p3", "text": "Partial 3", "score": 0.7, "metadata": {}},
+        ]
+
+        with patch("agent.llm_rerank._invoke_bridge_rerank") as mock_invoke:
+            # LLM only ranks one chunk
+            mock_invoke.return_value = ["p2"]
+
+            result = await llm_rerank("query", chunks, top_k=5)
+
+        assert len(result) == 3
+        for chunk in result:
+            # Verify all required keys present
+            assert self.REQUIRED_CHUNK_KEYS <= set(chunk.keys())
+            # Verify metadata has llmRank key
+            assert "llmRank" in chunk["metadata"]
+            # llmRank is either int (ranked) or None (unranked)
+            rank = chunk["metadata"]["llmRank"]
+            assert rank is None or isinstance(rank, int)
+
+        # Ranked chunk has integer, others have None
+        ranked_chunk = next(ch for ch in result if ch["id"] == "p2")
+        unranked_chunks = [ch for ch in result if ch["id"] != "p2"]
+        assert ranked_chunk["metadata"]["llmRank"] == 1
+        for ch in unranked_chunks:
+            assert ch["metadata"]["llmRank"] is None
