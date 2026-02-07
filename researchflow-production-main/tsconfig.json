@@ -1,15 +1,10 @@
 {
   "compilerOptions": {
-    "typeRoots": [
-      "./node_modules/@types"
-    ],
+    "typeRoots": ["./node_modules/@types"],
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Node",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "lib": ["ES2022", "DOM"],
     "jsx": "react-jsx",
     "strict": false,
     "noImplicitAny": false,
@@ -39,12 +34,6 @@
       "@researchflow/ai-router/agents": ["packages/ai-router/src/agents/index.ts"],
       "@researchflow/ai-router/middleware": ["packages/ai-router/src/middleware/index.ts"],
       "@researchflow/ai-router/*": ["packages/ai-router/*"],
-      "@researchflow/manuscript-engine": ["packages/manuscript-engine/index.ts"],
-      "@researchflow/manuscript-engine/services": ["packages/manuscript-engine/src/services/index.ts"],
-      "@researchflow/manuscript-engine/types": ["packages/manuscript-engine/src/types/index.ts"],
-      "@researchflow/manuscript-engine/templates": ["packages/manuscript-engine/src/templates/index.ts"],
-      "@researchflow/manuscript-engine/prompts": ["packages/manuscript-engine/src/prompts/index.ts"],
-      "@researchflow/manuscript-engine/*": ["packages/manuscript-engine/*"],
       "@researchflow/phi-engine": ["packages/phi-engine/index.ts"],
       "@researchflow/phi-engine/*": ["packages/phi-engine/*", "packages/phi-engine/src/*"],
       "@researchflow/phi-engine/patterns": ["packages/phi-engine/src/patterns.ts"],
@@ -68,9 +57,6 @@
   "exclude": [
     "node_modules",
     "**/node_modules",
-    "node_modules/.pnpm/**",
-    "**/node_modules/.pnpm/**",
-    "node_modules/.pnpm/**/node_modules/@researchflow/**",
     "**/dist",
     "services/web",
     "packages/cli",
@@ -84,9 +70,6 @@
     "tests/integration/standby-mode.test.ts",
     "tests/utils/test-app.ts",
     "tests/e2e/mocks/**/*",
-    "packages/manuscript-engine/src/services/__tests__/**/*",
-    "tests/e2e/visualization-workflow.test.ts",
-    "tests/integration/visualization.test.ts",
-    "tests/unit/services/figures.service.test.ts"
+    "packages/manuscript-engine/src/services/__tests__/**/*","tests/e2e/visualization-workflow.test.ts","tests/integration/visualization.test.ts","tests/unit/services/figures.service.test.ts"
   ]
 }
