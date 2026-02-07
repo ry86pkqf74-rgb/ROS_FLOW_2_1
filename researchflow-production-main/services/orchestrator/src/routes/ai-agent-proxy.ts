@@ -15,7 +15,7 @@
 import { getModelRouter } from '@researchflow/ai-router';
 import type { AITaskType, ModelTier, QualityCheck } from '@researchflow/ai-router';
 import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { getWorkerClient } from '../clients/workerClient';
 import { asyncHandler } from '../middleware/asyncHandler';

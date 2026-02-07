@@ -3,7 +3,7 @@
  * Task T26: Frontend types for in-text citation insertion
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Citation insertion position within manuscript text

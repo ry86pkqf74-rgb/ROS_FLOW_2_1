@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const CitationSourceTypeSchema = z.enum([
   'pubmed', 'doi', 'pmcid', 'arxiv', 'isbn', 'url', 'manual'

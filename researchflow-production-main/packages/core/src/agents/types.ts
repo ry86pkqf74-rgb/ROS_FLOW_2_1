@@ -8,7 +8,7 @@
  * services/worker/src/agents/base/state.py
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // =============================================================================
 // Agent Identifiers and Enums

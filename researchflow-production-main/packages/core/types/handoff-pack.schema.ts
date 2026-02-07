@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 export const HandoffPackType = z.enum([
   "RESEARCH_BRIEF",

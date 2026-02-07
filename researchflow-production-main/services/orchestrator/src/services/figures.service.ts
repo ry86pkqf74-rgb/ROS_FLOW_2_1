@@ -6,7 +6,7 @@
  */
 
 import { Pool } from 'pg';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { createLogger } from '../utils/logger';
 

@@ -12,7 +12,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { config } from '../config/env';
 import { asyncHandler } from '../middleware/asyncHandler';

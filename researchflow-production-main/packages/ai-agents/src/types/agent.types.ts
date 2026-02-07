@@ -4,7 +4,7 @@
  * Core types for the AI agent system.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 export interface AgentConfig {
   id: string;

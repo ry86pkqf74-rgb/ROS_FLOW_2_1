@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { envSchema, validateEnv, validateEnvSafe, getEnvValidationReport } from '../env-schema';
 

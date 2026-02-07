@@ -9,7 +9,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { chatRepository } from '../repositories/chat.repository';
 import type { ChatSession, ChatMessage, ChatAction } from '../repositories/chat.repository';

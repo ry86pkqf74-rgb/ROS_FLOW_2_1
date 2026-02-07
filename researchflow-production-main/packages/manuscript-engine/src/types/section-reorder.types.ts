@@ -3,7 +3,7 @@
  * Task T52: Types for manuscript section reordering
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import type { IMRaDSection } from './imrad.types';
 

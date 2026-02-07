@@ -5,7 +5,7 @@
  * performance limits, security controls, and operational parameters.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { createLogger } from '../utils/logger';
 

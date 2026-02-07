@@ -5,7 +5,7 @@
  * Security: Only aggregates, no PHI in analytics
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ---------------------------------------------------------------------------
 // Schemas

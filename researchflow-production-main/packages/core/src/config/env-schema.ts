@@ -6,7 +6,7 @@
  * configuration before any code execution.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Validates that a string has sufficient entropy for cryptographic use.

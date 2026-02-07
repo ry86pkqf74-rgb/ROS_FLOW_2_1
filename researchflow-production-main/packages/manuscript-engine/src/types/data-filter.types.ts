@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const FilterOperatorSchema = z.enum([
   'equals', 'not_equals', 'greater_than', 'less_than', 'between', 'contains', 'in_list', 'is_null', 'is_not_null'

@@ -6,7 +6,7 @@
  */
 
 import express from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { featureFlagsService } from '../services/featureFlagsService';

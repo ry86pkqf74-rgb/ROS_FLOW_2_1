@@ -11,7 +11,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireAuth as isAuthenticated } from '../middleware/auth.js';

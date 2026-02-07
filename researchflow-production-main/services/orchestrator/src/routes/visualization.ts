@@ -16,7 +16,7 @@
 
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { config } from '../config/env';
 import { visualizationConfig, getTimeoutForChartType, validateDataSize } from '../config/visualization.config';

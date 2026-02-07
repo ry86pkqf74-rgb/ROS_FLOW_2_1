@@ -8,7 +8,7 @@
  * - GET /api/ros/artifact-edges - List edges for research
  */
 import { Router, Request, Response } from "express";
-import { z } from "zod";
+import * as z from "zod";
 
 import { requireRole } from "../middleware/rbac";
 import * as artifactGraphService from "../services/artifactGraphService";

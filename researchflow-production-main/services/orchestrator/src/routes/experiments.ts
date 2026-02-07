@@ -1,7 +1,7 @@
 import { featureFlags, experiments } from '@researchflow/core/types/schema';
 import { eq } from 'drizzle-orm';
 import express from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../lib/db';
 import { asyncHandler } from '../middleware/asyncHandler';

@@ -6,7 +6,7 @@
  * with full schema definitions and examples
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ─────────────────────────────────────────────────────────────
 // Types

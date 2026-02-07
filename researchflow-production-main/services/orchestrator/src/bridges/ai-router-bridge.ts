@@ -13,7 +13,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Type definitions
 export interface ModelOptions {

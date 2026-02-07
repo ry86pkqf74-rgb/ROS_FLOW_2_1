@@ -6,7 +6,7 @@
  * @version 1.0.0
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // FAVES Dimension
 export const FAVESDimensionSchema = z.enum(['FAIR', 'APPROPRIATE', 'VALID', 'EFFECTIVE', 'SAFE']);

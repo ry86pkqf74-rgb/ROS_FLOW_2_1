@@ -14,7 +14,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ============================================================================
 // Types & Schemas

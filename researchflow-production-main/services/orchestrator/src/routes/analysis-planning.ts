@@ -5,7 +5,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { planningService } from '../services/planning';

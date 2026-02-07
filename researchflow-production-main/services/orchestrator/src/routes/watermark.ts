@@ -9,7 +9,7 @@
 
 import { getWatermarkService, WatermarkVerification } from '@researchflow/ai-router/watermark.service';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { logAction } from '../services/auditService.js';
 

@@ -13,7 +13,7 @@
  * @module websocket/events
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Base WebSocket message schema

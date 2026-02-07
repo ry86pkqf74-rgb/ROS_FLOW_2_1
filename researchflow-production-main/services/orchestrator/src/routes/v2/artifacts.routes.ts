@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { requireActiveAccount, requireRole } from '../../middleware/rbac';
 import { ArtifactGraphService } from '../../services/artifact-graph.service';

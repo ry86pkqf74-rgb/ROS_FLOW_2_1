@@ -3,7 +3,7 @@
  * Types specific to IMRaD (Introduction, Methods, Results, Discussion) manuscript structure
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // IMRaD Section Type - Core manuscript sections
 export type IMRaDSection =

@@ -7,7 +7,7 @@
 import { docAnchors } from '@researchflow/core/schema';
 import { eq, desc } from 'drizzle-orm';
 import express, { type Request, type Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { db } from '../../lib/db.js';
 import { asyncHandler } from '../../middleware/asyncHandler.js';

@@ -1,6 +1,6 @@
 import { raw } from 'body-parser';
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Import service modules
 import {

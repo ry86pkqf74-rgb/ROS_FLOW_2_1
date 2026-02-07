@@ -3,7 +3,7 @@
  * Core types for manuscript creation and management
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 import type { IMRaDSection } from './imrad.types';
 

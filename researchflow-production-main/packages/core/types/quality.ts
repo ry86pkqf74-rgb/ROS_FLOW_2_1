@@ -5,7 +5,7 @@
  * and quality dashboard.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * Column type inference result
