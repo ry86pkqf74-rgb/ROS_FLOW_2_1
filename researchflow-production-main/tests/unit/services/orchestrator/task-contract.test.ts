@@ -81,12 +81,32 @@ describe('task-contract', () => {
 
       it('accepts each allowed task type', () => {
         for (const taskType of ALLOWED_TASK_TYPES) {
-          const inputs: Record<string, unknown> =
-            taskType === 'LIT_RETRIEVAL'
-              ? { query: 'q' }
-              : taskType === 'STAGE_2_LITERATURE_REVIEW'
-                ? { research_question: 'rq' }
-                : {};
+          let inputs: Record<string, unknown> = {};
+          
+          // Provide minimal required inputs per task type
+          if (taskType === 'LIT_RETRIEVAL') {
+            inputs = { query: 'q' };
+          } else if (taskType === 'STAGE_2_LITERATURE_REVIEW') {
+            inputs = { research_question: 'rq' };
+          } else if (taskType === 'STAGE2_SYNTHESIZE') {
+            inputs = { papers: [{ id: 'paper-1', title: 'Test Paper' }] };
+          } else if (taskType === 'CLAIM_VERIFY') {
+            inputs = { claims: [{ id: 'claim-1', text: 'Test claim' }] };
+          } else if (
+            taskType === 'SECTION_WRITE_INTRO' ||
+            taskType === 'SECTION_WRITE_METHODS' ||
+            taskType === 'SECTION_WRITE_RESULTS' ||
+            taskType === 'SECTION_WRITE_DISCUSSION'
+          ) {
+            inputs = {
+              outline: { sections: [] },
+              verifiedClaims: [],
+              extractionRows: [],
+              groundingPack: {},
+            };
+          }
+          // STAGE_2_EXTRACT and POLICY_REVIEW accept empty inputs
+          
           const out = buildAndValidateTaskContract({
             request_id: 'r',
             task_type: taskType,
