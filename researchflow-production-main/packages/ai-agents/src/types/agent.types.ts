@@ -31,6 +31,7 @@ export interface AgentOutput {
     phiDetected: boolean;
     processingTimeMs: number;
     costUsd?: number;
+    error?: string;
   };
 }
 
