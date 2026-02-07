@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+"""Pydantic schemas for agent-verify."""
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Dict, List, Literal, Optional
 
 
@@ -59,11 +60,10 @@ VerdictKind = Literal["pass", "fail", "unclear"]
 class EvidenceQuote(BaseModel):
     """Evidence supporting or contradicting a claim, pointing to a chunk."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     chunk_id: str = Field(..., alias="chunkId", description="Id of the source chunk in GroundingPack")
     quote: str = Field(..., description="Exact or near-exact quote from the chunk")
-
-    class Config:
-        populate_by_name = True
 
 
 class ClaimVerdict(BaseModel):
@@ -77,20 +77,18 @@ class ClaimVerdict(BaseModel):
 class VerifyInputs(BaseModel):
     """Inputs for CLAIM_VERIFY task."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     claims: List[str] = Field(..., description="Claims to verify against the grounding pack")
     grounding_pack: Optional[Dict[str, Any]] = Field(default=None, alias="groundingPack", description="GroundingPack (sources with chunk ids, etc.)")
     governance_mode: str = Field(default="DEMO", alias="governanceMode")
     strictness: str = Field(default="normal", description="e.g. strict, normal, lenient")
 
-    class Config:
-        populate_by_name = True
-
 
 class VerifyOutputs(BaseModel):
     """Outputs for CLAIM_VERIFY task (inside AgentRunResponse.outputs)."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     claim_verdicts: List[ClaimVerdict] = Field(..., description="Per-claim verdict with evidence")
     overall_pass: bool = Field(..., alias="overallPass", description="True iff all claims are pass")
-
-    class Config:
-        populate_by_name = True

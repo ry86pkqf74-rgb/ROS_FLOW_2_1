@@ -10,7 +10,4 @@ def health():
 
 @router.get("/health/ready", summary="Readiness probe")
 def ready():
-    return {
-        "status": "ready",
-        "service": "agent-verify",
-    }
+    return {"status": "ready", "service": "agent-verify"}

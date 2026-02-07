@@ -192,14 +192,14 @@ async def _execute_verify(inputs: Dict[str, Any], mode: str) -> Dict[str, Any]:
     # DEMO with no bridge or no chunks: stub verdicts (first claim pass with first chunk if any, else unclear)
     use_bridge = bool(_ai_bridge_url() and chunks)
     if governance_mode.upper() == "DEMO" and not use_bridge:
-        claim_verdicts: List[ClaimVerdict] = []
+        claim_verdicts_list: List[ClaimVerdict] = []
         for i, claim in enumerate(claims):
             if chunks and i == 0 and strictness != "strict":
                 ev = [EvidenceQuote(chunk_id=chunks[0]["id"], quote=(chunks[0].get("text") or "")[:200])]
-                claim_verdicts.append(ClaimVerdict(claim=claim, verdict="pass", evidence=ev))
+                claim_verdicts_list.append(ClaimVerdict(claim=claim, verdict="pass", evidence=ev))
             else:
-                claim_verdicts.append(ClaimVerdict(claim=claim, verdict="unclear", evidence=[]))
-        applied = _apply_fail_closed_live(claim_verdicts, governance_mode)
+                claim_verdicts_list.append(ClaimVerdict(claim=claim, verdict="unclear", evidence=[]))
+        applied = _apply_fail_closed_live(claim_verdicts_list, governance_mode)
         return {
             "claim_verdicts": [v.model_dump(by_alias=True) for v in applied],
             "overallPass": all(v.verdict == "pass" for v in applied),

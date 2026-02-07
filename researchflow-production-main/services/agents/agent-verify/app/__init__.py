@@ -1,1 +1,1 @@
-# FastAPI app package
+"""FastAPI app for agent-verify."""

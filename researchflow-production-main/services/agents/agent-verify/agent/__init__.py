@@ -1,1 +1,1 @@
-# Agent logic package: claim verification against GroundingPack
+"""Agent-verify: claim verification agent with fail-closed LIVE mode."""

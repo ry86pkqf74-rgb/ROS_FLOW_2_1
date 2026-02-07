@@ -1,1 +1,1 @@
-# Agent verify tests
+"""Tests for agent-verify."""
