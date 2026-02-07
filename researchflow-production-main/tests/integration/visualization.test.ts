@@ -451,4 +451,4 @@ describe('Data Visualization Integration', () => {
       }
     }, TEST_CONFIG.TIMEOUT + 5000);
   });
-});"
+});
