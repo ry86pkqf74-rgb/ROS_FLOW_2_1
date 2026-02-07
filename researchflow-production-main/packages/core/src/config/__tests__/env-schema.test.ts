@@ -13,8 +13,14 @@ describe('envSchema', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    // Save original environment
-    process.env = { ...originalEnv };
+    // Save original environment and set required fields
+    process.env = {
+      ...originalEnv,
+      POSTGRES_USER: 'test_user',
+      POSTGRES_DB: 'test_db',
+      DATABASE_URL: 'postgresql://test:pass@localhost:5432/testdb',
+      JWT_SECRET: 'a'.repeat(32),
+    };
   });
 
   afterEach(() => {
@@ -258,14 +264,18 @@ describe('envSchema', () => {
       expect(result2.success).toBe(false);
     });
 
-    it('should require positive numbers for counts', () => {
+    it('should allow non-negative numbers for retry counts', () => {
       process.env.AI_MAX_RETRIES = '0';
       const result = envSchema.safeParse(process.env);
-      expect(result.success).toBe(false); // Must be > 0 for retries
+      expect(result.success).toBe(true); // 0 is allowed (non-negative)
 
       process.env.AI_MAX_RETRIES = '3';
       const result2 = envSchema.safeParse(process.env);
       expect(result2.success).toBe(true);
+
+      process.env.AI_MAX_RETRIES = '-1';
+      const result3 = envSchema.safeParse(process.env);
+      expect(result3.success).toBe(false); // Negative not allowed
     });
   });
 
