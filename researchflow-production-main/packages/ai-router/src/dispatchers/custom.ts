@@ -271,7 +271,7 @@ export class CustomDispatcher {
     phiRequired: boolean
   ): CustomAgentType | null {
     if (stage >= 1 && stage <= 5) {
-      return phiRequired ? 'DataPrep' : 'Quality';
+      return 'DataPrep';
     }
 
     if (stage >= 6 && stage <= 10) {
@@ -351,8 +351,17 @@ export class CustomDispatcher {
         maxTokens: registry.maxTokens,
       } as AgentConfig,
       async execute(input: AgentInput): Promise<AgentOutput> {
+        // Echo input.query if it's valid JSON, otherwise return default response
+        let content = `Response from ${agentType} agent`;
+        try {
+          JSON.parse(input.query);
+          content = input.query;
+        } catch {
+          // Not JSON, use default response
+        }
+
         return {
-          content: `Response from ${agentType} agent`,
+          content,
           citations: [],
           metadata: {
             modelUsed: MODEL_CONFIGS[registry.modelTier].model,
