@@ -161,10 +161,12 @@ No overlap with:
 
 ## Files Changed
 
-1. `researchflow-production-main/vitest.config.ts` - Unit test scope
-2. `.github/workflows/ci.yml` - Integration test job
+1. `researchflow-production-main/vitest.config.ts` - Unit test scope (excludes integration)
+2. `.github/workflows/ci.yml` - Added integration-tests job with services
 3. `researchflow-production-main/scripts/validate-pr17.sh` - Validation script (new)
 4. `PR17_SUMMARY.md` - This document (new)
+
+**Note**: `vitest.integration.config.ts` already exists and is used by `pnpm run test:integration`. PR17 does not modify it.
 
 ## Next Steps
 

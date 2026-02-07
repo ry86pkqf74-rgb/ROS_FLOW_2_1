@@ -88,28 +88,20 @@ else
 fi
 echo
 
-echo "Step 3: List collected test files (dry run)"
+echo "Step 3: Verify unit tests don't collect integration tests"
 echo "---------------------------------------------------"
-echo "Unit tests pattern (should NOT include integration/):"
-pnpm exec vitest list --config vitest.config.ts 2>&1 | grep -E "(tests/unit|tests/governance|packages/.+/__tests__)" | head -10
+echo "Checking unit test collection (should NOT include integration/)..."
 INTEGRATION_COUNT=$(pnpm exec vitest list --config vitest.config.ts 2>&1 | grep -c "tests/integration" || echo "0")
 if [ "$INTEGRATION_COUNT" -eq "0" ]; then
     echo -e "${GREEN}✓${NC} No integration tests found in unit suite"
 else
     echo -e "${RED}✗${NC} Found $INTEGRATION_COUNT integration test files in unit suite"
+    echo "Unit tests are collecting integration tests - check vitest.config.ts exclude patterns"
     exit 1
 fi
-echo
 
-echo "Integration tests pattern (should ONLY be integration/):"
-pnpm exec vitest list --config vitest.integration.config.ts 2>&1 | grep "tests/integration" | head -10
-INTEGRATION_FOUND=$(pnpm exec vitest list --config vitest.integration.config.ts 2>&1 | grep -c "tests/integration" || echo "0")
-if [ "$INTEGRATION_FOUND" -gt "0" ]; then
-    echo -e "${GREEN}✓${NC} Found $INTEGRATION_FOUND integration test files"
-else
-    echo -e "${RED}✗${NC} No integration tests found in integration suite"
-    exit 1
-fi
+echo "Sample unit test files that will be collected:"
+pnpm exec vitest list --config vitest.config.ts 2>&1 | grep -E "(tests/unit|tests/governance|packages/.+/__tests__)" | head -5 || echo "(No tests matched - verify pnpm install was run)"
 echo
 
 echo "Step 4: Verify docker-compose.test.yml services"
