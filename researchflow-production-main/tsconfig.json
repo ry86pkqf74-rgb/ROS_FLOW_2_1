@@ -22,109 +22,40 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@researchflow/core": [
-        "packages/core/index.ts"
-      ],
-      "@researchflow/core/events": [
-        "packages/core/src/events/index.ts"
-      ],
-      "@researchflow/core/config": [
-        "packages/core/src/config/index.ts"
-      ],
-      "@researchflow/core/types": [
-        "packages/core/types/index.ts"
-      ],
-      "@researchflow/core/types/*": [
-        "packages/core/types/*.ts"
-      ],
-      "@researchflow/core/schema": [
-        "packages/core/types/schema.ts"
-      ],
-      "@researchflow/core/policy": [
-        "packages/core/policy/index.ts"
-      ],
-      "@researchflow/core/security": [
-        "packages/core/src/security/index.ts"
-      ],
-      "@researchflow/core/services": [
-        "packages/core/src/services/index.ts"
-      ],
-      "@researchflow/core/*": [
-        "packages/core/*"
-      ],
-      "@researchflow/ai-router": [
-        "packages/ai-router/index.ts"
-      ],
-      "@researchflow/ai-router/model-router": [
-        "packages/ai-router/src/model-router.service.ts"
-      ],
-      "@researchflow/ai-router/types": [
-        "packages/ai-router/src/types.ts"
-      ],
-      "@researchflow/ai-router/providers": [
-        "packages/ai-router/src/providers/index.ts"
-      ],
-      "@researchflow/ai-router/agents": [
-        "packages/ai-router/src/agents/index.ts"
-      ],
-      "@researchflow/ai-router/middleware": [
-        "packages/ai-router/src/middleware/index.ts"
-      ],
-      "@researchflow/ai-router/*": [
-        "packages/ai-router/*"
-      ],
-      "@researchflow/manuscript-engine": [
-        "packages/manuscript-engine/index.ts"
-      ],
-      "@researchflow/manuscript-engine/services": [
-        "packages/manuscript-engine/src/services/index.ts"
-      ],
-      "@researchflow/manuscript-engine/types": [
-        "packages/manuscript-engine/src/types/index.ts"
-      ],
-      "@researchflow/manuscript-engine/templates": [
-        "packages/manuscript-engine/src/templates/index.ts"
-      ],
-      "@researchflow/manuscript-engine/prompts": [
-        "packages/manuscript-engine/src/prompts/index.ts"
-      ],
-      "@researchflow/manuscript-engine/*": [
-        "packages/manuscript-engine/*"
-      ],
-      "@researchflow/phi-engine": [
-        "packages/phi-engine/index.ts"
-      ],
-      "@researchflow/phi-engine/*": [
-        "packages/phi-engine/*",
-        "packages/phi-engine/src/*"
-      ],
-      "@researchflow/phi-engine/patterns": [
-        "packages/phi-engine/src/patterns.ts"
-      ],
-      "@researchflow/phi-engine/log-scrubber": [
-        "packages/phi-engine/src/log-scrubber.ts"
-      ],
-      "@researchflow/phi-engine/types": [
-        "packages/phi-engine/src/types.ts"
-      ],
-      "@packages/core": [
-        "packages/core"
-      ],
-      "@packages/core/*": [
-        "packages/core/*"
-      ],
-      "@apps/api-node": [
-        "services/orchestrator"
-      ],
-      "@apps/api-node/*": [
-        "services/orchestrator/*"
-      ],
-      "@apps/api-node/src": [
-        "services/orchestrator/src"
-      ],
-      "@apps/api-node/src/*": [
-        "services/orchestrator/src/*"
-      ]
+      "@researchflow/core": ["packages/core/index.ts"],
+      "@researchflow/core/events": ["packages/core/src/events/index.ts"],
+      "@researchflow/core/config": ["packages/core/src/config/index.ts"],
+      "@researchflow/core/types": ["packages/core/types/index.ts"],
+      "@researchflow/core/types/*": ["packages/core/types/*.ts"],
+      "@researchflow/core/schema": ["packages/core/types/schema.ts"],
+      "@researchflow/core/policy": ["packages/core/policy/index.ts"],
+      "@researchflow/core/security": ["packages/core/src/security/index.ts"],
+      "@researchflow/core/services": ["packages/core/src/services/index.ts"],
+      "@researchflow/core/*": ["packages/core/*"],
+      "@researchflow/ai-router": ["packages/ai-router/index.ts"],
+      "@researchflow/ai-router/model-router": ["packages/ai-router/src/model-router.service.ts"],
+      "@researchflow/ai-router/types": ["packages/ai-router/src/types.ts"],
+      "@researchflow/ai-router/providers": ["packages/ai-router/src/providers/index.ts"],
+      "@researchflow/ai-router/agents": ["packages/ai-router/src/agents/index.ts"],
+      "@researchflow/ai-router/middleware": ["packages/ai-router/src/middleware/index.ts"],
+      "@researchflow/ai-router/*": ["packages/ai-router/*"],
+      "@researchflow/manuscript-engine": ["packages/manuscript-engine/index.ts"],
+      "@researchflow/manuscript-engine/services": ["packages/manuscript-engine/src/services/index.ts"],
+      "@researchflow/manuscript-engine/types": ["packages/manuscript-engine/src/types/index.ts"],
+      "@researchflow/manuscript-engine/templates": ["packages/manuscript-engine/src/templates/index.ts"],
+      "@researchflow/manuscript-engine/prompts": ["packages/manuscript-engine/src/prompts/index.ts"],
+      "@researchflow/manuscript-engine/*": ["packages/manuscript-engine/*"],
+      "@researchflow/phi-engine": ["packages/phi-engine/index.ts"],
+      "@researchflow/phi-engine/*": ["packages/phi-engine/*", "packages/phi-engine/src/*"],
+      "@researchflow/phi-engine/patterns": ["packages/phi-engine/src/patterns.ts"],
+      "@researchflow/phi-engine/log-scrubber": ["packages/phi-engine/src/log-scrubber.ts"],
+      "@researchflow/phi-engine/types": ["packages/phi-engine/src/types.ts"],
+      "@packages/core": ["packages/core"],
+      "@packages/core/*": ["packages/core/*"],
+      "@apps/api-node": ["services/orchestrator"],
+      "@apps/api-node/*": ["services/orchestrator/*"],
+      "@apps/api-node/src": ["services/orchestrator/src"],
+      "@apps/api-node/src/*": ["services/orchestrator/src/*"]
     }
   },
   "include": [
