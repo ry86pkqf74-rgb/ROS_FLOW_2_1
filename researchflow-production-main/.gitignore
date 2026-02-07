@@ -117,6 +117,5 @@ logs/
 # Screenshots from testing
 *-screenshot.png
 *.screenshot.png
-pnpm-lock.yaml
 .pnpm-store/
 .continue/
