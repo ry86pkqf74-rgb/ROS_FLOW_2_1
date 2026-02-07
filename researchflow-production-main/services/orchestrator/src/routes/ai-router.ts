@@ -225,6 +225,8 @@ router.post(
       LIT_RETRIEVAL: 'agent-lit-retrieval',
       POLICY_REVIEW: 'agent-policy-review',
       RAG_RETRIEVE: 'agent-rag-retrieve',
+      SECTION_WRITE_INTRO: 'agent-intro-writer',
+      SECTION_WRITE_METHODS: 'agent-methods-writer',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

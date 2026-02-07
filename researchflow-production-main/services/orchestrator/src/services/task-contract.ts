@@ -10,6 +10,8 @@ export const ALLOWED_TASK_TYPES = [
   'STAGE2_SYNTHESIZE',
   'LIT_RETRIEVAL',
   'POLICY_REVIEW',
+  'SECTION_WRITE_INTRO',
+  'SECTION_WRITE_METHODS',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -43,6 +45,14 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   STAGE2_SYNTHESIZE: { required: ['papers'], optional: ['research_question', 'synthesisType', 'citations'] },
   LIT_RETRIEVAL: { required: ['query'] },
   POLICY_REVIEW: { required: [] }, // stub accepts empty; we still normalize to object
+  SECTION_WRITE_INTRO: {
+    required: ['outline', 'verifiedClaims', 'extractionRows', 'groundingPack'],
+    optional: ['styleParams'],
+  },
+  SECTION_WRITE_METHODS: {
+    required: ['outline', 'verifiedClaims', 'extractionRows', 'groundingPack'],
+    optional: ['styleParams'],
+  },
 };
 
 function isAllowedTaskType(s: string): s is AllowedTaskType {

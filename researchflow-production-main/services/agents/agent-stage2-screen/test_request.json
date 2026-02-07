@@ -1,0 +1,63 @@
+{
+  "request_id": "test-screen-001",
+  "task_type": "STAGE2_SCREEN",
+  "mode": "DEMO",
+  "domain_id": "clinical",
+  "inputs": {
+    "papers": [
+      {
+        "id": "12345",
+        "title": "A randomized controlled trial of metformin in type 2 diabetes",
+        "abstract": "This study evaluates the efficacy of metformin in adults with type 2 diabetes mellitus. A total of 200 patients were randomized to metformin or placebo.",
+        "year": 2020,
+        "authors": ["Smith J", "Doe J", "Johnson A"],
+        "doi": "10.1234/example.2020.001"
+      },
+      {
+        "id": "67890",
+        "title": "Metformin in pediatric diabetes: a case report",
+        "abstract": "We report a case of metformin use in a 10-year-old child with type 2 diabetes.",
+        "year": 2019,
+        "authors": ["Jones R"],
+        "doi": "10.1234/example.2019.002"
+      },
+      {
+        "id": "11111",
+        "title": "A randomized controlled trial of metformin in type 2 diabetes",
+        "abstract": "This study evaluates the efficacy of metformin in adults with type 2 diabetes mellitus. A total of 200 patients were randomized to metformin or placebo.",
+        "year": 2020,
+        "authors": ["Smith J", "Doe J", "Johnson A"],
+        "doi": "10.1234/example.2020.001"
+      },
+      {
+        "id": "22222",
+        "title": "Systematic review of diabetes medications",
+        "abstract": "We systematically reviewed literature on diabetes medications including metformin, sulfonylureas, and insulin.",
+        "year": 2021,
+        "authors": ["Brown M", "White K"]
+      },
+      {
+        "id": "33333",
+        "title": "Insulin therapy in type 1 diabetes",
+        "abstract": "This study examined insulin therapy outcomes in type 1 diabetes patients.",
+        "year": 2018,
+        "authors": ["Green P"],
+        "doi": "10.1234/example.2018.003"
+      }
+    ],
+    "criteria": {
+      "inclusion": ["diabetes", "metformin"],
+      "exclusion": ["pediatric", "children"],
+      "required_keywords": [],
+      "excluded_keywords": [],
+      "study_types_required": [],
+      "study_types_excluded": ["case_report"],
+      "year_min": 2019,
+      "year_max": 2024,
+      "require_abstract": true
+    },
+    "domainId": "clinical",
+    "governanceMode": "DEMO",
+    "use_ai": false
+  }
+}
