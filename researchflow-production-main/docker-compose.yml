@@ -165,7 +165,7 @@ services:
       - INFERENCE_POLICY=cloud
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -574,6 +574,67 @@ services:
         reservations:
           cpus: '0.5'
           memory: 1G
+
+  # ===================
+  # Agent Stage 2 - Screen (deduplication + inclusion/exclusion criteria + study type tagging)
+  # ===================
+  agent-stage2-screen:
+    build:
+      context: .
+      dockerfile: services/agents/agent-stage2-screen/Dockerfile
+    container_name: researchflow-agent-stage2-screen
+    restart: unless-stopped
+    environment:
+      - AI_BRIDGE_URL=${AI_BRIDGE_URL:-http://orchestrator:3001}
+      - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
+      - AI_BRIDGE_TOKEN=${AI_BRIDGE_TOKEN:-${WORKER_SERVICE_TOKEN}}
+      - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
+      - GOVERNANCE_MODE=${GOVERNANCE_MODE:-DEMO}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # ===================
+  # Agent Stage 2 - Extract (PICO, endpoints, sample size, key results from papers)
+  # ===================
+  agent-stage2-extract:
+    build:
+      context: .
+      dockerfile: services/agents/agent-stage2-extract/Dockerfile
+    container_name: researchflow-agent-stage2-extract
+    restart: unless-stopped
+    environment:
+      - AI_BRIDGE_URL=${AI_BRIDGE_URL:-http://orchestrator:3001}
+      - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
+      - AI_BRIDGE_TOKEN=${AI_BRIDGE_TOKEN:-${WORKER_SERVICE_TOKEN}}
+      - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ===================
   # Agent Literature Retrieval (deterministic PubMed)

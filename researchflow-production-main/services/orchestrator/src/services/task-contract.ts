@@ -6,6 +6,8 @@
 /** Allowed task types for agent dispatch (single source of truth). */
 export const ALLOWED_TASK_TYPES = [
   'STAGE_2_LITERATURE_REVIEW',
+  'STAGE_2_EXTRACT',
+  'STAGE2_SYNTHESIZE',
   'LIT_RETRIEVAL',
   'POLICY_REVIEW',
 ] as const;
@@ -37,6 +39,8 @@ export class TaskContractValidationError extends Error {
 /** Input requirements per task type (minimal guardrails). */
 const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional?: string[] }> = {
   STAGE_2_LITERATURE_REVIEW: { required: ['research_question'] },
+  STAGE_2_EXTRACT: { required: [] }, // agent returns error if no groundingPack or abstracts
+  STAGE2_SYNTHESIZE: { required: ['papers'], optional: ['research_question', 'synthesisType', 'citations'] },
   LIT_RETRIEVAL: { required: ['query'] },
   POLICY_REVIEW: { required: [] }, // stub accepts empty; we still normalize to object
 };

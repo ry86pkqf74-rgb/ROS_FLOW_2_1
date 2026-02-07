@@ -1,0 +1,16 @@
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/health", summary="Liveness probe")
+def health():
+    return {"status": "ok", "service": "agent-stage2-extract"}
+
+
+@router.get("/health/ready", summary="Readiness probe")
+def ready():
+    return {
+        "status": "ready",
+        "service": "agent-stage2-extract",
+    }

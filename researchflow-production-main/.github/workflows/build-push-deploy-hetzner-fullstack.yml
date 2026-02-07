@@ -47,6 +47,10 @@ jobs:
             context: researchflow-production-main
             dockerfile: services/agents/agent-stage2-lit/Dockerfile
             target: ""
+          - service: agent-stage2-extract
+            context: researchflow-production-main
+            dockerfile: services/agents/agent-stage2-extract/Dockerfile
+            target: ""
 
     steps:
       - name: Checkout repository
