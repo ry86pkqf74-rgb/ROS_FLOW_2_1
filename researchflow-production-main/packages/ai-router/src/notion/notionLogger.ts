@@ -16,6 +16,10 @@ import type { AIProvider, AITaskType, ModelTier } from '../types';
 // ============================================================================
 
 export interface AIUsageLogEntry {
+  /** ISO timestamp when the call was made (optional, for logging) */
+  timestamp?: string;
+  /** Tool/capability name (e.g. mercury-coder) for logging */
+  tool?: string;
   /** Provider name (claude, openai, grok, mercury, etc.) */
   provider: string;
   /** Specific model used (gpt-4o, claude-3-5-sonnet, etc.) */
