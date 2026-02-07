@@ -10,7 +10,6 @@ import type {
   ChatCompletionCreateParams,
   ChatCompletionMessageParam,
   ChatCompletion,
-  ChatCompletionChunk,
 } from 'openai/resources/chat/completions';
 
 import { logAIUsage, type AIUsageLogEntry } from '../notion/notionLogger';
@@ -183,7 +182,7 @@ export class OpenAIProvider {
   async *streamChatCompletion(
     params: Omit<ChatCompletionCreateParams, 'model' | 'stream'> & { model?: string },
     options: OpenAIRequestOptions = {}
-  ): AsyncGenerator<ChatCompletionChunk, OpenAIResponse, unknown> {
+  ): AsyncGenerator<OpenAI.Chat.Completions.ChatCompletionChunk, OpenAIResponse, unknown> {
     const model = params.model ?? this.defaultModel;
     const startTime = Date.now();
     let inputTokens = 0;

@@ -7,8 +7,7 @@
  */
 /* eslint-disable @typescript-eslint/no-require-imports -- dynamic lazy loading */
 
-// Types (explicit re-exports for consumers and subpath resolution)
-export type { AIRouterRequest, ModelTier, AITaskType } from './src/types';
+// Types
 export * from './src/types';
 
 // Services
