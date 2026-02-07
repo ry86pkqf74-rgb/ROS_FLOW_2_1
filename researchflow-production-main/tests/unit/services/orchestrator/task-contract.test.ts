@@ -81,12 +81,39 @@ describe('task-contract', () => {
 
       it('accepts each allowed task type', () => {
         for (const taskType of ALLOWED_TASK_TYPES) {
-          const inputs: Record<string, unknown> =
-            taskType === 'LIT_RETRIEVAL'
-              ? { query: 'q' }
-              : taskType === 'STAGE_2_LITERATURE_REVIEW'
-                ? { research_question: 'rq' }
-                : {};
+          let inputs: Record<string, unknown> = {};
+          
+          // Provide required inputs for each task type
+          switch (taskType) {
+            case 'LIT_RETRIEVAL':
+              inputs = { query: 'q' };
+              break;
+            case 'STAGE_2_LITERATURE_REVIEW':
+              inputs = { research_question: 'rq' };
+              break;
+            case 'STAGE2_SYNTHESIZE':
+              inputs = { papers: ['paper1', 'paper2'] };
+              break;
+            case 'SECTION_WRITE_INTRO':
+            case 'SECTION_WRITE_METHODS':
+            case 'SECTION_WRITE_RESULTS':
+            case 'SECTION_WRITE_DISCUSSION':
+              inputs = {
+                outline: 'test outline',
+                verifiedClaims: [],
+                extractionRows: [],
+                groundingPack: {},
+              };
+              break;
+            case 'CLAIM_VERIFY':
+              inputs = { claims: ['claim1'] };
+              break;
+            case 'STAGE_2_EXTRACT':
+            case 'POLICY_REVIEW':
+              inputs = {};
+              break;
+          }
+          
           const out = buildAndValidateTaskContract({
             request_id: 'r',
             task_type: taskType,

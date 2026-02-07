@@ -39,7 +39,10 @@ vi.mock('ioredis', () => {
     ]),
     pipeline: vi.fn().mockReturnValue({
       xadd: vi.fn().mockReturnThis(),
-      exec: vi.fn().mockResolvedValue([[null, '1704067200000-0']]),
+      exec: vi.fn().mockResolvedValue([
+        [null, '1704067200000-0'],
+        [null, '1704067200000-1'],
+      ]),
     }),
   };
 
