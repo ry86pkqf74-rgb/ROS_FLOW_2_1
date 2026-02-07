@@ -8,7 +8,7 @@
 /**
  * Model tier classifications for cost-optimized routing
  */
-export type ModelTier = 'LOCAL' | 'NANO' | 'MINI' | 'FRONTIER';
+export type ModelTier = 'LOCAL' | 'NANO' | 'MINI' | 'FRONTIER' | 'CUSTOM';
 
 /**
  * AI task types that determine model tier selection
@@ -75,6 +75,7 @@ export interface AIRouterRequest {
   responseFormat?: 'text' | 'json';
   /** Override the tier selection */
   forceTier?: ModelTier;
+  workflowStage?: number;
   /** Metadata for tracking */
   metadata?: {
     userId?: string;
@@ -82,6 +83,8 @@ export interface AIRouterRequest {
     stageId?: number;
     workflowStep?: string;
     sessionId?: string;
+    projectId?: string;
+    runId?: string;
   };
 }
 
