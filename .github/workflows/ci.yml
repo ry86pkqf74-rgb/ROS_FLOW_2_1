@@ -128,13 +128,33 @@ jobs:
           timeout 60 bash -c 'until docker compose -f docker-compose.test.yml ps mockserver | grep -q "healthy"; do sleep 2; done'
           echo "All services healthy"
 
-      - name: Build packages
+      - name: Verify Docker service status
+        if: always()
+        run: |
+          echo "=== Docker service status ==="
+          docker compose -f docker-compose.test.yml ps
+
+      - name: Build packages (advisory)
+        id: build_packages
         run: pnpm run build:packages
+        continue-on-error: true
+
+      - name: Echo environment configuration
+        run: |
+          echo "=== Environment Configuration ==="
+          echo "DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test"
+          echo "REDIS_URL: redis://localhost:6380/0"
+          echo "WORKER_URL: http://localhost:8000"
+          echo "ORCHESTRATOR_URL: http://localhost:3001"
+          echo "MOCKSERVER_URL: http://localhost:1080"
+          echo "NO_NETWORK: true"
+          echo "NODE_ENV: test"
+          echo "ENV: test"
 
       - name: Start worker (background)
         run: |
           cd services/worker
-          python -m uvicorn app:app --host 0.0.0.0 --port 8000 &
+          python -m uvicorn app:app --host 0.0.0.0 --port 8000 > /tmp/worker.log 2>&1 &
           echo $! > worker.pid
         env:
           DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
@@ -146,7 +166,7 @@ jobs:
       - name: Start orchestrator (background)
         run: |
           cd services/orchestrator
-          node dist/index.js &
+          npx tsx index.ts > /tmp/orchestrator.log 2>&1 &
           echo $! > orchestrator.pid
         env:
           DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
@@ -159,16 +179,27 @@ jobs:
       - name: Wait for worker health
         run: |
           echo "Waiting for worker on http://localhost:8000/health..."
-          timeout 60 bash -c 'until curl -sf http://localhost:8000/health > /dev/null; do sleep 2; done'
-          echo "Worker is ready"
+          if ! timeout 60 bash -c 'until curl -sf http://localhost:8000/health > /dev/null; do sleep 2; done'; then
+            echo "❌ Worker health check failed after 60s"
+            echo "=== Last 200 lines of worker logs ==="
+            tail -n 200 /tmp/worker.log || echo "No worker logs found"
+            exit 1
+          fi
+          echo "✅ Worker is ready"
 
       - name: Wait for orchestrator health
         run: |
           echo "Waiting for orchestrator on http://localhost:3001/health..."
-          timeout 60 bash -c 'until curl -sf http://localhost:3001/health > /dev/null; do sleep 2; done'
-          echo "Orchestrator is ready"
+          if ! timeout 60 bash -c 'until curl -sf http://localhost:3001/health > /dev/null; do sleep 2; done'; then
+            echo "❌ Orchestrator health check failed after 60s"
+            echo "=== Last 200 lines of orchestrator logs ==="
+            tail -n 200 /tmp/orchestrator.log || echo "No orchestrator logs found"
+            exit 1
+          fi
+          echo "✅ Orchestrator is ready"
 
       - name: Run integration tests
+        id: integration_tests
         run: pnpm run test:integration
         env:
           DATABASE_URL: postgres://researchflow:researchflow@localhost:5433/researchflow_test
@@ -180,6 +211,18 @@ jobs:
           ENV: test
           NO_NETWORK: true
           CI: true
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker service logs (last 200 lines) ==="
+          docker compose -f docker-compose.test.yml logs --tail=200 || echo "Could not retrieve docker logs"
+          echo ""
+          echo "=== Worker logs (last 200 lines) ==="
+          tail -n 200 /tmp/worker.log || echo "No worker logs found"
+          echo ""
+          echo "=== Orchestrator logs (last 200 lines) ==="
+          tail -n 200 /tmp/orchestrator.log || echo "No orchestrator logs found"
 
       - name: Cleanup services
         if: always()
