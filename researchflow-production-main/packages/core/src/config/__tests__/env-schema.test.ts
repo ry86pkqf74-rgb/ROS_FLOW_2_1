@@ -15,6 +15,35 @@ describe('envSchema', () => {
   beforeEach(() => {
     // Save original environment
     process.env = { ...originalEnv };
+    
+    // Seed required env vars for CI if missing or invalid
+    if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.includes('://')) {
+      process.env.DATABASE_URL = 'postgresql://researchflow:researchflow@localhost:5432/researchflow_test';
+    }
+    process.env.POSTGRES_USER = process.env.POSTGRES_USER || 'researchflow';
+    process.env.POSTGRES_DB = process.env.POSTGRES_DB || 'researchflow_test';
+    
+    // Ensure passwords meet minimum length requirements (32 chars)
+    if (!process.env.POSTGRES_PASSWORD || process.env.POSTGRES_PASSWORD.length < 32) {
+      process.env.POSTGRES_PASSWORD = 'a'.repeat(32);
+    }
+    if (!process.env.REDIS_PASSWORD || process.env.REDIS_PASSWORD.length < 32) {
+      process.env.REDIS_PASSWORD = 'a'.repeat(32);
+    }
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+      process.env.JWT_SECRET = 'a'.repeat(32);
+    }
+    
+    // Delete API keys that exist but are empty (to allow optional behavior)
+    const apiKeys = [
+      'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'CLAUDE_API_KEY',
+      'XAI_API_KEY', 'CODEX_API_KEY', 'SOURCEGRAPH_API_KEY',
+      'FIGMA_API_KEY', 'NOTION_API_KEY', 'NCBI_API_KEY',
+      'SEMANTIC_SCHOLAR_API_KEY'
+    ];
+    apiKeys.forEach(key => {
+      if (process.env[key] === '') delete process.env[key];
+    });
   });
 
   afterEach(() => {
