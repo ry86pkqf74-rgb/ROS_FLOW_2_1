@@ -30,6 +30,8 @@ export interface AgentOutput {
     tokensUsed: number;
     phiDetected: boolean;
     processingTimeMs: number;
+    costUsd?: number;
+    error?: string;
   };
 }
 
