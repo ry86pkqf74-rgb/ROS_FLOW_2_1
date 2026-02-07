@@ -4,7 +4,12 @@ import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  plugins: [
+    tsconfigPaths({
+      root: '.',
+      projects: ['./tsconfig.json'],
+    }),
+  ],
   test: {
     globals: true,
     environment: 'node',
@@ -31,16 +36,6 @@ export default defineConfig({
       functions: 80,
       branches: 80,
       statements: 80,
-    },
-  },
-  resolve: {
-    alias: {
-      '@researchflow/core': fileURLToPath(new URL('./packages/core', import.meta.url)),
-      '@researchflow/ai-router': fileURLToPath(new URL('./packages/ai-router', import.meta.url)),
-      '@researchflow/phi-engine': fileURLToPath(new URL('./packages/phi-engine', import.meta.url)),
-      '@packages/core': fileURLToPath(new URL('./packages/core', import.meta.url)),
-      '@apps/api-node': fileURLToPath(new URL('./services/orchestrator', import.meta.url)),
-      '@apps/api-node/src': fileURLToPath(new URL('./services/orchestrator/src', import.meta.url)),
     },
   },
 });
