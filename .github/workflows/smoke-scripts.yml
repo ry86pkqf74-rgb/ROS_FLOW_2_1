@@ -29,7 +29,7 @@ jobs:
     name: Smoke RAG
     runs-on: ubuntu-latest
     if: >-
-      (github.event_name == 'workflow_dispatch' && !inputs.run_local_compose) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.run_local_compose != true)) ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     timeout-minutes: 5
     steps:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: smoke_rag
     if: >-
-      (github.event_name == 'workflow_dispatch' && !inputs.run_local_compose) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.run_local_compose != true)) ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     timeout-minutes: 10
     env:
@@ -94,7 +94,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Script | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|--------|--------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| smoke-rag.sh | ${{ job.status == 'success' && '✅ Pass' || '❌ Fail' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| smoke-rag.sh | ✅ Pass (previous job) |" >> "$GITHUB_STEP_SUMMARY"
           echo "| smoke-stage2.sh | ${{ steps.smoke_stage2.outcome == 'success' && '✅ Pass' || '❌ Fail' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Target:** \`${{ env.BASE_URL }}\`" >> "$GITHUB_STEP_SUMMARY"
