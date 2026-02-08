@@ -1,0 +1,31 @@
+{
+  "name": "Multilingual Literature Processor Agent",
+  "description": "Discovers, translates, analyzes, and synthesizes scientific literature across multiple languages. Bridges language barriers in academic research by making non-English scientific literature accessible and actionable for global research teams.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false,
+  "default_timeout_seconds": 300,
+  "supported_languages": [
+    "English",
+    "Chinese (Simplified)",
+    "Chinese (Traditional)",
+    "Japanese",
+    "Spanish",
+    "French",
+    "German",
+    "Portuguese",
+    "Korean",
+    "Russian",
+    "Arabic",
+    "Italian",
+    "Dutch",
+    "Polish"
+  ],
+  "capabilities": [
+    "multilingual_literature_search",
+    "scientific_translation",
+    "cross_language_synthesis",
+    "regional_database_access",
+    "citation_management",
+    "quality_assessment"
+  ]
+}
