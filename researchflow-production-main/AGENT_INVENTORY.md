@@ -505,6 +505,41 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - Validation: Preflight + smoke test hooks ✅
   - **Wiring Guide:** `docs/agents/dissemination-formatter/wiring.md` ⭐
 
+**NEW:** `agent-performance-optimizer` — Performance Optimizer Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
+- **Purpose:** Monitors and optimizes LLM/agent workflow metrics including latency, token costs, error rates. Provides actionable recommendations to reduce API costs by 20-30% and improve performance at enterprise scale.
+- **Architecture:** LangSmith multi-agent system with 2 specialized sub-workers (Optimization_Researcher, Cost_Benchmarker)
+- **Main Agent Capabilities:**
+  - Performance metrics collection & analysis (Google Sheets integration)
+  - Bottleneck identification across cost, latency, and error dimensions
+  - Alert threshold monitoring (error rate, cost spikes, P99 latency)
+  - Historical trend tracking and reporting
+  - Cost benchmarking across AI providers (OpenAI, Anthropic, Google, open-source)
+  - Automated report generation and archival to Google Docs
+  - Supports scheduled (cron) and on-demand analysis
+- **Sub-Workers:**
+  - `Optimization_Researcher`: Researches LLM optimization strategies, best practices, latency reduction techniques, prompt efficiency, caching approaches
+  - `Cost_Benchmarker`: Analyzes provider pricing, recommends cost-optimal model selections, calculates projected savings
+- **Analysis Framework:**
+  - **Cost Analysis**: Total API costs, cost per run, token usage breakdown, most expensive agents, cost trends
+  - **Latency Analysis**: P50/P90/P99 latency, distribution, slowest workflows, correlation with models/tokens
+  - **Error Analysis**: Error rates by type, retry patterns, cascading failures
+  - **Performance Optimization**: Caching opportunities, batch processing, model tier optimization, prompt efficiency
+- **Alert Thresholds:**
+  - CRITICAL: Error rate >10%, Cost spike >50% day-over-day, P99 latency >30s
+  - WARNING: Error rate >5%, Cost increase >20% week-over-week, Avg latency increase >30%
+- **Tools:** Google Sheets (read/write/append/create), Google Docs (create/append/read), Web search (research)
+- **Integration:** Cross-cutting monitoring for all agents and workflow stages; independent operation with metrics input
+- **Output:** Performance reports (Google Docs), optimization tracking spreadsheet, chat summaries with recommendations
+- **Deployment:** LangSmith cloud agent (config-only, no local proxy required)
+- **Location:** `services/agents/agent-performance-optimizer/` (config, tools, subagents)
+- **Documentation:** `AGENTS.md`, `config.json`, `tools.json`, `subagents/*/AGENTS.md`
+- **Task Type:** `PERFORMANCE_OPTIMIZATION` (stage 0 - cross-cutting monitoring)
+- **Environment Variables:**
+  - `LANGSMITH_API_KEY` - LangSmith API access (optional for LangSmith-hosted execution)
+  - `GOOGLE_SHEETS_API_KEY` - For metrics reading/writing (optional)
+  - `GOOGLE_DOCS_API_KEY` - For report generation (optional)
+- **Status:** ✅ **IMPORTED** (2026-02-08) | Configuration files ready | Awaiting deployment integration
+
 ---
 
 ## 2. WORKFLOW STAGE AGENTS (Worker Service)
