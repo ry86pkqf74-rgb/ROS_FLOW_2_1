@@ -940,8 +940,35 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     
     echo "[$agent_key] Testing task type: $TASK_TYPE"
     
+    # Initialize artifact variables
+    ARTIFACT_STATUS="unknown"
+    ARTIFACT_DISPATCH_STATUS="000"
+    ARTIFACT_ERROR=""
+    ARTIFACT_ROUTED_AGENT=""
+    
     if [ -z "$AUTH_HEADER" ]; then
       echo "  Skipping (AUTH_HEADER not set)"
+      ARTIFACT_STATUS="skipped"
+      ARTIFACT_ERROR="AUTH_HEADER not set"
+      
+      # Write skipped artifact
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
+      if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
+        cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
+{
+  "agentKey": "${agent_key}",
+  "validation_script": "stagewise-smoke.sh",
+  "timestamp": "${TIMESTAMP}",
+  "status": "${ARTIFACT_STATUS}",
+  "task_type": "${TASK_TYPE}",
+  "dispatch_http_status": "${ARTIFACT_DISPATCH_STATUS}",
+  "routed_agent": null,
+  "error": "${ARTIFACT_ERROR}"
+}
+ARTIFACT_EOF
+      fi
+      
       continue
     fi
     
@@ -952,20 +979,60 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
     _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
     
+    ARTIFACT_DISPATCH_STATUS="$_dispatch_code"
+    
     if [ "${_dispatch_code:0:1}" = "2" ]; then
       ROUTED_AGENT=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      ARTIFACT_ROUTED_AGENT="$ROUTED_AGENT"
       
       if [ "$ROUTED_AGENT" = "$agent_key" ]; then
         echo "  ✓ Router dispatch OK (routed to $agent_key)"
         AGENT_TESTS_PASSED=$((AGENT_TESTS_PASSED + 1))
+        ARTIFACT_STATUS="pass"
       else
         echo "  ✗ Router mismatch: expected $agent_key, got $ROUTED_AGENT"
         AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+        ARTIFACT_STATUS="fail"
+        ARTIFACT_ERROR="Router mismatch: expected $agent_key, got $ROUTED_AGENT"
       fi
     else
-      echo "  ✗ Router dispatch failed (HTTP $dispatch_code)"
+      echo "  ✗ Router dispatch failed (HTTP $_dispatch_code)"
       echo "  Response: $_dispatch_body"
       AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      ARTIFACT_STATUS="fail"
+      ARTIFACT_ERROR="Router dispatch failed: HTTP $_dispatch_code"
+    fi
+    
+    # Write artifact
+    TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+    mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || {
+      echo "  Warning: Could not create artifact directory - /data may not be mounted"
+      if [ "$ARTIFACT_STATUS" != "pass" ]; then
+        echo "  CRITICAL: Artifact write failed in CHECK_ALL_AGENTS=1 mode"
+        AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      fi
+    }
+    
+    if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
+      cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
+{
+  "agentKey": "${agent_key}",
+  "validation_script": "stagewise-smoke.sh",
+  "timestamp": "${TIMESTAMP}",
+  "status": "${ARTIFACT_STATUS}",
+  "task_type": "${TASK_TYPE}",
+  "dispatch_http_status": "${ARTIFACT_DISPATCH_STATUS}",
+  "routed_agent": $([ -n "$ARTIFACT_ROUTED_AGENT" ] && echo "\"$ARTIFACT_ROUTED_AGENT\"" || echo "null"),
+  "error": $([ -n "$ARTIFACT_ERROR" ] && echo "\"$ARTIFACT_ERROR\"" || echo "null")
+}
+ARTIFACT_EOF
+      if [ ! -f "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" ]; then
+        echo "  Warning: Failed to write artifact summary (permissions issue)"
+        if [ "$ARTIFACT_STATUS" != "pass" ]; then
+          echo "  CRITICAL: Artifact write failed in CHECK_ALL_AGENTS=1 mode"
+          AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+        fi
+      fi
     fi
     
     echo ""
