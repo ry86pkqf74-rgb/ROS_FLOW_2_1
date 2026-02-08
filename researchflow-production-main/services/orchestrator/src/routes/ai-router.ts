@@ -238,6 +238,8 @@ router.post(
       CLAIM_VERIFY: 'agent-verify',
       EVIDENCE_SYNTHESIS: 'agent-evidence-synthesis',
       CLINICAL_MANUSCRIPT_WRITE: 'agent-clinical-manuscript',
+      RESULTS_INTERPRETATION: 'agent-results-interpretation',
+      STATISTICAL_ANALYSIS: 'agent-results-interpretation',  // Alias for results interpretation
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {
