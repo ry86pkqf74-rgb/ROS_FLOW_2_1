@@ -1,0 +1,6 @@
+{
+  "name": "Journal Guidelines Cache Agent",
+  "description": "Manages a persistent cache of academic journal submission guidelines. Checks a Google Sheets cache before fetching fresh guidelines via web search, stores results with metadata and timestamps, and proactively refreshes stale entries (>30 days) on a daily schedule. Designed to cut redundant API calls and deliver instant responses for frequently requested journals.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

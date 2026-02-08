@@ -345,6 +345,8 @@ router.post(
       CLINICAL_BIAS_DETECTION: 'agent-bias-detection-proxy',
       DISSEMINATION_FORMATTING: 'agent-dissemination-formatter-proxy',
       PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer-proxy',
+      JOURNAL_GUIDELINES_CACHE: 'agent-journal-guidelines-cache-proxy',
+      COMPLIANCE_AUDIT: 'agent-compliance-auditor-proxy',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {
