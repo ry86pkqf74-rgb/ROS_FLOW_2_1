@@ -9,11 +9,11 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 14
+- **Microservice Agents (Docker):** 15
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 2 (Evidence Synthesis, Clinical Manuscript Writer)
+- **LangSmith Multi-Agent Systems:** 3 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -102,8 +102,8 @@ These are standalone FastAPI services running in Docker containers with health c
 | Agent | Port | Status | Purpose |
 |-------|------|--------|---------|
 | `agent-policy-review` | 8000 | ✅ Production | Governance compliance checks |
-| `agent-lit-triage` | 8000 | ✅ Production | AI-powered literature triage & prioritization |
-| `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis |
+| `agent-lit-triage` | 8000 | ✅ Production | AI-powered literature triage & prioritization (2026-02-07) |
+| `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis (deprecated, use agent-evidence-synthesis) |
 
 **Location:** `services/agents/agent-policy-review`, etc.  
 **Environment:** `GOVERNANCE_MODE=LIVE` or `DEMO`
@@ -328,12 +328,14 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-stage2-extract": "http://agent-stage2-extract:8000",
   "agent-stage2-synthesize": "http://agent-stage2-synthesize:8000",
   "agent-lit-retrieval": "http://agent-lit-retrieval:8000",
+  "agent-lit-triage": "http://agent-lit-triage:8000",
   "agent-policy-review": "http://agent-policy-review:8000",
   "agent-rag-ingest": "http://agent-rag-ingest:8000",
   "agent-rag-retrieve": "http://agent-rag-retrieve:8000",
   "agent-verify": "http://agent-verify:8000",
   "agent-intro-writer": "http://agent-intro-writer:8000",
-  "agent-methods-writer": "http://agent-methods-writer:8000"
+  "agent-methods-writer": "http://agent-methods-writer:8000",
+  "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000"
 }
 ```
 
@@ -554,11 +556,10 @@ healthcheck:
 
 ### 13.1 Stub Agents (Not Implemented)
 
-- `agent-stage2-synthesize` - Evidence synthesis
+- `agent-stage2-synthesize` - Evidence synthesis (deprecated, use agent-evidence-synthesis)
 - `agent-results-writer` - Results section writing
 - `agent-discussion-writer` - Discussion section writing
-- `agent-lit-triage` - Literature triage
-- `agent-evidence-synth` - Evidence synthesis
+- `agent-evidence-synth` - Evidence synthesis (deprecated, use agent-evidence-synthesis)
 
 ### 13.2 Missing Integrations
 
@@ -621,10 +622,91 @@ curl http://localhost:3001/api/agent-health/agent-stage2-lit
 - `PHI_SCAN_ENABLED` - PHI scanning toggle
 - `COMPOSIO_API_KEY` - Composio integration
 - `LANGSMITH_API_KEY` - LangChain tracing
+- `EXA_API_KEY` - Exa semantic search (for agent-lit-triage)
+- `TAVILY_API_KEY` - Tavily web search (for agent-evidence-synthesis)
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2025-02-06  
+**Document Version:** 1.1  
+**Last Updated:** 2025-02-07  
 **Maintained By:** ResearchFlow Platform Team
+
+---
+
+## APPENDIX C: Agent-Lit-Triage Quick Reference
+
+### Service Details
+- **Name:** `agent-lit-triage`
+- **Container:** `researchflow-agent-lit-triage`
+- **Internal URL:** `http://agent-lit-triage:8000`
+- **Health Endpoint:** `GET /health`
+- **Task Type:** `LIT_TRIAGE`
+
+### Environment Variables
+- `EXA_API_KEY` - Optional, for semantic search (mocks if not set)
+- `LANGCHAIN_API_KEY` - Optional, for LangSmith tracing
+- `LANGCHAIN_PROJECT` - Default: `researchflow-lit-triage`
+- `LANGCHAIN_TRACING_V2` - Default: `false`
+- `GOVERNANCE_MODE` - Default: `DEMO`
+- `LOG_LEVEL` - Default: `INFO`
+
+### API Endpoints
+1. **POST /agents/run/sync** - Synchronous triage execution
+   ```json
+   {
+     "request_id": "req-123",
+     "task_type": "LIT_TRIAGE",
+     "inputs": {
+       "query": "CAR-T therapy efficacy in lymphoma",
+       "date_range_days": 730,
+       "min_results": 15
+     }
+   }
+   ```
+
+2. **POST /agents/run/stream** - Streaming triage execution (SSE)
+
+3. **GET /health** - Health check
+   ```json
+   {"status": "ok"}
+   ```
+
+4. **GET /health/ready** - Readiness check
+   ```json
+   {"status": "ready"}
+   ```
+
+### Integration with Stage 2
+To enable triage in Stage 2 Literature Pipeline:
+1. Set `ENABLE_LIT_TRIAGE=true` in orchestrator environment
+2. Agent will be automatically called via router dispatch
+3. Results feed into screening/extraction pipeline
+
+### Validation Commands
+```bash
+# Check container health
+docker compose ps agent-lit-triage
+
+# View logs
+docker compose logs -f agent-lit-triage
+
+# Test health endpoint (internal network)
+docker compose exec agent-lit-triage curl -f http://localhost:8000/health
+
+# Test via orchestrator router
+curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_type": "LIT_TRIAGE",
+    "request_id": "test-001",
+    "mode": "DEMO",
+    "inputs": {
+      "query": "cancer immunotherapy"
+    }
+  }'
+```
+
+### Output Schema
+See `docs/schemas/agent-lit-triage-io.json` for complete input/output schemas.
 

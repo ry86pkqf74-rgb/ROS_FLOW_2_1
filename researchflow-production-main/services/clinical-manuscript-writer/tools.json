@@ -1,0 +1,97 @@
+{
+  "tools": [
+    {
+      "name": "google_docs_create_document",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_create_document"
+    },
+    {
+      "name": "google_docs_append_text",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_append_text"
+    },
+    {
+      "name": "google_docs_read_document",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_read_document"
+    },
+    {
+      "name": "google_docs_replace_text",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_replace_text"
+    },
+    {
+      "name": "google_sheets_get_spreadsheet",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_sheets_get_spreadsheet"
+    },
+    {
+      "name": "google_sheets_read_range",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_sheets_read_range"
+    },
+    {
+      "name": "google_sheets_create_spreadsheet",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_sheets_create_spreadsheet"
+    },
+    {
+      "name": "google_sheets_write_range",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_sheets_write_range"
+    },
+    {
+      "name": "google_sheets_append_rows",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_sheets_append_rows"
+    },
+    {
+      "name": "read_url_content",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "read_url_content"
+    },
+    {
+      "name": "tavily_web_search",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "tavily_web_search"
+    },
+    {
+      "name": "exa_web_search",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "exa_web_search"
+    },
+    {
+      "name": "gmail_draft_email",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "gmail_draft_email"
+    }
+  ],
+  "interrupt_config": {
+    "https://tools.langchain.com::google_docs_create_document::Agent Builder": false,
+    "https://tools.langchain.com::google_docs_append_text::Agent Builder": false,
+    "https://tools.langchain.com::google_docs_read_document::Agent Builder": false,
+    "https://tools.langchain.com::google_docs_replace_text::Agent Builder": false,
+    "https://tools.langchain.com::google_sheets_get_spreadsheet::Agent Builder": false,
+    "https://tools.langchain.com::google_sheets_read_range::Agent Builder": false,
+    "https://tools.langchain.com::google_sheets_create_spreadsheet::Agent Builder": false,
+    "https://tools.langchain.com::google_sheets_write_range::Agent Builder": false,
+    "https://tools.langchain.com::google_sheets_append_rows::Agent Builder": false,
+    "https://tools.langchain.com::read_url_content::Agent Builder": false,
+    "https://tools.langchain.com::tavily_web_search::Agent Builder": false,
+    "https://tools.langchain.com::exa_web_search::Agent Builder": false,
+    "https://tools.langchain.com::gmail_draft_email::Agent Builder": false
+  }
+}
