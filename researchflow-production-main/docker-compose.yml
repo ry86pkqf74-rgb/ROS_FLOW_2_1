@@ -244,9 +244,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379
-      # Support both naming conventions for backwards compatibility
-      - ARTIFACT_PATH=/data/artifacts
+      # Artifact/log paths: absolute /data/* for deployment (volume-mounted); do not bind-mount /app on server
       - ARTIFACTS_PATH=/data/artifacts
+      - ARTIFACT_PATH=/data/artifacts
+      - RESEARCHFLOW_ARTIFACTS_DIR=/data/artifacts
       - LOG_PATH=/data/logs
       - GOVERNANCE_MODE=LIVE
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -300,7 +301,7 @@ services:
     volumes:
       - shared-data:/data
       - projects-data:/data/projects
-      - ./services/worker:/app
+      # Do not bind-mount ./services/worker:/app on server deployments (breaks built image and permissions)
     networks:
       - backend  # Internal network only
     restart: unless-stopped
@@ -425,7 +426,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./services/collab:/app
+      # Do not bind-mount ./services/collab:/app on server (overwrites dist); use GHCR image as-is in production
       - /app/node_modules
       - ./packages:/app/packages
     networks:
