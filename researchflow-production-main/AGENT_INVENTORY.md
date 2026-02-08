@@ -31,10 +31,20 @@ These are standalone FastAPI services running in Docker containers with health c
 | `agent-stage2-screen` | 8000 | ✅ Production | Deduplication, inclusion/exclusion criteria | Via AI Bridge |
 | `agent-stage2-extract` | 8000 | ✅ Production | PICO extraction from papers | Via AI Bridge |
 | `agent-stage2-synthesize` | 8000 | 🚧 Stub | Synthesize evidence (not implemented) | Via AI Bridge |
+| `agent-evidence-synthesis` | 8015 | ✅ Production | GRADE-based evidence synthesis with conflict analysis | Via AI Bridge |
 
-**Location:** `services/agents/agent-stage2-*`  
+**Location:** `services/agents/agent-stage2-*`, `agent-evidence-synthesis`  
 **Integration:** All call orchestrator's AI Bridge for LLM inference  
 **Environment:** `AGENT_ENDPOINTS_JSON` in orchestrator
+
+**NEW:** `agent-evidence-synthesis` — Imported from LangSmith (2026-02-07)
+- PICO-based question decomposition
+- Systematic evidence retrieval (PubMed, Google Scholar, clinical registries)
+- GRADE quality evaluation (High/Moderate/Low/Very Low)
+- Conflict detection and multi-perspective analysis
+- Structured synthesis reports with methodology notes
+- Sub-workers: Evidence Retrieval Worker, Conflict Analysis Worker
+- Source: LangSmith Agent e22b2945-be8b-4745-9233-5b2651914483
 
 
 ### 1.2 RAG Pipeline Agents

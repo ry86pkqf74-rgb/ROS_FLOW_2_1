@@ -235,6 +235,7 @@ router.post(
       SECTION_WRITE_RESULTS: 'agent-results-writer',
       SECTION_WRITE_DISCUSSION: 'agent-discussion-writer',
       CLAIM_VERIFY: 'agent-verify',
+      EVIDENCE_SYNTHESIS: 'agent-evidence-synthesis',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

@@ -187,7 +187,7 @@ services:
       - INFERENCE_POLICY=cloud
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -846,6 +846,43 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # ===================
+  # Agent Evidence Synthesis - GRADE-based evidence synthesis with conflict analysis
+  # ===================
+  agent-evidence-synthesis:
+    build:
+      context: .
+      dockerfile: services/agents/agent-evidence-synthesis/Dockerfile
+    container_name: researchflow-agent-evidence-synthesis
+    restart: unless-stopped
+    environment:
+      - AI_BRIDGE_URL=http://orchestrator:3001
+      - GOVERNANCE_MODE=${GOVERNANCE_MODE:-DEMO}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - GOOGLE_DOCS_API_KEY=${GOOGLE_DOCS_API_KEY}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    ports:
+      - "8015:8000"  # External port for direct testing
+    networks:
+      - backend
+      - frontend  # For external API access (PubMed, web search)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
 
   # ===================
   # Vector Database for RAG (Phase 2)
