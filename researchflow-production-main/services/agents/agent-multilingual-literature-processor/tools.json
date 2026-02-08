@@ -1,0 +1,89 @@
+{
+  "tools": [
+    {
+      "name": "tavily_web_search",
+      "description": "General web search across multiple languages. Use for discovering papers in regional databases and validating translations.",
+      "parameters": {
+        "query": "Search query (automatically translated to target language)",
+        "search_depth": "basic or advanced",
+        "max_results": "Maximum number of results (default: 10)"
+      }
+    },
+    {
+      "name": "exa_web_search",
+      "description": "Semantic search for academic papers with language filtering. Preferred for scholarly content.",
+      "parameters": {
+        "query": "Research query",
+        "category": "Always use 'research paper' for academic content",
+        "num_results": "Number of results",
+        "use_autoprompt": "true for enhanced academic search"
+      }
+    },
+    {
+      "name": "read_url_content",
+      "description": "Extract full-text content from paper URLs. Handles multi-language PDFs and HTML.",
+      "parameters": {
+        "url": "Paper URL (journal page, preprint server, or direct PDF)"
+      }
+    },
+    {
+      "name": "google_docs_create_document",
+      "description": "Create formal multilingual literature review reports.",
+      "parameters": {
+        "title": "Document title with language annotation",
+        "body": "Full report content with translations"
+      }
+    },
+    {
+      "name": "google_docs_append_text",
+      "description": "Add translated content to existing reports.",
+      "parameters": {
+        "document_id": "Existing Google Doc ID",
+        "text": "Content to append"
+      }
+    },
+    {
+      "name": "google_sheets_create_spreadsheet",
+      "description": "Create structured data tables for cross-language literature comparison.",
+      "parameters": {
+        "title": "Spreadsheet title",
+        "sheets": "Sheet definitions"
+      }
+    },
+    {
+      "name": "google_sheets_write_range",
+      "description": "Write extracted paper data to sheets (titles, authors, abstracts, findings by language).",
+      "parameters": {
+        "spreadsheet_id": "Spreadsheet ID",
+        "range": "A1 notation range",
+        "values": "2D array of data"
+      }
+    },
+    {
+      "name": "google_sheets_append_rows",
+      "description": "Append discovered papers to cumulative literature database.",
+      "parameters": {
+        "spreadsheet_id": "Spreadsheet ID",
+        "sheet_name": "Sheet name",
+        "rows": "Array of rows to append"
+      }
+    },
+    {
+      "name": "gmail_send_email",
+      "description": "Distribute multilingual literature reports to research teams.",
+      "parameters": {
+        "to": "Recipient email addresses",
+        "subject": "Email subject",
+        "body": "Email body (plain text or HTML)",
+        "attachments": "Optional attachments"
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "notes": [
+    "Translation is performed natively by the agent using multilingual language model capabilities",
+    "No external translation API required — agent handles translation internally",
+    "For critical medical/scientific terms, agent cross-references with MeSH multilingual thesaurus",
+    "Regional database access via web search tools with language-specific queries"
+  ]
+}

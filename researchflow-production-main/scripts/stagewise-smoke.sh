@@ -33,6 +33,8 @@ CHECK_RESULTS_INTERPRETATION="${CHECK_RESULTS_INTERPRETATION:-0}"
 CHECK_COMPLIANCE_AUDITOR="${CHECK_COMPLIANCE_AUDITOR:-0}"
 # When set to "1", run optional Artifact Auditor check (LangSmith-based)
 CHECK_ARTIFACT_AUDITOR="${CHECK_ARTIFACT_AUDITOR:-0}"
+# When set to "1", run optional Multilingual Literature Processor check (LangSmith-based)
+CHECK_MULTILINGUAL_LITERATURE_PROCESSOR="${CHECK_MULTILINGUAL_LITERATURE_PROCESSOR:-0}"
 # When set to "1", run ALL optional agent checks
 CHECK_ALL_AGENTS="${CHECK_ALL_AGENTS:-0}"
 
@@ -866,6 +868,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
   CHECK_RESULTS_INTERPRETATION=1
   CHECK_COMPLIANCE_AUDITOR=1
   CHECK_ARTIFACT_AUDITOR=1
+  CHECK_MULTILINGUAL_LITERATURE_PROCESSOR=1
   
   # Load mandatory agent list
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -905,6 +908,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     ["agent-journal-guidelines-cache-proxy"]="JOURNAL_GUIDELINES_CACHE"
     ["agent-compliance-auditor-proxy"]="COMPLIANCE_AUDIT"
     ["agent-artifact-auditor-proxy"]="ARTIFACT_AUDIT"
+    ["agent-multilingual-literature-processor-proxy"]="MULTILINGUAL_LITERATURE_PROCESSING"
   )
   
   # Parse mandatory agents
@@ -1389,6 +1393,183 @@ ARTIFACT_SMOKE_EOF
   echo "Artifact Auditor Agent check complete (optional - does not block)"
 else
   echo "[15] Skipping Artifact Auditor check (set CHECK_ARTIFACT_AUDITOR=1 to enable)"
+fi
+
+# --- 16. Optional: Multilingual Literature Processor validation (LangSmith cloud integration)
+if [ "$CHECK_MULTILINGUAL_LITERATURE_PROCESSOR" = "1" ] || [ "$CHECK_MULTILINGUAL_LITERATURE_PROCESSOR" = "true" ]; then
+  echo "[16] Multilingual Literature Processor Agent Check (optional - LangSmith-based)"
+  
+  # 16a. Check LANGSMITH_API_KEY and agent ID are configured
+  echo "[16a] Checking LANGSMITH_API_KEY and agent ID configuration"
+  LANGSMITH_KEY_SET=false
+  MULTILINGUAL_AGENT_ID_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+    
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+      MULTILINGUAL_AGENT_ID_SET=true
+      echo "✓ LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID is configured"
+    else
+      echo "Warning: LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID not set"
+      echo "To enable: Add LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID=<uuid> to .env"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH configuration"
+  fi
+  
+  # 16b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[16b] POST /api/ai/router/dispatch (MULTILINGUAL_LITERATURE_PROCESSING)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"MULTILINGUAL_LITERATURE_PROCESSING","request_id":"smoke-test-multilingual","mode":"DEMO","inputs":{"query":"diabetes treatment","languages":["English","Spanish"]}}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-multilingual-literature-processor-proxy" ]; then
+        echo "✓ Correctly routed to agent-multilingual-literature-processor-proxy"
+      else
+        echo "Warning: Expected agent-multilingual-literature-processor-proxy, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[16b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 16c. Check proxy container health
+  echo "[16c] Checking proxy container health"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-multilingual-literature-processor-proxy"; then
+      echo "✓ agent-multilingual-literature-processor-proxy container is running"
+      
+      # Check health endpoint
+      PROXY_HEALTH=$(docker compose exec -T agent-multilingual-literature-processor-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$PROXY_HEALTH" | grep -q "ok"; then
+        echo "✓ Proxy health endpoint responding"
+      else
+        echo "Warning: Proxy health endpoint not responding"
+      fi
+    else
+      echo "Warning: agent-multilingual-literature-processor-proxy container not running"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check proxy container"
+  fi
+  
+  # 16d. Deterministic test with minimal fixture (no external network calls)
+  echo "[16d] Deterministic multilingual processing test (fixture-based)"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-multilingual-literature-processor-proxy"; then
+      # Create a minimal deterministic fixture for testing
+      FIXTURE_QUERY='diabetes management in elderly patients'
+      FIXTURE_LANGUAGES='["English"]'
+      
+      # Call proxy directly with minimal fixture (deterministic, no external API calls in DEMO mode)
+      _mlp_out=$(docker compose exec -T agent-multilingual-literature-processor-proxy sh -c "
+        curl -sS -w '\n%{http_code}' -X POST \
+          -H 'Content-Type: application/json' \
+          -d '{
+            \"task_type\":\"MULTILINGUAL_LITERATURE_PROCESSING\",
+            \"request_id\":\"smoke-multilingual-fixture\",
+            \"mode\":\"DEMO\",
+            \"inputs\":{
+              \"query\":\"$FIXTURE_QUERY\",
+              \"languages\":$FIXTURE_LANGUAGES,
+              \"output_language\":\"English\",
+              \"abstracts\":true
+            }
+          }' \
+          http://localhost:8000/agents/run/sync
+      " 2>/dev/null || echo -e "\n000")
+      _mlp_body=$(echo "$_mlp_out" | head -n -1)
+      _mlp_code=$(echo "$_mlp_out" | tail -n 1)
+      
+      if [ "${_mlp_code:0:1}" = "2" ]; then
+        MLP_OK=$(echo "$_mlp_body" | sed -n 's/.*"ok"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p' | head -1)
+        echo "✓ Multilingual processing completed (ok: $MLP_OK)"
+        
+        # Check for expected output fields
+        if echo "$_mlp_body" | grep -q "papers"; then
+          echo "✓ Response contains papers field"
+        else
+          echo "Warning: Response missing papers field"
+        fi
+        
+        if echo "$_mlp_body" | grep -q "translations\|synthesis"; then
+          echo "✓ Response contains processing results"
+        else
+          echo "Warning: Response missing processing results"
+        fi
+      else
+        echo "Warning: Multilingual processing call failed (code: $_mlp_code)"
+        echo "Response excerpt: $(echo "$_mlp_body" | head -c 200)"
+      fi
+    else
+      echo "Warning: agent-multilingual-literature-processor-proxy container not running, skipping fixture test"
+    fi
+  else
+    echo "Warning: Docker not available, cannot run fixture test"
+  fi
+  
+  # 16e. Validate artifacts directory structure
+  echo "[16e] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    mkdir -p /data/artifacts/validation/agent-multilingual-literature-processor-proxy 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/agent-multilingual-literature-processor-proxy" ]; then
+      # Write a minimal validation record
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/agent-multilingual-literature-processor-proxy/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/agent-multilingual-literature-processor-proxy/${TIMESTAMP}/summary.json" 2>/dev/null <<MULTILINGUAL_SMOKE_EOF
+{
+  "agentKey": "agent-multilingual-literature-processor-proxy",
+  "taskType": "MULTILINGUAL_LITERATURE_PROCESSING",
+  "timestamp": "${TIMESTAMP}",
+  "request": {
+    "query": "${FIXTURE_QUERY}",
+    "languages": ${FIXTURE_LANGUAGES},
+    "output_language": "English",
+    "mode": "DEMO"
+  },
+  "response_status": "${_mlp_code:-unknown}",
+  "ok": $([ "$MLP_OK" = "true" ] && echo "true" || echo "false"),
+  "error": $([ "${_mlp_code:0:1}" = "2" ] && echo "null" || echo "\"HTTP ${_mlp_code}\""),
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "multilingual_agent_id_set": ${MULTILINGUAL_AGENT_ID_SET},
+  "router_registered": true,
+  "proxy_container_running": $(docker ps --format "{{.Names}}" 2>/dev/null | grep -q "agent-multilingual-literature-processor-proxy" && echo "true" || echo "false"),
+  "latency_ms": "N/A",
+  "fixture_test": "deterministic_multilingual_query"
+}
+MULTILINGUAL_SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/agent-multilingual-literature-processor-proxy/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (literature reports go to Google Docs)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY + LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID"
+  echo "      Proxy container must be running and healthy for full integration"
+  echo "      Full integration test requires: Query → Multilingual Search → Translation → Synthesis"
+  
+  echo "Multilingual Literature Processor Agent check complete (optional - does not block)"
+else
+  echo "[16] Skipping Multilingual Literature Processor check (set CHECK_MULTILINGUAL_LITERATURE_PROCESSOR=1 to enable)"
 fi
 
 echo ""

@@ -44,3 +44,6 @@ agent-performance-optimizer-proxy
 agent-journal-guidelines-cache-proxy
 agent-compliance-auditor-proxy
 agent-artifact-auditor-proxy
+agent-multilingual-literature-processor-proxy
+agent-clinical-model-fine-tuner-proxy
+agent-hypothesis-refiner-proxy

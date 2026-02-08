@@ -1,0 +1,26 @@
+"""Configuration for Multilingual Literature Processor Proxy"""
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    """Proxy configuration settings"""
+    
+    # LangSmith Configuration
+    langsmith_api_key: str = ""
+    langsmith_api_url: str = "https://api.smith.langchain.com/api/v1"
+    langsmith_agent_id: str = ""  # Set via env: LANGSMITH_AGENT_ID=<assistant-id>
+    langsmith_timeout_seconds: float = 300.0  # 5 minutes for multilingual processing
+    
+    # Logging
+    log_level: str = "INFO"
+    
+    # Optional: LangSmith project for tracing
+    langchain_project: str = "researchflow-multilingual-literature-processor"
+    langchain_tracing_v2: bool = False
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+settings = Settings()
