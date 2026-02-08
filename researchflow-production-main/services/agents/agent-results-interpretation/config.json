@@ -1,0 +1,6 @@
+{
+  "name": "Results Interpretation Agent",
+  "description": "A general-purpose research results interpretation agent that analyzes data findings, assesses statistical significance, identifies potential biases, and produces structured reports. Specializes in healthcare/clinical research, social science/behavioral research, survey data, and scientific experiments. Delivers findings in chat and saves structured reports to Google Docs.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

@@ -13,7 +13,7 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 4 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter)
+- **LangSmith Multi-Agent Systems:** 5 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -137,6 +137,43 @@ These are standalone FastAPI services running in Docker containers with health c
 - **Evidence Ledger:** Maintains Google Sheets with Evidence Log, Data Quality, Compliance Audit
 - **Deployment:** Currently LangSmith-hosted (containerization planned)
 - **Source:** LangSmith Agent "Clinical Manuscript Writer" (see `services/agents/agent-clinical-manuscript/`)
+
+
+**NEW:** `agent-results-interpretation` — Results Interpretation Agent (Imported from LangSmith, 2026-02-08)
+- **Purpose:** Multi-domain research results interpretation with comprehensive analysis across clinical, social science, behavioral, and survey research
+- **Architecture:** LangSmith multi-agent system with 4 specialized sub-workers
+- **Main Agent Capabilities:**
+  - Structured interpretation covering 4 core sections (Findings, Statistical Assessment, Bias & Limitations, Implications)
+  - Multi-domain expertise (clinical trials, observational studies, surveys, behavioral research)
+  - Automated Google Docs report generation
+  - Quality scoring system (Clarity, Accuracy, Bias dimensions)
+  - Confidence rating system (High/Moderate/Low)
+  - Multiple input methods (direct data, Google Sheets, URLs, Google Docs)
+- **Sub-Workers:**
+  - `Literature_Research_Worker`: Deep literature search and benchmarking (PubMed, meta-analyses, established norms)
+  - `Methodology_Audit_Worker`: Study design and statistical methods audit with reporting standards compliance (CONSORT, STROBE, PRISMA)
+  - `Section_Draft_Worker`: Polished narrative section generation (300-500 words, evidence-grounded)
+  - `Draft_Refinement_Worker`: Quality assurance with 3-dimensional scoring and automatic revision loop (up to 3 iterations)
+- **Domain Skills:**
+  - `clinical-trials`: Clinical trial interpretation (RCTs, Phase I-IV, CONSORT compliance, efficacy metrics)
+  - `survey-analysis`: Survey and questionnaire data interpretation (response rates, sampling methodology, CHERRIES/CROSS standards)
+- **Workflow:**
+  - 8-step pipeline: Data Ingestion → Classification → Analysis → Worker Delegation → Section Drafting → Refinement → Chat Delivery → Google Docs Save
+  - Parallel processing for section drafting and refinement (minimizes latency)
+  - Strategic worker delegation (only when beneficial for quality)
+- **Report Structure:**
+  - Study Overview (type, domain, data types)
+  - Main Sections: Findings, Statistical Assessment, Bias & Limitations, Implications
+  - Optional Sections: Literature Context, Methodology Audit Summary
+  - Quality Scores Table (per section)
+  - Confidence Rating with rationale
+- **Tools:** Google Docs, Google Sheets, Tavily Web Search, URL content reader
+- **Integration:** 
+  - Upstream: Receives results from Stage 7-9 (Results stages), `agent-evidence-synthesis`
+  - Downstream: Feeds `agent-clinical-manuscript`, `Clinical_Study_Section_Drafter`, user dashboards
+- **Deployment:** Currently LangSmith-hosted (containerization planned)
+- **Stages:** 7, 8, 9 (Results Analysis, Synthesis, Refinement)
+- **Source:** LangSmith Agent (see `services/agents/agent-results-interpretation/`)
 
 
 ### 1.4 Governance & Policy Agents
