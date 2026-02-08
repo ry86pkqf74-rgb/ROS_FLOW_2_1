@@ -9,12 +9,12 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 22 (15 native + 7 LangSmith proxies)
+- **Microservice Agents (Docker):** 23 (15 native + 8 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 10 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache)
-- **LangSmith Proxy Services:** 7 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache)
+- **LangSmith Multi-Agent Systems:** 11 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor)
+- **LangSmith Proxy Services:** 8 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -400,7 +400,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - **Canonical Wiring Guide:** [`docs/agents/clinical-bias-detection/wiring.md`](docs/agents/clinical-bias-detection/wiring.md) ⭐ **PRIMARY REFERENCE**
   - **Agent Briefing:** `AGENT_BIAS_DETECTION_BRIEFING.md`
 
-**NEW:** `agent-compliance-auditor` — Compliance Auditor Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
+**NEW:** `agent-compliance-auditor` — Compliance Auditor Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
 - **Purpose:** Comprehensive regulatory compliance auditing system for health technology workflows. Continuously scans workflow logs, detects violations across multiple regulatory frameworks (HIPAA, IRB, EU AI Act, GDPR, FDA SaMD), assesses risks, and generates remediation action plans.
 - **Architecture:** LangSmith multi-agent system with 1 coordinator + 3 specialized sub-workers
 - **Main Agent (Compliance Auditor Coordinator):**
@@ -462,22 +462,32 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - **GitHub Repositories**: Source code compliance auditing
   - **Google Workspace**: Report generation and remediation tracking
   - **Monitoring Systems**: Can be triggered on-demand or scheduled
-- **Environment Variables:**
-  - `LANGSMITH_API_KEY` - LangSmith API access (required)
-  - `LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID` - Agent ID (when deployed via proxy)
-  - `GOOGLE_WORKSPACE_API_KEY` - For Sheets/Docs integration (required)
-  - `GITHUB_TOKEN` - For code scanning (required)
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-compliance-auditor-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `COMPLIANCE_AUDIT` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Ready for preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/agent-compliance-auditor-proxy/wiring.md` ⭐
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `LANGSMITH_COMPLIANCE_AUDITOR_TIMEOUT_SECONDS` - Request timeout (default: 300)
+  - `GOOGLE_WORKSPACE_API_KEY` - For Sheets/Docs integration (tool-level requirement)
+  - `GITHUB_TOKEN` - For code scanning (tool-level requirement)
   - `TAVILY_API_KEY` - For web research (optional)
-- **Status:** ✅ **IMPORTED** (2026-02-08) | 📋 **Pending Proxy Service Creation** | 📋 **Pending Orchestrator Integration**
-- **Location:** `services/agents/agent-compliance-auditor/` (config, subagents)
+- **Location:** `services/agents/agent-compliance-auditor/` (config, subagents), `services/agents/agent-compliance-auditor-proxy/` (proxy)
 - **Documentation:** 
   - **Agent Briefing:** `AGENT_COMPLIANCE_AUDITOR_BRIEFING.md` ⭐ **PRIMARY REFERENCE**
+  - **Wiring Guide:** `docs/agents/agent-compliance-auditor-proxy/wiring.md` ⭐
   - **Agent Definition:** `services/agents/agent-compliance-auditor/AGENTS.md`
   - **Configuration:** `services/agents/agent-compliance-auditor/config.json`
   - **Tools:** `services/agents/agent-compliance-auditor/tools.json`
   - **Sub-Workers:** `services/agents/agent-compliance-auditor/subagents/*/AGENTS.md`
-- **Future Deployment Path:** LangSmith cloud via local proxy adapter (pattern: `agent-compliance-auditor-proxy`)
-- **Future Task Type:** `COMPLIANCE_AUDIT` → `agent-compliance-auditor` (to be registered in orchestrator ai-router)
+  - **Proxy README:** `services/agents/agent-compliance-auditor-proxy/README.md`
+- **Task Type:** `COMPLIANCE_AUDIT` → `agent-compliance-auditor-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-compliance-auditor-proxy:8000`
 
   - **Proxy README:** `services/agents/agent-bias-detection-proxy/README.md`
   - **Agent Prompt:** `agents/Clinical_Bias_Detection_Agent/AGENTS.md`
@@ -914,7 +924,8 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-clinical-section-drafter": "http://agent-section-drafter-proxy:8000",
   "agent-peer-review-simulator": "http://agent-peer-review-simulator-proxy:8000",
   "agent-bias-detection": "http://agent-bias-detection-proxy:8000",
-  "agent-dissemination-formatter": "http://agent-dissemination-formatter-proxy:8000"
+  "agent-dissemination-formatter": "http://agent-dissemination-formatter-proxy:8000",
+  "agent-compliance-auditor": "http://agent-compliance-auditor-proxy:8000"
 }
 ```
 
@@ -1249,8 +1260,8 @@ curl http://localhost:3001/api/agent-health/agent-stage2-lit
 
 ---
 
-**Document Version:** 1.1  
-**Last Updated:** 2025-02-07  
+**Document Version:** 1.2  
+**Last Updated:** 2026-02-08  
 **Maintained By:** ResearchFlow Platform Team
 
 ---
