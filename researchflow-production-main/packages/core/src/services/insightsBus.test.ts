@@ -18,37 +18,45 @@ import {
 
 import { InsightsBus, getInsightsBus, shutdownInsightsBus } from './insightsBus';
 
+// Shared mock functions for global control
+const mockXinfo = vi.fn().mockResolvedValue([
+  'length', 100,
+  'first-entry', ['1704067200000-0', ['type', 'ai.invocation.completed']],
+  'last-entry', ['1704067300000-0', ['type', 'ai.invocation.completed']],
+  'groups', 1,
+]);
+const mockXadd = vi.fn().mockResolvedValue('1704067200000-0');
+const mockXrange = vi.fn().mockResolvedValue([]);
+
 // Mock ioredis
 vi.mock('ioredis', () => {
-  const mockRedis = {
-    on: vi.fn(),
-    ping: vi.fn().mockResolvedValue('PONG'),
-    quit: vi.fn().mockResolvedValue('OK'),
-    xadd: vi.fn().mockResolvedValue('1704067200000-0'),
-    xgroup: vi.fn().mockResolvedValue('OK'),
-    xreadgroup: vi.fn().mockResolvedValue(null),
-    xack: vi.fn().mockResolvedValue(1),
-    xrange: vi.fn().mockResolvedValue([]),
-    xpending: vi.fn().mockResolvedValue([]),
-    xclaim: vi.fn().mockResolvedValue([]),
-    xinfo: vi.fn().mockResolvedValue([
-      'length', 100,
-      'first-entry', ['1704067200000-0', ['type', 'ai.invocation.completed']],
-      'last-entry', ['1704067300000-0', ['type', 'ai.invocation.completed']],
-      'groups', 1,
-    ]),
-    pipeline: vi.fn().mockReturnValue({
+  class MockRedis {
+    on = vi.fn();
+    ping = vi.fn().mockResolvedValue('PONG');
+    quit = vi.fn().mockResolvedValue('OK');
+    xadd = mockXadd;
+    xgroup = vi.fn().mockResolvedValue('OK');
+    xreadgroup = vi.fn().mockResolvedValue(null);
+    xack = vi.fn().mockResolvedValue(1);
+    xrange = mockXrange;
+    xpending = vi.fn().mockResolvedValue([]);
+    xclaim = vi.fn().mockResolvedValue([]);
+    xinfo = mockXinfo;
+    pipeline = vi.fn().mockReturnValue({
       xadd: vi.fn().mockReturnThis(),
       exec: vi.fn().mockResolvedValue([
         [null, '1704067200000-0'],
         [null, '1704067200000-1'],
       ]),
-    }),
-  };
+    });
+
+    constructor() {
+      // Constructor can accept any arguments but doesn't use them in tests
+    }
+  }
 
   return {
-    Redis: vi.fn().mockImplementation(() => mockRedis),
-    default: vi.fn().mockImplementation(() => mockRedis),
+    default: MockRedis,
   };
 });
 
@@ -65,7 +73,11 @@ describe('InsightsBus', () => {
   });
 
   afterEach(async () => {
-    await bus.close();
+    if (bus) {
+      await bus.close().catch(() => {
+        // Ignore close errors in cleanup
+      });
+    }
   });
 
   describe('publish', () => {
@@ -110,9 +122,7 @@ describe('InsightsBus', () => {
     });
 
     it('should return null on publish failure', async () => {
-      const { Redis } = await import('ioredis');
-      const mockInstance = new Redis('redis://localhost:6379');
-      (mockInstance.xadd as any).mockRejectedValueOnce(new Error('Connection refused'));
+      mockXadd.mockRejectedValueOnce(new Error('Connection refused'));
 
       const failBus = new InsightsBus({ redisUrl: 'redis://localhost:6379' });
       const event = createAIInvocationEvent({
@@ -128,8 +138,7 @@ describe('InsightsBus', () => {
 
       const entryId = await failBus.publish(event);
 
-      // The mock doesn't actually fail in this test setup, but the error path is covered
-      expect(entryId).toBeDefined();
+      expect(entryId).toBeNull();
       await failBus.close();
     });
   });
@@ -177,9 +186,7 @@ describe('InsightsBus', () => {
     });
 
     it('should handle non-existent stream', async () => {
-      const { Redis } = await import('ioredis');
-      const mockInstance = new Redis('redis://localhost:6379');
-      (mockInstance.xinfo as any).mockRejectedValueOnce(new Error('no such key'));
+      mockXinfo.mockRejectedValueOnce(new Error('no such key'));
 
       const emptyBus = new InsightsBus({ redisUrl: 'redis://localhost:6379' });
       const info = await emptyBus.getStreamInfo();
@@ -202,9 +209,7 @@ describe('InsightsBus', () => {
 
   describe('replay', () => {
     it('should replay events from a given ID', async () => {
-      const { Redis } = await import('ioredis');
-      const mockInstance = new Redis('redis://localhost:6379');
-      (mockInstance.xrange as any).mockResolvedValueOnce([
+      mockXrange.mockResolvedValueOnce([
         ['1704067200000-0', [
           'type', 'ai.invocation.completed',
           'data', JSON.stringify(createAIInvocationEvent({
