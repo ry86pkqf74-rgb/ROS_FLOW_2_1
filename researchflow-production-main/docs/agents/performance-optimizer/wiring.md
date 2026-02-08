@@ -49,7 +49,7 @@ PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer',  // LangSmith-hosted pe
 
 | Variable | Example | Purpose |
 |----------|---------|---------|
-| `LANGSMITH_API_KEY` | `lsv2_pt_...` | LangSmith API authentication |
+| `LANGSMITH_API_KEY` | `<your-langsmith-api-key>` | LangSmith API authentication |
 | `LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID` | `<uuid>` | Agent ID from LangSmith |
 
 ### Optional
@@ -161,7 +161,7 @@ PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer',  // LangSmith-hosted pe
 2. **Update `.env`:**
 ```bash
 # Required
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID=<uuid-from-langsmith>
 
 # Optional

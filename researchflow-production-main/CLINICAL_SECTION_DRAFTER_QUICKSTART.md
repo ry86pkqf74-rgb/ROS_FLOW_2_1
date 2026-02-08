@@ -131,7 +131,7 @@ manuscript = await agent_clinical_manuscript.assemble(
 
 ```bash
 # LangSmith
-export LANGCHAIN_API_KEY=lsv2_pt_...
+export LANGCHAIN_API_KEY=<your-langsmith-api-key>
 export LANGSMITH_PROJECT=ResearchFlow-Production
 
 # External APIs (for sub-workers)

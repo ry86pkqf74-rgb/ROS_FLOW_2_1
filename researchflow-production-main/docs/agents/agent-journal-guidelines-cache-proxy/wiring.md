@@ -109,7 +109,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `LANGSMITH_API_KEY` | LangSmith API authentication | `lsv2_pt_...` |
+| `LANGSMITH_API_KEY` | LangSmith API authentication | `<your-langsmith-api-key>` |
 | `LANGSMITH_JOURNAL_GUIDELINES_CACHE_AGENT_ID` | Agent UUID from LangSmith | `12345678-90ab-cdef-1234-567890abcdef` |
 
 ### Optional (Proxy Service)
@@ -206,7 +206,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 2. **LangSmith Configuration:**
    - Ensure agent is deployed in LangSmith cloud
    - Obtain agent UUID from LangSmith UI (Settings → Agents)
-   - Have `LANGSMITH_API_KEY` ready (format: `lsv2_pt_...`)
+   - Have `LANGSMITH_API_KEY` ready (format: `<your-langsmith-api-key>`)
 
 ### Step 1: Update Environment Variables
 
@@ -220,7 +220,7 @@ LANGSMITH_JOURNAL_GUIDELINES_CACHE_AGENT_ID=<uuid-from-langsmith>
 # GOOGLE_SHEETS_SPREADSHEET_ID=<spreadsheet-id>
 
 # If not already present, add LangSmith API key
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 ```
 
 ### Step 2: Build and Deploy Proxy Service

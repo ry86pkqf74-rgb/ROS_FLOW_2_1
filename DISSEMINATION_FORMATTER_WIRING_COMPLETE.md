@@ -235,7 +235,7 @@ Return to caller
 Add to `/opt/researchflow/.env`:
 ```bash
 # Required (for proxy service)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid-from-langsmith>
 
 # Optional (for sub-workers)

@@ -56,7 +56,7 @@ The Journal Guidelines Cache Agent has been finalized and hardened to production
 - ✅ Quick reference commands
 
 ### Phase 6: CI Safety
-- ✅ No secrets committed (only placeholder examples like `lsv2_pt_...`)
+- ✅ No secrets committed (only placeholder examples like `<your-langsmith-api-key>`)
 - ✅ All examples use environment variable references
 - ✅ CI passes (gitleaks compliant)
 
@@ -128,7 +128,7 @@ LANGSMITH_JOURNAL_GUIDELINES_CACHE_AGENT_ID=<uuid-from-langsmith>
 # GOOGLE_SHEETS_SPREADSHEET_ID=<spreadsheet-id>
 
 # If not already present, add LangSmith API key
-# LANGSMITH_API_KEY=lsv2_pt_...
+# LANGSMITH_API_KEY=<your-langsmith-api-key>
 EOF
 
 # 4. Build and deploy
@@ -176,7 +176,7 @@ ls -lah /data/artifacts/validation/agent-journal-guidelines-cache-proxy/
 
 | Variable | Required | Example | Location |
 |----------|----------|---------|----------|
-| `LANGSMITH_API_KEY` | ✅ | `lsv2_pt_...` | `.env` on Hetzner |
+| `LANGSMITH_API_KEY` | ✅ | `<your-langsmith-api-key>` | `.env` on Hetzner |
 | `LANGSMITH_JOURNAL_GUIDELINES_CACHE_AGENT_ID` | ✅ | `12345678-90ab-...` | `.env` on Hetzner |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | ⚠️ Optional | `1BxiMVs0XRA5nFMd...` | `.env` on Hetzner |
 

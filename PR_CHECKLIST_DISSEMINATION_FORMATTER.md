@@ -162,7 +162,7 @@ Add to `/opt/researchflow/.env` on ROSflow2:
 
 ```bash
 # Required
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid-from-langsmith>
 
 # Optional (enhances functionality)

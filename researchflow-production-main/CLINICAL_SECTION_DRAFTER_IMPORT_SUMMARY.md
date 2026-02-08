@@ -209,7 +209,7 @@ draft = await clinical_section_drafter.draft(...)
 
 ### LangSmith (Required)
 ```bash
-export LANGCHAIN_API_KEY=lsv2_pt_...
+export LANGCHAIN_API_KEY=<your-langsmith-api-key>
 export LANGSMITH_PROJECT=ResearchFlow-Production
 export LANGSMITH_TRACING=true
 ```

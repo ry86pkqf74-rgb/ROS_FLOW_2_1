@@ -7,7 +7,7 @@
 ## Step 1: Get Your LangSmith Credentials
 
 1. Visit https://smith.langchain.com/settings
-2. Copy your API key (format: `lsv2_pt_...`)
+2. Copy your API key (format: `<your-langsmith-api-key>`)
 3. Find your agent UUIDs:
    - Results Interpretation Agent → copy UUID
    - Clinical Manuscript Writer Agent → copy UUID
@@ -21,7 +21,7 @@ Add to `/opt/researchflow/.env`:
 
 ```bash
 # LangSmith API key (shared)
-LANGSMITH_API_KEY=lsv2_pt_YOUR_KEY_HERE
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 
 # Agent IDs (unique per agent)
 LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=uuid-1

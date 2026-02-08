@@ -28,7 +28,7 @@ LangSmith is an observability platform from LangChain for tracing, evaluating, a
 
 \`\`\`bash
 # LangSmith
-export LANGSMITH_API_KEY='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'
+export LANGSMITH_API_KEY='<REDACTED_LANGSMITH_KEY>'
 export LANGSMITH_PROJECT='ROS FLOW'
 export LANGSMITH_TRACING_V2='true'
 export LANGCHAIN_TRACING_V2='true'
@@ -68,7 +68,7 @@ npm install langsmith
 \`\`\`python
 import os
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGSMITH_API_KEY"] = "lsv2_pt_..."
+os.environ["LANGSMITH_API_KEY"] = "<your-langsmith-api-key>"
 os.environ["LANGSMITH_PROJECT"] = "ROS FLOW"
 \`\`\`
 

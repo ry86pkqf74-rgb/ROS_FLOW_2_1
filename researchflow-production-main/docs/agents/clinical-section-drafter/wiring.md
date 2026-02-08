@@ -62,7 +62,7 @@ agent-section-drafter-proxy:
 
 ```bash
 # .env
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_SECTION_DRAFTER_AGENT_ID=<uuid>
 LANGSMITH_SECTION_DRAFTER_TIMEOUT_SECONDS=180  # 3 minutes (optional)
 ```

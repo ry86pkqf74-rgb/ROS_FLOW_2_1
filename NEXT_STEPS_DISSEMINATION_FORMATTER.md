@@ -100,7 +100,7 @@ git push origin chore/inventory-capture
 1. Get LangSmith Agent ID from https://smith.langchain.com/
    - Navigate to Dissemination Formatter agent
    - Copy the UUID from URL or settings
-2. Have your LangSmith API key ready (lsv2_pt_...)
+2. Have your LangSmith API key ready (<your-langsmith-api-key>)
 
 **Access to server:**
 - SSH credentials for ROSflow2
@@ -124,7 +124,7 @@ git pull --ff-only
 cat >> .env << 'ENV_EOF'
 
 # Dissemination Formatter Agent (LangSmith)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid-from-langsmith>
 
 # Optional: Enhance functionality

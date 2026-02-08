@@ -316,7 +316,7 @@ agent = ReleaseGuardianAgent()
 
 # Prepare release context
 context = {
-    "github_token": "ghp_...",
+    "github_token": "<your-github-token>",
     "repo_owner": "researchflow",
     "repo_name": "main",
     "branch": "main",

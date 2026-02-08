@@ -64,7 +64,7 @@ Three ResearchFlow agents are hosted on LangSmith cloud and accessed via local F
 
 You need:
 - **API Key** - Get from https://smith.langchain.com/settings
-  - Format: `lsv2_pt_...`
+  - Format: `<your-langsmith-api-key>`
 - **Agent IDs** - UUID for each agent (from LangSmith UI)
   - Results Interpretation: `<uuid>`
   - Clinical Manuscript Writer: `<uuid>`
@@ -76,7 +76,7 @@ Add to orchestrator `.env` file:
 
 ```bash
 # LangSmith API key (shared by all proxies)
-LANGSMITH_API_KEY=lsv2_pt_YOUR_KEY_HERE
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 
 # Agent IDs (unique per agent)
 LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=uuid-from-langsmith
@@ -433,7 +433,7 @@ source venv/bin/activate  # or: venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
 # 4. Set environment variables
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="uuid-from-langsmith"
 
 # 5. Run proxy

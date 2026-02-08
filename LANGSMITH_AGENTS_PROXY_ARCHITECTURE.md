@@ -284,7 +284,7 @@ docker compose ps agent-clinical-manuscript-proxy
 ```bash
 # Run proxy locally (no Docker)
 cd services/agents/agent-clinical-manuscript-proxy
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="uuid"
 uvicorn app.main:app --reload
 
@@ -383,7 +383,7 @@ agents/
 
 ```bash
 # Add to orchestrator .env
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_MANUSCRIPT_AGENT_ID=<uuid-from-langsmith>
 LANGSMITH_SECTION_DRAFTER_AGENT_ID=<uuid-from-langsmith>
 ```
@@ -457,7 +457,7 @@ async def test_proxy_execution(mocker):
 
 ```bash
 # Real LangSmith call (requires API key)
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="uuid"
 
 pytest tests/e2e/test_langsmith_proxies.py

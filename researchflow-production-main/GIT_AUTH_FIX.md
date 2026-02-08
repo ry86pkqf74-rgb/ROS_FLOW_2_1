@@ -95,7 +95,7 @@ unset GITHUB_TOKEN
 If the token is intentionally set for CI/CD, update it:
 ```bash
 # Generate new token at: https://github.com/settings/tokens
-export GITHUB_TOKEN="ghp_NEW_VALID_TOKEN_HERE"
+export GITHUB_TOKEN="<your-github-token>"
 ```
 
 ## Quick Reference

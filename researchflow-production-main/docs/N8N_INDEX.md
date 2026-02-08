@@ -274,7 +274,7 @@ N8N_MCP_SERVER_URL=https://loganglosser13.app.n8n.cloud/mcp-server/http
 N8N_MCP_TOKEN=eyJhbG... (JWT Token)
 
 # GitHub
-GITHUB_PAT=ghp_... (Personal Access Token)
+GITHUB_PAT=<your-github-token> (Personal Access Token)
 GITHUB_WEBHOOK_SECRET=whsec_... (Optional)
 
 # Notion

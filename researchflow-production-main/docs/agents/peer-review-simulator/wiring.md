@@ -104,7 +104,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 
 **Example:**
 ```bash
-LANGSMITH_API_KEY=lsv2_pt_abc123...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PEER_REVIEW_AGENT_ID=550e8400-e29b-41d4-a716-446655440000
 ```
 
@@ -144,7 +144,7 @@ git pull --ff-only
 
 # 3. Set environment variables
 cat >> .env <<EOF
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PEER_REVIEW_AGENT_ID=<uuid-from-langsmith>
 EOF
 
@@ -271,7 +271,7 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 **Fix:**
 ```bash
 # Add to .env
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 docker compose up -d --force-recreate agent-peer-review-simulator-proxy
 ```
 

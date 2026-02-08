@@ -179,7 +179,7 @@ const integration = createIntegration({
   tenantId: 'tenant-abc',
   provider: 'GITHUB',
   repoUrl: 'https://github.com/org/research-repo',
-  accessToken: 'ghp_xxx',
+  accessToken: '<your-github-token>',
   defaultBranch: 'main',
   autoSync: true,
   syncOnPublish: true,

@@ -32,7 +32,7 @@
 1. **Get LangSmith API Key**
    - Log in to https://smith.langchain.com/
    - Settings → API Keys → Create API Key
-   - Format: `lsv2_pt_...`
+   - Format: `<your-langsmith-api-key>`
 
 2. **Get Agent IDs** (3 UUIDs needed)
    - Results Interpretation Agent: `uuid-1`
@@ -60,7 +60,7 @@ nano .env
 Add these lines:
 ```bash
 # LangSmith API Configuration (shared by all proxies)
-LANGSMITH_API_KEY=lsv2_pt_YOUR_KEY_HERE
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 
 # Agent IDs (unique per agent - get from LangSmith UI)
 LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=uuid-1

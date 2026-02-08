@@ -48,7 +48,7 @@ PRD Page → Planner → PRD Fetcher → Parser → Issue Creator → Notion Upd
 ### Environment Variables
 ```bash
 NOTION_API_TOKEN=ntn_...          # Notion API token
-GITHUB_TOKEN=ghp_...              # GitHub personal access token
+GITHUB_TOKEN=<your-github-token>              # GitHub personal access token
 GITHUB_REPO=owner/repo            # GitHub repository
 OPENAI_API_KEY=sk_...             # OpenAI API key (for gpt-4o-mini)
 ```
@@ -59,7 +59,7 @@ from agents.spec_ops import create_spec_ops_agent
 
 agent = create_spec_ops_agent(
     notion_token="ntn_...",
-    github_token="ghp_...",
+    github_token="<your-github-token>",
     github_repo="owner/repo"
 )
 ```
@@ -74,7 +74,7 @@ from agents.spec_ops import create_spec_ops_agent
 # Create agent
 agent = create_spec_ops_agent(
     notion_token="ntn_...",
-    github_token="ghp_...",
+    github_token="<your-github-token>",
     github_repo="owner/repo"
 )
 
