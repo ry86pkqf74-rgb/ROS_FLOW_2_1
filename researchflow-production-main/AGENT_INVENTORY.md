@@ -14,7 +14,7 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
 - **LangSmith Multi-Agent Systems:** 13 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor)
-- **LangSmith Proxy Services:** 13 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor, Clinical Model Fine-Tuner, Hypothesis Refiner)
+- **LangSmith Proxy Services:** 14 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Resilience Architecture Advisor, Multilingual Literature Processor, Clinical Model Fine-Tuner, Hypothesis Refiner)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -653,6 +653,19 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **Internal URL:** `http://agent-artifact-auditor-proxy:8000`
 - **Validation:** Preflight checks LANGSMITH_API_KEY + LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID; smoke test validates router dispatch + proxy health + deterministic fixture audit (CHECK_ARTIFACT_AUDITOR=1)
 
+**NEW:** `agent-resilience-architecture-advisor` — Resilience Architecture Advisor Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
+- **Purpose:** Advises on resilience architecture patterns, PR resilience review, and architecture documentation. LangSmith multi-agent system with 3 subagents (Architecture_Doc_Builder, PR_Resilience_Reviewer, Resilience_Research_Worker).
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **WIRED**
+  - Proxy service: `agent-resilience-architecture-advisor-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `RESILIENCE_ARCHITECTURE` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - **Wiring Guide:** `docs/agents/agent-resilience-architecture-advisor-proxy/wiring.md` ⭐
+- **Environment Variables (Required):** `LANGSMITH_API_KEY`, `LANGSMITH_RESILIENCE_ARCHITECTURE_ADVISOR_AGENT_ID`
+- **Task Type:** `RESILIENCE_ARCHITECTURE` → `agent-resilience-architecture-advisor-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-resilience-architecture-advisor-proxy:8000`
+- **Validation:** Preflight + smoke test (CHECK_ALL_AGENTS=1)
+
 **NEW:** `agent-dissemination-formatter` — Dissemination Formatter Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
 - **Purpose:** Publication formatting agent that converts academic manuscripts into journal-specific, submission-ready formats. Handles LaTeX/Word formatting, citation style conversion, reference verification, cover letter drafting, and reviewer response formatting.
 - **Architecture:** LangSmith multi-agent system with 1 main agent + 5 specialized worker subagents
@@ -1167,6 +1180,7 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-journal-guidelines-cache-proxy": "http://agent-journal-guidelines-cache-proxy:8000",
       "agent-compliance-auditor-proxy": "http://agent-compliance-auditor-proxy:8000",
     "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000",
+    "agent-resilience-architecture-advisor-proxy": "http://agent-resilience-architecture-advisor-proxy:8000",
     "agent-clinical-model-fine-tuner-proxy": "http://agent-clinical-model-fine-tuner-proxy:8000",
     "agent-multilingual-literature-processor-proxy": "http://agent-multilingual-literature-processor-proxy:8000",
     "agent-hypothesis-refiner-proxy": "http://agent-hypothesis-refiner-proxy:8000"

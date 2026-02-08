@@ -19,6 +19,7 @@ export const ALLOWED_TASK_TYPES = [
   'MULTILINGUAL_LITERATURE_PROCESSING',
   'CLINICAL_MODEL_FINE_TUNING',
   'HYPOTHESIS_REFINEMENT',
+  'RESILIENCE_ARCHITECTURE',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -87,6 +88,10 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   HYPOTHESIS_REFINEMENT: {
     required: [],
     optional: ['research_question', 'hypothesis', 'context', 'constraints', 'variables', 'population', 'intervention', 'comparison', 'outcomes', 'study_design', 'citations', 'output_format'],
+  },
+  RESILIENCE_ARCHITECTURE: {
+    required: [],
+    optional: ['context', 'artifact_url', 'focus_area', 'output_format'],
   },
 };
 
