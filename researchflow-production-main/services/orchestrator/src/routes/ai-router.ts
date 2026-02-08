@@ -241,6 +241,8 @@ router.post(
       CLINICAL_SECTION_DRAFT: 'agent-clinical-section-drafter',  // LangSmith-hosted Results/Discussion drafter
       RESULTS_INTERPRETATION: 'agent-results-interpretation',
       STATISTICAL_ANALYSIS: 'agent-results-interpretation',  // Alias for results interpretation
+      PEER_REVIEW_SIMULATION: 'agent-peer-review-simulator',  // LangSmith-hosted peer review simulator (Stage 13)
+      CLINICAL_BIAS_DETECTION: 'agent-bias-detection',  // LangSmith-hosted bias detection (Stage 4b/7/9/14)
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

@@ -454,6 +454,73 @@ if docker ps >/dev/null 2>&1; then
             fi
         fi
         
+        # Peer Review Simulator Agent (LangSmith-based proxy for Stage 13)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Peer Review Simulator" "LANGSMITH_API_KEY configured"
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "PEER_REVIEW_SIMULATION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Peer Review Router" "task type registered"
+                else
+                    check_fail "Peer Review Router" "PEER_REVIEW_SIMULATION not found in ai-router.ts"
+                fi
+            else
+                check_warn "Peer Review Simulator" "LANGSMITH_API_KEY not set (optional: add to .env for Stage 13 comprehensive review)"
+            fi
+        fi
+        
+        # Clinical Bias Detection Agent (LangSmith-based proxy for Stage 4b/7/9/14)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Clinical Bias Detection" "LANGSMITH_API_KEY configured"
+                
+                # Check if LANGSMITH_BIAS_DETECTION_AGENT_ID is set
+                BIAS_AGENT_ID_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_BIAS_DETECTION_AGENT_ID:+SET}' 2>/dev/null || echo "")
+                if [ "$BIAS_AGENT_ID_SET" = "SET" ]; then
+                    check_pass "Bias Detection Agent ID" "configured"
+                else
+                    check_fail "Bias Detection Agent ID" "LANGSMITH_BIAS_DETECTION_AGENT_ID not set (required for bias detection)"
+                    echo ""
+                    echo -e "${YELLOW}Remediation:${NC}"
+                    echo "  1. Get Agent ID from LangSmith: https://smith.langchain.com/"
+                    echo "  2. Add to .env: LANGSMITH_BIAS_DETECTION_AGENT_ID=<uuid>"
+                    echo "  3. Recreate proxy: docker compose up -d --force-recreate agent-bias-detection-proxy"
+                    echo ""
+                fi
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_BIAS_DETECTION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Bias Detection Router" "task type registered"
+                else
+                    check_fail "Bias Detection Router" "CLINICAL_BIAS_DETECTION not found in ai-router.ts"
+                fi
+                
+                # Check if proxy container is running
+                if docker ps --format "{{.Names}}" | grep -q "agent-bias-detection-proxy"; then
+                    check_pass "Bias Detection Proxy" "container running"
+                    
+                    # Check proxy health
+                    PROXY_HEALTH=$(docker compose exec -T agent-bias-detection-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+                    if echo "$PROXY_HEALTH" | grep -q "ok"; then
+                        check_pass "Bias Detection Health" "proxy responding"
+                    else
+                        check_warn "Bias Detection Health" "health endpoint not responding"
+                    fi
+                else
+                    check_warn "Bias Detection Proxy" "container not running (may not be started yet)"
+                fi
+            else
+                check_warn "Clinical Bias Detection" "LANGSMITH_API_KEY not set (optional: add to .env for bias detection)"
+            fi
+        fi
+        
         # Other Stage 2 agents
         for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
             if docker ps --format "{{.Names}}" | grep -q "$agent"; then

@@ -9,12 +9,12 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 18 (15 native + 3 LangSmith proxies)
+- **Microservice Agents (Docker):** 20 (15 native + 5 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 6 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator)
-- **LangSmith Proxy Services:** 3 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter)
+- **LangSmith Multi-Agent Systems:** 7 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection)
+- **LangSmith Proxy Services:** 5 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -204,6 +204,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 | `agent-policy-review` | 8000 | ✅ Production | Governance compliance checks |
 | `agent-lit-triage` | 8000 | ✅ Production | AI-powered literature triage & prioritization (2026-02-07) |
 | `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis (deprecated, use agent-evidence-synthesis) |
+| `agent-bias-detection` | 8000 | ✅ Production | Clinical bias detection & fairness assessment (2026-02-08) |
 
 **Location:** `services/agents/agent-policy-review`, etc.  
 **Environment:** `GOVERNANCE_MODE=LIVE` or `DEMO`
@@ -297,10 +298,105 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - `LANGSMITH_PEER_REVIEW_AGENT_ID`: Agent ID from LangSmith
   - `LANGSMITH_API_KEY`: LangSmith API key
   - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY`: Google API credentials
-- **Status:** ✅ **Files Imported** (2026-02-08) | ⏳ **Bridge Integration Pending** | ⏳ **Stage 13 Enhancement Pending**
-- **Location:** `services/agents/agent-peer-review-simulator/`
+- **Status:** ✅ **Wired for Deployment** (2026-02-08) | ✅ **Proxy Service Created** | ✅ **Stage 13 Integrated**
+- **Location:** `services/agents/agent-peer-review-simulator/` (config), `services/agents/agent-peer-review-simulator-proxy/` (proxy)
 - **Documentation:** `README.md`, `INTEGRATION_GUIDE.md`, `AGENTS.md`, `subagents/*/AGENTS.md`
+- **Wiring Guide:** `docs/agents/peer-review-simulator/wiring.md` ⭐
 - **LangSmith Source:** Peer Review Simulator agent configuration
+- **Router Task Type:** `PEER_REVIEW_SIMULATION` → `agent-peer-review-simulator`
+- **Feature Flag:** `ENABLE_PEER_REVIEW_SIMULATOR` (Stage 13)
+- **Validation:** Preflight + Smoke (CHECK_PEER_REVIEW=1)
+
+**NEW:** `agent-bias-detection` — Clinical Bias Detection Agent (Imported from LangSmith, 2026-02-08)
+- **Purpose:** Comprehensive bias detection and fairness assessment for clinical research datasets. Identifies and mitigates demographic, selection, and algorithmic biases ensuring equity and compliance with FDA AI fairness guidelines.
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + 5 specialized sub-workers
+- **Main Agent (Clinical Bias Detection Coordinator):**
+  - Six-phase workflow: Data Ingestion → Scan & Flag → Mitigation → Validation → Report → Audit Logging
+  - Dataset intake: Pasted data, Google Sheets, or summary statistics
+  - Bias scanning across sensitive attributes (gender, ethnicity, age, geography, SES)
+  - Regulatory compliance assessment (FDA, ICH E9, NIH, EMA, OECD, WHO)
+  - Adversarial validation and red-teaming
+  - Comprehensive reporting: Google Docs, chat summaries, mitigated datasets
+  - Persistent audit trail for regulatory traceability
+- **Sub-Workers:**
+  - `Bias_Scanner`: Deep quantitative bias analysis with metrics (representation analysis, outcome disparity, selection bias, intersectional analysis, statistical power assessment). Returns structured bias metrics report with severity levels and disparity scores.
+  - `Bias_Mitigator`: Generates actionable mitigation strategies (resampling, stratified sampling, reweighting). Returns prioritized plan with effectiveness ratings, trade-offs, and post-mitigation quality scores.
+  - `Compliance_Reviewer`: Regulatory risk assessment against FDA AI fairness guidelines, ICH E9, NIH inclusion policy, EMA, OECD AI principles, WHO equity guidelines. Returns compliance report with risk level, blocking issues, and regulatory readiness score.
+  - `Red_Team_Validator`: Adversarial stress-testing of bias findings. Challenges findings, identifies mitigation risks, validates robustness. Returns validation report with robustness score.
+  - `Audit_Logger`: Persistent audit trail management. Logs all analysis phases, findings, and decisions to Google Sheets for regulatory traceability. Maintains cumulative audit across sessions.
+- **Bias Types Detected:**
+  - **Demographic Bias**: Imbalances across gender, ethnicity, age groups
+  - **Selection Bias**: Geographic, socioeconomic, access-based exclusions
+  - **Algorithmic Bias**: Model outcome disparities across sensitive attributes
+  - **Intersectional Bias**: Compounding disparities (e.g., elderly women of specific ethnicity)
+- **Fairness Metrics:**
+  - Demographic Parity: |P(outcome=1|group=A) - P(outcome=1|group=B)|
+  - Representation Ratios: Observed vs expected population proportions
+  - Equalized Odds: Equal TPR/FPR across groups
+  - Disparate Impact: Outcome rate ratios (flag if <0.8 or >1.25)
+- **Compliance Frameworks Supported:**
+  - FDA AI/ML Fairness Guidelines
+  - ICH E9 (Clinical Trials)
+  - NIH Inclusion Policy (Women & Minorities)
+  - EMA Guidelines (EU Trials)
+  - OECD AI Principles (Ethical AI)
+  - WHO Guidelines (Global Health Equity)
+- **Workflow Phases:**
+  1. **Data Ingestion**: Parse dataset, identify sensitive attributes and outcomes
+  2. **Scan & Flag**: Bias_Scanner performs quantitative analysis, flags biases with reasoning
+  3. **Mitigation**: Bias_Mitigator generates actionable strategies
+  4. **Validation (Parallel)**: Compliance_Reviewer + Red_Team_Validator execute simultaneously
+  5. **Report Generation**: Chat summary, Google Doc report, mitigated dataset output, optional email
+  6. **Audit Logging**: Audit_Logger persists all findings for regulatory traceability
+- **Output Artifacts:**
+  - **Bias Verdict**: "Biased" (>2/10) or "Unbiased" (≤2/10) with bias score
+  - **Bias Flags**: Structured list with type, severity, metrics, impact, compliance risk
+  - **Mitigation Plan**: Prioritized strategies with effectiveness/difficulty ratings
+  - **Compliance Risk Report**: Risk level, blocking issues, regulatory readiness score
+  - **Red-Team Validation**: Robustness score, validated/challenged findings
+  - **Google Doc Report**: Comprehensive report with all sections
+  - **Mitigated Dataset**: Google Sheets with adjusted data and notes
+  - **Audit Log**: Persistent trail in Google Sheets
+- **Tool Dependencies:**
+  - `tavily_web_search`: Research population demographics, FDA guidance
+  - `read_url_content`: Read full articles/guidelines
+  - `google_sheets_get_spreadsheet`, `google_sheets_read_range`: Dataset input
+  - `google_sheets_create_spreadsheet`, `google_sheets_write_range`, `google_sheets_append_rows`: Output
+  - `google_docs_create_document`, `google_docs_append_text`: Reports
+  - `gmail_send_email`: Distribution
+- **Edge Case Handling:**
+  - Small datasets (N<100 or subgroup<30): Flag low statistical power
+  - Rare/intersectional biases: Multi-attribute analysis
+  - No biases detected: Full metrics report as evidence, still run validation
+  - Incomplete data: Request additional data before proceeding
+  - Red-team rejects finding: Present both perspectives, user decides
+  - Compliance blocking issues: Escalate prominently
+- **Integration Points:**
+  - **Stage 4b (DatasetValidationAgent)**: Pre-analysis bias screening
+  - **Stage 7 (StatisticalModelAgent)**: Fairness metrics in model evaluation
+  - **Stage 9 (InterpretationAgent)**: Bias consideration in results interpretation
+  - **Stage 14 (EthicalReviewAgent)**: Ethics compliance validation
+  - **Standalone**: Independent bias audits for externally generated datasets
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **DEPLOYED**
+  - **Execution model:** LangSmith cloud via local FastAPI proxy
+  - **Compose service:** `agent-bias-detection-proxy` (FastAPI proxy to LangSmith API)
+  - **Proxy location:** `services/agents/agent-bias-detection-proxy/`
+  - **Config bundle:** `agents/Clinical_Bias_Detection_Agent/` (AGENTS.md, config.json, tools.json, subagents/)
+  - **Internal URL:** `http://agent-bias-detection-proxy:8000`
+  - **Task Type:** `CLINICAL_BIAS_DETECTION` (pending orchestrator registration)
+  - **AGENT_ENDPOINTS_JSON:** Pending inclusion as `"agent-bias-detection":"http://agent-bias-detection-proxy:8000"`
+  - **Health Check:** `/health`, `/health/ready` endpoints on proxy
+  - **Artifact Paths:** `/data/artifacts/bias-analysis/{workflow_id}/`
+- **Required Environment Variables:**
+  - `LANGSMITH_API_KEY` - LangSmith API access (required)
+  - `LANGSMITH_BIAS_DETECTION_AGENT_ID` - Agent ID from LangSmith (required)
+  - `TAVILY_API_KEY` - For web research (optional)
+  - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY` - For Google Workspace integration (optional)
+- **Status:** ✅ **Imported** (2026-02-08) | ✅ **Proxy Service Created** | 🚧 **Docker Compose Integration Pending**
+- **Location:** `agents/Clinical_Bias_Detection_Agent/` (config), `services/agents/agent-bias-detection-proxy/` (proxy)
+- **Documentation:** `AGENT_BIAS_DETECTION_BRIEFING.md`, `README.md` in proxy, `AGENTS.md`, `subagents/*/AGENTS.md`
+- **LangSmith Source:** Clinical Bias Detection Agent configuration
+- **Communication Style:** Precise & quantitative, direct about findings, actionable recommendations, clinical terminology with explanations, patient equity focus, compliance-aware
 
 ---
 

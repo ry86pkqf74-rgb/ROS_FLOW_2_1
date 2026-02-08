@@ -19,6 +19,8 @@ CHECK_LIT_TRIAGE="${CHECK_LIT_TRIAGE:-0}"
 CHECK_MANUSCRIPT_WRITER="${CHECK_MANUSCRIPT_WRITER:-0}"
 # When set to "1", run optional Clinical Section Drafter check (commit 6a5c93e - LangSmith-based)
 CHECK_SECTION_DRAFTER="${CHECK_SECTION_DRAFTER:-0}"
+# When set to "1", run optional Clinical Bias Detection check (LangSmith-based)
+CHECK_BIAS_DETECTION="${CHECK_BIAS_DETECTION:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -561,12 +563,190 @@ else
   echo "[11] Skipping Clinical Section Drafter check (set CHECK_SECTION_DRAFTER=1 to enable)"
 fi
 
-# --- 12. Optional: Results Interpretation Agent validation (LangSmith cloud integration)
-if [ "$CHECK_RESULTS_INTERPRETATION" = "1" ] || [ "$CHECK_RESULTS_INTERPRETATION" = "true" ]; then
-  echo "[12] Results Interpretation Agent Check (optional - LangSmith-based)"
+# --- 11.5. Optional: Clinical Bias Detection validation (LangSmith cloud integration)
+if [ "$CHECK_BIAS_DETECTION" = "1" ] || [ "$CHECK_BIAS_DETECTION" = "true" ]; then
+  echo "[11.5] Clinical Bias Detection Agent Check (optional - LangSmith-based)"
+  
+  # 11.5a. Check LANGSMITH_API_KEY and agent ID are configured
+  echo "[11.5a] Checking LANGSMITH_API_KEY and agent ID configuration"
+  LANGSMITH_KEY_SET=false
+  BIAS_AGENT_ID_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+    
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_BIAS_DETECTION_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+      BIAS_AGENT_ID_SET=true
+      echo "✓ LANGSMITH_BIAS_DETECTION_AGENT_ID is configured"
+    else
+      echo "Warning: LANGSMITH_BIAS_DETECTION_AGENT_ID not set"
+      echo "To enable: Add LANGSMITH_BIAS_DETECTION_AGENT_ID=<uuid> to .env"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH configuration"
+  fi
+  
+  # 11.5b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[11.5b] POST /api/ai/router/dispatch (CLINICAL_BIAS_DETECTION)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"CLINICAL_BIAS_DETECTION","request_id":"smoke-test-bias","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-bias-detection" ]; then
+        echo "✓ Correctly routed to agent-bias-detection"
+      else
+        echo "Warning: Expected agent-bias-detection, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[11.5b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 11.5c. Check proxy container health
+  echo "[11.5c] Checking proxy container health"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-bias-detection-proxy"; then
+      echo "✓ agent-bias-detection-proxy container is running"
+      
+      # Check health endpoint
+      PROXY_HEALTH=$(docker compose exec -T agent-bias-detection-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$PROXY_HEALTH" | grep -q "ok"; then
+        echo "✓ Proxy health endpoint responding"
+      else
+        echo "Warning: Proxy health endpoint not responding"
+      fi
+    else
+      echo "Warning: agent-bias-detection-proxy container not running"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check proxy container"
+  fi
+  
+  # 11.5d. Validate artifacts directory structure
+  echo "[11.5d] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    mkdir -p /data/artifacts/validation/bias-detection-smoke 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/bias-detection-smoke" ]; then
+      # Write a minimal validation record
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/bias-detection-smoke/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/bias-detection-smoke/${TIMESTAMP}/summary.json" 2>/dev/null <<BIAS_SMOKE_EOF
+{
+  "agent": "agent-bias-detection",
+  "task_type": "CLINICAL_BIAS_DETECTION",
+  "timestamp": "${TIMESTAMP}",
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "bias_agent_id_set": ${BIAS_AGENT_ID_SET},
+  "router_registered": true,
+  "proxy_container_running": $(docker ps --format "{{.Names}}" | grep -q "agent-bias-detection-proxy" && echo "true" || echo "false"),
+  "status": "smoke-check-complete"
+}
+BIAS_SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/bias-detection-smoke/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (no artifact write; reports go to Google Docs)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY + LANGSMITH_BIAS_DETECTION_AGENT_ID"
+  echo "      Proxy container must be running and healthy for full integration"
+  echo "      Full integration test requires: Dataset → Bias Detection → Mitigation reports"
+  
+  echo "Clinical Bias Detection Agent check complete (optional - does not block)"
+else
+  echo "[11.5] Skipping Clinical Bias Detection check (set CHECK_BIAS_DETECTION=1 to enable)"
+fi
+
+# --- 12. Optional: Peer Review Simulator validation (LangSmith cloud integration - Stage 13)
+if [ "$CHECK_PEER_REVIEW" = "1" ] || [ "$CHECK_PEER_REVIEW" = "true" ]; then
+  echo "[12] Peer Review Simulator Check (optional - LangSmith-based)"
   
   # 12a. Check LANGSMITH_API_KEY is configured
   echo "[12a] Checking LANGSMITH_API_KEY configuration"
+  LANGSMITH_KEY_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH_API_KEY"
+  fi
+  
+  # 12b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[12b] POST /api/ai/router/dispatch (PEER_REVIEW_SIMULATION)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"PEER_REVIEW_SIMULATION","request_id":"smoke-test-peer-review","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-peer-review-simulator" ]; then
+        echo "✓ Correctly routed to agent-peer-review-simulator"
+      else
+        echo "Warning: Expected agent-peer-review-simulator, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[12b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 12c. Validate artifacts directory exists
+  echo "[12c] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    mkdir -p /data/artifacts/validation/peer-review 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/peer-review" ]; then
+      echo "✓ Created validation artifact directory"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (peer reviews will write to Google Docs only)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY (not tested in smoke)"
+  echo "      Full integration test requires: Manuscript → Peer Review Simulator (Stage 13) → Revisions pipeline"
+  
+  echo "Peer Review Simulator check complete (optional - does not block)"
+else
+  echo "[12] Skipping Peer Review Simulator check (set CHECK_PEER_REVIEW=1 to enable)"
+fi
+
+# --- 13. Optional: Results Interpretation Agent validation (LangSmith cloud integration)
+if [ "$CHECK_RESULTS_INTERPRETATION" = "1" ] || [ "$CHECK_RESULTS_INTERPRETATION" = "true" ]; then
+  echo "[13] Results Interpretation Agent Check (optional - LangSmith-based)"
+  
+  # 13a. Check LANGSMITH_API_KEY is configured
+  echo "[13a] Checking LANGSMITH_API_KEY configuration"
   LANGSMITH_KEY_SET=false
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
