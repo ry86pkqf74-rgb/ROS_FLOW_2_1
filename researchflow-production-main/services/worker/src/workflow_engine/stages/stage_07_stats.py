@@ -573,6 +573,70 @@ class StatisticalModelAgent(BaseStageAgent):
             )
         super().__init__(bridge_config=bridge_config)
 
+    async def _run_bias_detection_stage7(self, context: StageContext, model_output: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Run bias detection agent for statistical model outputs (feature-flagged, non-blocking).
+        
+        Args:
+            context: Stage context
+            model_output: Model fitting results with coefficients and fit stats
+            
+        Returns:
+            Bias detection results or None if disabled/failed
+        """
+        try:
+            import httpx
+            
+            # Build model summary for bias detection
+            model_summary = model_output.get("model_summary", {})
+            coefficients = model_output.get("coefficients", [])
+            
+            dataset_summary = f"Statistical model: {model_summary.get('model_type', 'unknown')} with {len(coefficients)} predictors"
+            
+            # Call orchestrator AI router for bias detection
+            orchestrator_url = os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:3001")
+            service_token = os.getenv("WORKER_SERVICE_TOKEN", "")
+            
+            payload = {
+                "task_type": "CLINICAL_BIAS_DETECTION",
+                "request_id": f"{context.run_id}-stage7-bias",
+                "workflow_id": context.run_id,
+                "mode": context.config.get("mode", "DEMO"),
+                "inputs": {
+                    "dataset_summary": dataset_summary,
+                    "pasted_data": json.dumps(model_output, indent=2),
+                    "generate_report": True
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{orchestrator_url}/api/ai/router/dispatch",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {service_token}"}
+                )
+                
+                if response.status_code == 200:
+                    dispatch_result = response.json()
+                    
+                    # Write artifact
+                    from pathlib import Path as PathLib
+                    artifact_dir = PathLib(f"/data/artifacts/{context.run_id}/bias_detection/stage_7")
+                    artifact_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    report_path = artifact_dir / "report.json"
+                    with open(report_path, "w") as f:
+                        json.dump(dispatch_result, f, indent=2)
+                    
+                    logger.info(f"Bias detection artifact written to {report_path}")
+                    return dispatch_result
+                else:
+                    logger.warning(f"Bias detection dispatch failed: HTTP {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.warning(f"Bias detection error (non-blocking): {str(e)}")
+            return None
+
     def get_tools(self) -> List[Any]:
         """Get LangChain tools available to this stage."""
         if not LANGCHAIN_AVAILABLE:
@@ -1149,6 +1213,17 @@ Previous Agent Scratchpad:
         except Exception as e:
             logger.exception(f"Statistical modeling failed: {str(e)}")
             errors.append(f"Statistical modeling failed: {str(e)}")
+
+        # Feature-flagged: Optional bias detection in statistical modeling
+        if os.getenv("ENABLE_BIAS_DETECTION_STAGE7", "false").lower() == "true":
+            try:
+                bias_result = await self._run_bias_detection_stage7(context, output)
+                if bias_result:
+                    output["bias_detection"] = bias_result
+                    logger.info(f"Bias detection completed for stage 7: {bias_result.get('bias_verdict', 'N/A')}")
+            except Exception as e:
+                logger.warning(f"Bias detection failed (non-blocking): {str(e)}")
+                warnings.append(f"Bias detection unavailable: {str(e)}")
 
         return self.create_stage_result(
             context=context,

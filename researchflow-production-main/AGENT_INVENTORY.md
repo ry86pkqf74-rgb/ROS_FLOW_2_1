@@ -307,7 +307,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **Feature Flag:** `ENABLE_PEER_REVIEW_SIMULATOR` (Stage 13)
 - **Validation:** Preflight + Smoke (CHECK_PEER_REVIEW=1)
 
-**NEW:** `agent-bias-detection` — Clinical Bias Detection Agent (Imported from LangSmith, 2026-02-08)
+**NEW:** `agent-bias-detection` — Clinical Bias Detection Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED**
 - **Purpose:** Comprehensive bias detection and fairness assessment for clinical research datasets. Identifies and mitigates demographic, selection, and algorithmic biases ensuring equity and compliance with FDA AI fairness guidelines.
 - **Architecture:** LangSmith multi-agent system with 1 coordinator + 5 specialized sub-workers
 - **Main Agent (Clinical Bias Detection Coordinator):**
@@ -377,26 +377,32 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - **Stage 9 (InterpretationAgent)**: Bias consideration in results interpretation
   - **Stage 14 (EthicalReviewAgent)**: Ethics compliance validation
   - **Standalone**: Independent bias audits for externally generated datasets
-- **Deployment:** LangSmith cloud via local proxy adapter ✅ **DEPLOYED**
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **FULLY WIRED**
   - **Execution model:** LangSmith cloud via local FastAPI proxy
   - **Compose service:** `agent-bias-detection-proxy` (FastAPI proxy to LangSmith API)
   - **Proxy location:** `services/agents/agent-bias-detection-proxy/`
   - **Config bundle:** `agents/Clinical_Bias_Detection_Agent/` (AGENTS.md, config.json, tools.json, subagents/)
   - **Internal URL:** `http://agent-bias-detection-proxy:8000`
-  - **Task Type:** `CLINICAL_BIAS_DETECTION` (pending orchestrator registration)
-  - **AGENT_ENDPOINTS_JSON:** Pending inclusion as `"agent-bias-detection":"http://agent-bias-detection-proxy:8000"`
+  - **Task Type:** `CLINICAL_BIAS_DETECTION` ✅ **REGISTERED** in orchestrator ai-router
+  - **AGENT_ENDPOINTS_JSON:** ✅ Included as `"agent-bias-detection":"http://agent-bias-detection-proxy:8000"`
   - **Health Check:** `/health`, `/health/ready` endpoints on proxy
-  - **Artifact Paths:** `/data/artifacts/bias-analysis/{workflow_id}/`
+  - **Artifact Paths:** `/data/artifacts/<run>/bias_detection/<stage>/`
 - **Required Environment Variables:**
   - `LANGSMITH_API_KEY` - LangSmith API access (required)
   - `LANGSMITH_BIAS_DETECTION_AGENT_ID` - Agent ID from LangSmith (required)
+  - `LANGSMITH_BIAS_DETECTION_TIMEOUT_SECONDS` - Default: 300 (optional)
   - `TAVILY_API_KEY` - For web research (optional)
   - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY` - For Google Workspace integration (optional)
-- **Status:** ✅ **Imported** (2026-02-08) | ✅ **Proxy Service Created** | 🚧 **Docker Compose Integration Pending**
+- **Status:** ✅ **WIRED** (2026-02-08) | ✅ **Proxy Service Operational** | ✅ **Orchestrator Integrated** | ✅ **Validation Complete**
 - **Location:** `agents/Clinical_Bias_Detection_Agent/` (config), `services/agents/agent-bias-detection-proxy/` (proxy)
-- **Documentation:** `AGENT_BIAS_DETECTION_BRIEFING.md`, `README.md` in proxy, `AGENTS.md`, `subagents/*/AGENTS.md`
+- **Documentation:** 
+  - **Canonical Wiring Guide:** [`docs/agents/clinical-bias-detection/wiring.md`](docs/agents/clinical-bias-detection/wiring.md) ⭐ **PRIMARY REFERENCE**
+  - **Agent Briefing:** `AGENT_BIAS_DETECTION_BRIEFING.md`
+  - **Proxy README:** `services/agents/agent-bias-detection-proxy/README.md`
+  - **Agent Prompt:** `agents/Clinical_Bias_Detection_Agent/AGENTS.md`
 - **LangSmith Source:** Clinical Bias Detection Agent configuration
 - **Communication Style:** Precise & quantitative, direct about findings, actionable recommendations, clinical terminology with explanations, patient equity focus, compliance-aware
+- **Validation:** Preflight checks LANGSMITH_API_KEY + agent ID + task type registration; smoke test validates router dispatch + proxy health (CHECK_BIAS_DETECTION=1)
 
 ---
 

@@ -1,7 +1,9 @@
 """Stage 4b: Dataset Validation using Pandera
 Validates datasets using Pandera DataFrameSchema, catches SchemaErrors, generates validation reports."""
 
+import json
 import logging
+import os
 import pandas as pd
 import pandera as pa
 from pathlib import Path
@@ -53,6 +55,16 @@ class DatasetValidationAgent(BaseStageAgent):
             validation_result = self._validate_dataset(dataset_path, schema)
             
             output = {"validation_result": validation_result.__dict__}
+            
+            # Feature-flagged: Optional bias detection during dataset validation
+            if os.getenv("ENABLE_BIAS_DETECTION_STAGE4B", "false").lower() == "true":
+                try:
+                    bias_result = await self._run_bias_detection(context, dataset_path, validation_result)
+                    if bias_result:
+                        output["bias_detection"] = bias_result
+                        logger.info(f"Bias detection completed for stage 4b: {bias_result.get('bias_verdict', 'N/A')}")
+                except Exception as e:
+                    logger.warning(f"Bias detection failed (non-blocking): {str(e)}")
             
             status = "completed" if validation_result.valid_rows > 0 else "failed"
             return self.create_stage_result(context=context, status=status, output=output,
@@ -140,6 +152,67 @@ class DatasetValidationAgent(BaseStageAgent):
             col = str(error.column) if hasattr(error, 'column') and error.column else "general"
             column_issues.setdefault(col, []).append(str(error)[:200])
         return column_issues
+    
+    async def _run_bias_detection(self, context: StageContext, dataset_path: str, validation_result: ValidationResult) -> Optional[Dict[str, Any]]:
+        """Run bias detection agent (feature-flagged, non-blocking).
+        
+        Args:
+            context: Stage context
+            dataset_path: Path to validated dataset
+            validation_result: Pandera validation result
+            
+        Returns:
+            Bias detection results or None if disabled/failed
+        """
+        try:
+            import httpx
+            
+            # Build dataset summary for bias detection
+            dataset_summary = f"Clinical dataset with {validation_result.total_rows} rows, {len(validation_result.column_issues)} columns"
+            
+            # Call orchestrator AI router for bias detection
+            orchestrator_url = os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:3001")
+            service_token = os.getenv("WORKER_SERVICE_TOKEN", "")
+            
+            payload = {
+                "task_type": "CLINICAL_BIAS_DETECTION",
+                "request_id": f"{context.run_id}-stage4b-bias",
+                "workflow_id": context.run_id,
+                "mode": context.config.get("mode", "DEMO"),
+                "inputs": {
+                    "dataset_summary": dataset_summary,
+                    "sample_size": validation_result.total_rows,
+                    "generate_report": True
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{orchestrator_url}/api/ai/router/dispatch",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {service_token}"}
+                )
+                
+                if response.status_code == 200:
+                    dispatch_result = response.json()
+                    
+                    # Write artifact
+                    artifact_dir = Path(f"/data/artifacts/{context.run_id}/bias_detection/stage_4b")
+                    artifact_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    report_path = artifact_dir / "report.json"
+                    with open(report_path, "w") as f:
+                        json.dump(dispatch_result, f, indent=2)
+                    
+                    logger.info(f"Bias detection artifact written to {report_path}")
+                    return dispatch_result
+                else:
+                    logger.warning(f"Bias detection dispatch failed: HTTP {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.warning(f"Bias detection error (non-blocking): {str(e)}")
+            return None
     
     def get_tools(self) -> List[Any]:
         return []  # No external tools needed for pure data validation
