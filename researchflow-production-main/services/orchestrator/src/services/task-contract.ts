@@ -15,6 +15,7 @@ export const ALLOWED_TASK_TYPES = [
   'SECTION_WRITE_RESULTS',
   'SECTION_WRITE_DISCUSSION',
   'CLAIM_VERIFY',
+  'PERFORMANCE_OPTIMIZATION',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -67,6 +68,10 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   CLAIM_VERIFY: {
     required: ['claims'],
     optional: ['groundingPack', 'strictness'],
+  },
+  PERFORMANCE_OPTIMIZATION: {
+    required: [],
+    optional: ['metrics_spreadsheet_id', 'metrics_data', 'analysis_focus', 'time_period'],
   },
 };
 

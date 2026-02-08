@@ -1,0 +1,130 @@
+{
+  "routing": {
+    "default": "anthropic",
+    "rules": [
+      {
+        "condition": {
+          "taskType": "RESULTS_INTERPRETATION"
+        },
+        "provider": "langsmith",
+        "agent": "results-interpretation"
+      },
+      {
+        "condition": {
+          "taskType": "STATISTICAL_ANALYSIS"
+        },
+        "provider": "langsmith",
+        "agent": "results-interpretation"
+      },
+      {
+        "condition": {
+          "containsPHI": true
+        },
+        "provider": "anthropic",
+        "model": "claude-3-5-sonnet-20241022"
+      },
+      {
+        "condition": {
+          "requiresReasoning": true,
+          "complexity": "high"
+        },
+        "provider": "anthropic",
+        "model": "claude-3-opus-20240229"
+      }
+    ]
+  },
+  "providers": {
+    "cloud": {
+      "anthropic": {
+        "apiKey": "${ANTHROPIC_API_KEY}",
+        "endpoint": "https://api.anthropic.com/v1",
+        "defaultModel": "claude-3-5-sonnet-20241022"
+      },
+      "openai": {
+        "apiKey": "${OPENAI_API_KEY}",
+        "endpoint": "https://api.openai.com/v1",
+        "defaultModel": "gpt-4-turbo"
+      }
+    },
+    "local": {
+      "ollama": {
+        "endpoint": "http://localhost:11434",
+        "defaultModel": "llama3.2:3b"
+      }
+    }
+  },
+  "agents": {
+    "langsmith": {
+      "apiKey": "${LANGSMITH_API_KEY}",
+      "endpoint": "https://api.smith.langchain.com/v1/agents/invoke",
+      "agents": {
+        "results-interpretation": {
+          "name": "Results Interpretation Agent",
+          "description": "Multi-domain research results interpretation with worker delegation",
+          "stages": [7, 8, 9],
+          "task_types": ["RESULTS_INTERPRETATION", "STATISTICAL_ANALYSIS"],
+          "capabilities": ["clinical", "social_science", "behavioral", "survey"],
+          "workers": {
+            "literature_research": {
+              "name": "Literature_Research_Worker",
+              "purpose": "Deep literature search and benchmarking"
+            },
+            "methodology_audit": {
+              "name": "Methodology_Audit_Worker",
+              "purpose": "Study design and statistical methods audit"
+            },
+            "section_draft": {
+              "name": "Section_Draft_Worker",
+              "purpose": "Draft publication-quality report sections"
+            },
+            "draft_refinement": {
+              "name": "Draft_Refinement_Worker",
+              "purpose": "Quality assurance and section refinement"
+            }
+          },
+          "skills": {
+            "clinical_trials": {
+              "description": "CONSORT-compliant clinical trial interpretation",
+              "reporting_standards": ["CONSORT", "ICH-GCP"]
+            },
+            "survey_analysis": {
+              "description": "Survey data interpretation with response bias assessment",
+              "considerations": ["sampling_method", "response_rate", "social_desirability_bias"]
+            }
+          },
+          "output_format": {
+            "sections": ["findings", "statistical_assessment", "bias_limitations", "implications"],
+            "google_docs": true,
+            "quality_scores": true,
+            "confidence_rating": true
+          }
+        },
+        "transparency-monitor-agent": {
+          "name": "Transparency Monitor Agent",
+          "description": "Monitors AI model drift and performance",
+          "model": "claude-3-5-sonnet-20241022",
+          "stages": [20],
+          "task_types": ["TRANSPARENCY_MONITORING"]
+        }
+      }
+    },
+    "composio": {
+      "apiKey": "${COMPOSIO_API_KEY}",
+      "workflows": {},
+      "toolkits": {}
+    }
+  },
+  "faves": {
+    "thresholds": {
+      "psi": 0.2,
+      "kl_divergence": 0.1
+    },
+    "triggers": {
+      "onDriftDetected": [
+        "notify_team",
+        "generate_report",
+        "schedule_review"
+      ]
+    }
+  }
+}

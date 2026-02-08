@@ -632,29 +632,105 @@ Previous Agent Scratchpad:
         manuscript_payload = self._build_manuscript_payload(context)
         manuscript_text = self._build_manuscript_text(context)
 
-        # Bridge: peer-review
-        peer_review_result: Optional[Dict[str, Any]] = None
-        try:
-            peer_review_result = await self.call_manuscript_service(
-                "peer-review",
-                "simulateReview",
-                {
-                    "manuscriptId": context.job_id,
-                    "manuscript": manuscript_payload,
-                    "metadata": {
-                        "studyType": context.config.get("study_type", "observational"),
-                        "sampleSize": context.config.get("sample_size"),
-                        "hasEthicsApproval": context.config.get("has_ethics_approval"),
-                        "hasCOI": context.config.get("has_coi"),
+        # Check if LangSmith Peer Review Simulator should be used (Stage 13 enhancement)
+        enable_peer_review_simulator = context.config.get("ENABLE_PEER_REVIEW_SIMULATOR", False)
+        
+        if enable_peer_review_simulator:
+            # Use LangSmith Peer Review Simulator (comprehensive multi-persona review)
+            logger.info("Using LangSmith Peer Review Simulator for comprehensive review")
+            peer_review_result: Optional[Dict[str, Any]] = None
+            
+            try:
+                # Call AI router dispatch for PEER_REVIEW_SIMULATION
+                peer_review_result = await self.call_agent_dispatch(
+                    task_type="PEER_REVIEW_SIMULATION",
+                    request_id=f"{context.job_id}-peer-review",
+                    inputs={
+                        "manuscript": manuscript_payload,
+                        "personas": context.config.get("peer_review_personas", [
+                            "methodologist",
+                            "statistician",
+                            "ethics_reviewer",
+                            "domain_expert"
+                        ]),
+                        "study_type": context.config.get("study_type", "observational"),
+                        "enable_iteration": context.config.get("enable_peer_review_iteration", True),
+                        "max_cycles": context.config.get("max_peer_review_cycles", 3)
                     },
-                },
-            )
-        except Exception as e:
-            logger.warning(f"peer-review failed: {type(e).__name__}: {e}")
-            warnings.append(f"Peer review failed: {str(e)}. Proceeding without.")
+                    mode=context.governance_mode,
+                )
+                
+                if peer_review_result and peer_review_result.get("ok"):
+                    outputs = peer_review_result.get("outputs", {})
+                    output["peer_review_comprehensive"] = {
+                        "report": outputs.get("peer_review_report", {}),
+                        "checklists": outputs.get("checklists", []),
+                        "response_letter": outputs.get("response_letter"),
+                        "google_doc_url": outputs.get("google_doc_url"),
+                        "iterations": outputs.get("iterations", 1),
+                        "approved": outputs.get("approved", False),
+                        "metadata": outputs.get("metadata", {}),
+                    }
+                    logger.info(f"Peer Review Simulator completed: {outputs.get('iterations', 1)} iteration(s)")
+                    
+                    # Save artifacts
+                    if outputs.get("peer_review_report"):
+                        artifact_dir = f"/data/artifacts/{context.job_id}/stage_13/peer_review"
+                        import os
+                        os.makedirs(artifact_dir, exist_ok=True)
+                        
+                        # Save JSON report
+                        import json as json_module
+                        with open(f"{artifact_dir}/peer_review_report.json", "w") as f:
+                            json_module.dump(outputs.get("peer_review_report"), f, indent=2)
+                        
+                        # Save checklists
+                        if outputs.get("checklists"):
+                            with open(f"{artifact_dir}/checklists.json", "w") as f:
+                                json_module.dump(outputs.get("checklists"), f, indent=2)
+                        
+                        # Save response letter if available
+                        if outputs.get("response_letter"):
+                            with open(f"{artifact_dir}/response_letter.md", "w") as f:
+                                f.write(outputs.get("response_letter"))
+                        
+                        logger.info(f"Saved peer review artifacts to {artifact_dir}")
+                else:
+                    error_msg = peer_review_result.get("error", "Unknown error") if peer_review_result else "No response"
+                    logger.warning(f"Peer Review Simulator failed: {error_msg}")
+                    warnings.append(f"LangSmith peer review failed: {error_msg}. Falling back to standard review.")
+                    enable_peer_review_simulator = False  # Fall back to standard review
+                    
+            except Exception as e:
+                logger.error(f"Peer Review Simulator exception: {type(e).__name__}: {e}")
+                warnings.append(f"LangSmith peer review exception: {str(e)}. Falling back to standard review.")
+                enable_peer_review_simulator = False  # Fall back to standard review
+        
+        # Standard peer-review (bridge service) - used if simulator disabled or failed
+        if not enable_peer_review_simulator:
+            # Bridge: peer-review
+            peer_review_result: Optional[Dict[str, Any]] = None
+            try:
+                peer_review_result = await self.call_manuscript_service(
+                    "peer-review",
+                    "simulateReview",
+                    {
+                        "manuscriptId": context.job_id,
+                        "manuscript": manuscript_payload,
+                        "metadata": {
+                            "studyType": context.config.get("study_type", "observational"),
+                            "sampleSize": context.config.get("sample_size"),
+                            "hasEthicsApproval": context.config.get("has_ethics_approval"),
+                            "hasCOI": context.config.get("has_coi"),
+                        },
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"peer-review failed: {type(e).__name__}: {e}")
+                warnings.append(f"Peer review failed: {str(e)}. Proceeding without.")
 
-        if peer_review_result:
-            output["peer_review"] = peer_review_result
+            if peer_review_result:
+                output["peer_review"] = peer_review_result
 
         # Bridge: grammar-checker
         grammar_result: Optional[Dict[str, Any]] = None

@@ -1,0 +1,14 @@
+{
+  "name": "Performance Optimizer Agent",
+  "description": "Monitors agent workflow metrics (latency, token costs, error rates) and provides actionable optimization recommendations. Reads metrics from Google Sheets or chat input, analyzes performance bottlenecks, benchmarks model costs across providers, researches best practices, and delivers structured optimization reports archived to Google Docs. Features alert thresholds for critical issues, historical trend tracking, and supports both scheduled and on-demand analysis to help reduce API costs by 20-30% and improve agent performance at enterprise scale.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false,
+  "task_type": "PERFORMANCE_OPTIMIZATION",
+  "stage": 0,
+  "integration": {
+    "langsmith": {
+      "source": "custom_agent",
+      "imported_date": "2026-02-08"
+    }
+  }
+}

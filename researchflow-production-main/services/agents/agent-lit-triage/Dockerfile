@@ -10,6 +10,9 @@ COPY services/agents/agent-lit-triage/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY services/agents/agent-lit-triage/app /app/app
+COPY services/agents/agent-lit-triage/agent /app/agent
+COPY services/agents/agent-lit-triage/workers /app/workers
+COPY services/agents/agent-lit-triage/langsmith_export /app/langsmith_export
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

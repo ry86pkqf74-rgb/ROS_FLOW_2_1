@@ -1,0 +1,279 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Literature Triage Agent API Schema",
+  "description": "Request/response schema for agent-lit-triage (/agents/run/sync endpoint)",
+  "version": "1.0.0",
+  "definitions": {
+    "AgentTask": {
+      "type": "object",
+      "required": ["request_id", "task_type"],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this request"
+        },
+        "task_type": {
+          "type": "string",
+          "enum": ["LIT_TRIAGE"],
+          "description": "Must be 'LIT_TRIAGE' for this agent"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["DEMO", "LIVE"],
+          "description": "Governance mode (optional)"
+        },
+        "risk_tier": {
+          "type": "string",
+          "enum": ["PHI", "SENSITIVE", "NON_SENSITIVE"],
+          "description": "Risk classification (optional)"
+        },
+        "domain_id": {
+          "type": "string",
+          "description": "Domain identifier (optional)"
+        },
+        "inputs": {
+          "type": "object",
+          "required": ["query"],
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Research question or topic for literature search",
+              "examples": ["CAR-T therapy efficacy in lymphoma", "COVID-19 vaccine effectiveness"]
+            },
+            "date_range_days": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 730,
+              "description": "Number of days to look back for papers (default: 2 years)"
+            },
+            "min_results": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 15,
+              "description": "Minimum number of papers to retrieve"
+            },
+            "use_ai": {
+              "type": "boolean",
+              "default": true,
+              "description": "Use AI-powered triage (true) or legacy rule-based (false)"
+            }
+          }
+        },
+        "budgets": {
+          "type": "object",
+          "description": "Budget constraints (optional)"
+        }
+      }
+    },
+    "Paper": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Paper title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Paper abstract"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of author names"
+        },
+        "year": {
+          "type": "integer",
+          "description": "Publication year"
+        },
+        "journal": {
+          "type": "string",
+          "description": "Journal or venue name"
+        },
+        "doi": {
+          "type": "string",
+          "description": "Digital Object Identifier"
+        },
+        "pmid": {
+          "type": "string",
+          "description": "PubMed ID"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to full text or landing page"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source database (e.g., 'pubmed', 'exa')"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Composite relevance score (0-100)"
+        },
+        "tier": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "description": "Priority tier: 1 (Must Read), 2 (Should Read), 3 (Optional)"
+        },
+        "score_breakdown": {
+          "type": "object",
+          "properties": {
+            "recency": {
+              "type": "number",
+              "description": "Recency score (1-10, weight 20%)"
+            },
+            "relevance": {
+              "type": "number",
+              "description": "Keyword relevance score (weight 30%)"
+            },
+            "journal_impact": {
+              "type": "number",
+              "description": "Journal impact score (1-10, weight 20%)"
+            },
+            "author_reputation": {
+              "type": "number",
+              "description": "Author reputation score (weight 15%)"
+            },
+            "citations": {
+              "type": "number",
+              "description": "Citation impact score (weight 15%)"
+            }
+          }
+        }
+      }
+    },
+    "AgentResponse": {
+      "type": "object",
+      "required": ["ok", "request_id", "task_type", "outputs"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "Success indicator"
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Echo of request ID"
+        },
+        "task_type": {
+          "type": "string",
+          "enum": ["LIT_TRIAGE"],
+          "description": "Echo of task type"
+        },
+        "outputs": {
+          "type": "object",
+          "required": ["query", "papers", "stats"],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Echo of research query"
+            },
+            "executive_summary": {
+              "type": "string",
+              "description": "Executive summary of triage results"
+            },
+            "papers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Paper"
+              },
+              "description": "Ranked and prioritized papers"
+            },
+            "tier1_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of Tier 1 (Must Read) papers"
+            },
+            "tier2_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of Tier 2 (Should Read) papers"
+            },
+            "tier3_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of Tier 3 (Optional) papers"
+            },
+            "stats": {
+              "type": "object",
+              "required": ["found", "ranked"],
+              "properties": {
+                "found": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Total papers found"
+                },
+                "ranked": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Total papers ranked"
+                }
+              }
+            },
+            "markdown_report": {
+              "type": "string",
+              "description": "Formatted markdown report suitable for display"
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Non-fatal warnings or advisory messages"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "request": {
+        "request_id": "req-001",
+        "task_type": "LIT_TRIAGE",
+        "mode": "DEMO",
+        "inputs": {
+          "query": "CAR-T therapy efficacy in lymphoma",
+          "date_range_days": 730,
+          "min_results": 15
+        }
+      },
+      "response": {
+        "ok": true,
+        "request_id": "req-001",
+        "task_type": "LIT_TRIAGE",
+        "outputs": {
+          "query": "CAR-T therapy efficacy in lymphoma",
+          "executive_summary": "This literature triage identified 23 relevant papers...",
+          "papers": [
+            {
+              "title": "CAR-T cell therapy for relapsed lymphoma: A systematic review",
+              "abstract": "...",
+              "authors": ["Smith J", "Doe A"],
+              "year": 2024,
+              "journal": "New England Journal of Medicine",
+              "score": 92.5,
+              "tier": 1,
+              "pmid": "12345678",
+              "url": "https://pubmed.gov/12345678"
+            }
+          ],
+          "tier1_count": 6,
+          "tier2_count": 11,
+          "tier3_count": 6,
+          "stats": {
+            "found": 23,
+            "ranked": 23
+          },
+          "markdown_report": "# 📋 Literature Triage Report\n\n**Query**: CAR-T therapy efficacy in lymphoma\n..."
+        },
+        "warnings": []
+      }
+    }
+  ]
+}

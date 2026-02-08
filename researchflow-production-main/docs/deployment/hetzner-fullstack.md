@@ -164,6 +164,15 @@ SEMANTIC_SCHOLAR_API_KEY=
 NOTION_API_KEY=
 SOURCEGRAPH_API_KEY=
 
+# Evidence Synthesis Agent (commit 197bfcd - optional, enhances retrieval)
+TAVILY_API_KEY=
+GOOGLE_DOCS_API_KEY=
+
+# ============================================
+# Internal Service Auth (REQUIRED for Stage 2)
+# ============================================
+WORKER_SERVICE_TOKEN=<generate-with-openssl-rand-hex-32>
+
 # ============================================
 # Application Settings
 # ============================================
@@ -269,6 +278,9 @@ docker compose up -d
 # Stagewise smoke (staging only: enables dev-auth, mints JWT, runs stagewise-smoke.sh)
 ./scripts/hetzner-dev-auth-stagewise-runbook.sh
 # Or run smoke only if you already have a token: ACCESS_TOKEN=... ./scripts/hetzner-dev-auth-stagewise-runbook.sh 4
+
+# Optional: Test Evidence Synthesis Agent (commit 197bfcd)
+CHECK_EVIDENCE_SYNTH=1 DEV_AUTH=true ./scripts/stagewise-smoke.sh
 ```
 Expected: preflight checks PASS; stagewise smoke completes successfully.
 
@@ -738,6 +750,203 @@ docker compose up -d
 | Redis data | Cache and queue data | `redis-data` |
 
 **Note**: All `/data/*` paths are mounted to the `shared-data` volume, which is shared between orchestrator and worker services for artifact exchange.
+
+**Agent Artifacts:**
+
+Most agents (including Evidence Synthesis Agent, commit 197bfcd) do not write persistent artifacts to `/data` volumes. Instead, they return results inline via the agent contract (`AgentResponse.outputs`). The orchestrator/worker is responsible for capturing and persisting these results as needed.
+
+---
+
+## Agent Fleet Validation (Optional)
+
+### Evidence Synthesis Agent (Commit 197bfcd)
+
+The Evidence Synthesis Agent provides GRADE-based systematic evidence synthesis with conflict analysis.
+
+**Health Check:**
+```bash
+# Agent health
+curl http://localhost:8015/health
+# Expected: {"status":"ok"}
+
+# Router registration
+docker compose exec orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | jq . | grep evidence-synthesis
+# Expected: "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000"
+```
+
+**Direct Test:**
+```bash
+curl -X POST http://localhost:8015/agents/run/sync \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_type": "EVIDENCE_SYNTHESIS",
+    "request_id": "test-001",
+    "mode": "DEMO",
+    "inputs": {
+      "research_question": "Is aspirin effective for cardiovascular disease prevention?",
+      "max_papers": 5
+    }
+  }'
+```
+
+**Expected Response Fields:**
+- `executive_summary`: High-level synthesis
+- `evidence_table`: Array of studies with GRADE ratings
+- `overall_certainty`: High/Moderate/Low/Very Low
+- `synthesis_by_subquestion`: Detailed analysis
+- `conflicting_evidence`: Conflict detection results (if applicable)
+
+**Optional API Keys:**
+
+The agent works with stubs by default. For enhanced retrieval:
+```bash
+# Add to .env
+TAVILY_API_KEY=tvly-your-key-here
+GOOGLE_DOCS_API_KEY=your-key-here
+
+# Restart agent
+docker compose restart agent-evidence-synthesis
+```
+
+**See Also:**
+- [EVIDENCE_SYNTHESIS_INTEGRATION_GUIDE.md](../../EVIDENCE_SYNTHESIS_INTEGRATION_GUIDE.md)
+- [services/agents/agent-evidence-synthesis/README.md](../../services/agents/agent-evidence-synthesis/README.md)
+
+### Literature Triage Agent (Commit c1a42c1)
+
+The Literature Triage Agent provides AI-powered literature discovery, ranking, and prioritization for medical research queries.
+
+**Service Details:**
+- **Container:** `researchflow-agent-lit-triage`
+- **Internal URL:** `http://agent-lit-triage:8000`
+- **Task Type:** `LIT_TRIAGE`
+- **Router Registration:** Must be in `AGENT_ENDPOINTS_JSON`
+
+**Health Check:**
+```bash
+# Agent health (via docker exec - agent is internal-only)
+docker compose exec agent-lit-triage curl -f http://localhost:8000/health
+# Expected: {"status":"ok"}
+
+# Router registration
+docker compose exec orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | jq . | grep lit-triage
+# Expected: "agent-lit-triage": "http://agent-lit-triage:8000"
+```
+
+**Direct Test (via docker exec):**
+```bash
+docker compose exec agent-lit-triage sh -c '
+curl -X POST http://localhost:8000/agents/run/sync \
+  -H "Content-Type: application/json" \
+  -d '"'"'{
+    "task_type": "LIT_TRIAGE",
+    "request_id": "test-triage-001",
+    "mode": "DEMO",
+    "inputs": {
+      "query": "CAR-T cell therapy efficacy in lymphoma",
+      "date_range_days": 730,
+      "min_results": 10
+    }
+  }'"'"'
+'
+```
+
+**Expected Response Fields:**
+- `query`: Original research question (echoed)
+- `executive_summary`: AI-generated overview of triage results
+- `papers`: Array of ranked papers (Tier 1 → Tier 2 → Tier 3)
+- `tier1_count`: Must Read papers (score ≥ 75)
+- `tier2_count`: Should Read papers (score 50-74)
+- `tier3_count`: Optional papers (score < 50)
+- `stats`: Metadata (`found`, `ranked`)
+- `markdown_report`: Full markdown-formatted report
+
+**Scoring Model:**
+- **Recency** (20%): Publication date (1-10)
+- **Keyword Relevance** (30%): Query match
+- **Journal Impact** (20%): Venue reputation (NEJM=10, Lancet=10)
+- **Author Reputation** (15%): Institutional credentials
+- **Citation Count** (15%): Impact adjusted for recency
+- **Composite Score**: 0-100 scale
+
+**Required Environment Variables:**
+
+None required (agent works with mocks by default).
+
+**Optional Environment Variables (for enhanced functionality):**
+```bash
+# Add to .env
+EXA_API_KEY=your-exa-api-key-here          # For semantic search via Exa
+LANGCHAIN_API_KEY=your-langsmith-key-here  # For LangSmith tracing
+LANGCHAIN_PROJECT=researchflow-lit-triage  # Project name in LangSmith
+LANGCHAIN_TRACING_V2=true                  # Enable tracing
+
+# Restart agent
+docker compose restart agent-lit-triage
+```
+
+**Integration with Stage 2 Literature Pipeline:**
+
+The triage agent can be integrated into Stage 2 as an upstream discovery and prioritization layer:
+
+1. **Enable in Stage 2:** Set `ENABLE_LIT_TRIAGE=true` in orchestrator environment
+2. **Routing:** Agent is called automatically via orchestrator's AI router
+3. **Flow:** Query → Triage (search + rank) → Screening → Extraction → Synthesis
+4. **Output:** Ranked papers feed into screening/extraction agents
+
+**Router Dispatch Test:**
+```bash
+# Get auth token (dev mode)
+TOKEN=$(curl -sS -X POST http://127.0.0.1:3001/api/dev-auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-Dev-User-Id: test-user" | jq -r '.accessToken')
+
+# Dispatch via router
+curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_type": "LIT_TRIAGE",
+    "request_id": "router-test-001",
+    "mode": "DEMO",
+    "inputs": {
+      "query": "immunotherapy for melanoma"
+    }
+  }'
+
+# Expected: {"dispatch_type":"agent","agent_name":"agent-lit-triage",...}
+```
+
+**Validation Commands:**
+```bash
+# Container status
+docker compose ps agent-lit-triage
+
+# View logs
+docker compose logs -f agent-lit-triage
+
+# Run smoke test (from repo root)
+CHECK_LIT_TRIAGE=1 DEV_AUTH=true ./scripts/stagewise-smoke.sh
+```
+
+**JSON Schema:**
+
+See `docs/schemas/agent-lit-triage-io.json` for complete input/output JSON schema.
+
+**Troubleshooting:**
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Health check fails | Container not running | `docker compose up -d agent-lit-triage` |
+| Router dispatch fails | Missing from `AGENT_ENDPOINTS_JSON` | Check orchestrator env, verify JSON includes `"agent-lit-triage":"http://agent-lit-triage:8000"` |
+| Empty results | No EXA_API_KEY configured | Normal - agent returns mock results when key is not set |
+| Low-quality rankings | Missing API key | Set `EXA_API_KEY` for real semantic search |
+
+**See Also:**
+- [AGENT_INVENTORY.md](../../AGENT_INVENTORY.md) - Complete agent fleet reference
+- [services/agents/agent-lit-triage/README.md](../../services/agents/agent-lit-triage/README.md) - Agent-specific docs
+- [services/agents/agent-lit-triage/WORKFLOW_INTEGRATION.md](../../services/agents/agent-lit-triage/WORKFLOW_INTEGRATION.md) - Integration guide
+- [docs/schemas/agent-lit-triage-io.json](../schemas/agent-lit-triage-io.json) - JSON schema
 
 ---
 

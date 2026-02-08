@@ -461,6 +461,71 @@ class EthicalReviewAgent(BaseStageAgent):
         super().__init__(*args, **kwargs)
         self._prompt_template = _build_prompt_template()
 
+    async def _run_bias_detection_stage14(self, context: StageContext, ethics_output: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Run bias detection agent for ethical review (feature-flagged, non-blocking).
+        
+        Args:
+            context: Stage context
+            ethics_output: Ethics review results with criteria scores
+            
+        Returns:
+            Bias detection results or None if disabled/failed
+        """
+        try:
+            import httpx
+            
+            # Build ethics summary for bias detection
+            overall_score = ethics_output.get("overall_score", 0)
+            red_flags = ethics_output.get("red_flags", [])
+            dataset_summary = f"Ethical review: overall_score={overall_score}, red_flags={len(red_flags)}"
+            
+            # Call orchestrator AI router for bias detection
+            orchestrator_url = os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:3001")
+            service_token = os.getenv("WORKER_SERVICE_TOKEN", "")
+            
+            payload = {
+                "task_type": "CLINICAL_BIAS_DETECTION",
+                "request_id": f"{context.run_id}-stage14-bias",
+                "workflow_id": context.run_id,
+                "mode": context.config.get("mode", "DEMO"),
+                "inputs": {
+                    "dataset_summary": dataset_summary,
+                    "pasted_data": json.dumps({
+                        "criteria": ethics_output.get("criteria", []),
+                        "red_flags": red_flags[:5]
+                    }, indent=2),
+                    "generate_report": True
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{orchestrator_url}/api/ai/router/dispatch",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {service_token}"}
+                )
+                
+                if response.status_code == 200:
+                    dispatch_result = response.json()
+                    
+                    # Write artifact
+                    artifact_dir = os.path.join("/data/artifacts", context.run_id, "bias_detection", "stage_14")
+                    os.makedirs(artifact_dir, exist_ok=True)
+                    
+                    report_path = os.path.join(artifact_dir, "report.json")
+                    with open(report_path, "w") as f:
+                        json.dump(dispatch_result, f, indent=2)
+                    
+                    logger.info(f"Bias detection artifact written to {report_path}")
+                    return dispatch_result
+                else:
+                    logger.warning(f"Bias detection dispatch failed: HTTP {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.warning(f"Bias detection error (non-blocking): {str(e)}")
+            return None
+
     def get_tools(self) -> List[BaseTool]:
         return _build_ethics_tools({})
 
@@ -576,6 +641,17 @@ class EthicalReviewAgent(BaseStageAgent):
         # Governance-mode behavior
         if context.governance_mode == "DEMO":
             warnings.append("Running in DEMO mode; ethics evaluation may use defaults.")
+
+        # Feature-flagged: Optional bias detection in ethical review
+        if os.getenv("ENABLE_BIAS_DETECTION_STAGE14", "false").lower() == "true":
+            try:
+                bias_result = await self._run_bias_detection_stage14(context, output)
+                if bias_result:
+                    output["bias_detection"] = bias_result
+                    logger.info(f"Bias detection completed for stage 14: {bias_result.get('bias_verdict', 'N/A')}")
+            except Exception as e:
+                logger.warning(f"Bias detection failed (non-blocking): {str(e)}")
+                warnings.append(f"Bias detection unavailable: {str(e)}")
 
         status = "failed" if errors else "completed"
 

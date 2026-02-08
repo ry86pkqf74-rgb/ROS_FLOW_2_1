@@ -1,0 +1,6 @@
+{
+  "name": "Compliance Auditor",
+  "description": "A compliance auditor agent that continuously scans workflow logs for regulatory violations across HIPAA, IRB, EU AI Act, GDPR, and FDA SaMD frameworks. It extracts PHI-related events, assesses compliance risks, flags violations, suggests remediation actions, and monitors evolving regulations via web search. Logs can be ingested from Google Sheets or pasted directly in chat, and audit findings are delivered conversationally.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

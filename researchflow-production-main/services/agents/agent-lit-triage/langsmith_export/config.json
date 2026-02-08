@@ -1,0 +1,6 @@
+{
+  "name": "Literature Triage Agent",
+  "description": "A medical literature triage agent that searches for academic papers across the medical domain, ranks them using multi-criteria scoring (recency, citation count, keyword relevance, journal impact, and author reputation), and delivers a prioritized list of the most important papers with titles, abstracts, and priority scores.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

@@ -1,0 +1,130 @@
+{
+  "reportVersion": "1.0",
+  "generatedFrom": "repo",
+  "optionalZipArtifacts": "When rosflow-inventory.zip is provided, use compose.rendered.yml, env.redacted.by-container.txt, compose.ps.txt, compose.images.txt, logs.*.txt, orchestrator.health.json, orchestrator.openapi.json",
+  "dispatchAuth": {
+    "componentSettingAuthenticatedFalse": "service-auth middleware (services/orchestrator/src/middleware/service-auth.ts)",
+    "registeredIn": "services/orchestrator/index.ts app.use(serviceAuthMiddleware)",
+    "allowlistedPath": "POST /api/ai/router/dispatch",
+    "header": {
+      "name": "Authorization",
+      "format": "Bearer <WORKER_SERVICE_TOKEN>",
+      "addedBy": "Orchestrator BullMQ workflow-stages worker (services/orchestrator/src/services/workflow-stages/worker.ts)"
+    },
+    "tokenEnvVar": "WORKER_SERVICE_TOKEN",
+    "tokenConsumedBy": "orchestrator process"
+  },
+  "workerServiceToken": {
+    "inCompose": true,
+    "composeLocation": "docker-compose.yml orchestrator.service.environment",
+    "variable": "WORKER_SERVICE_TOKEN",
+    "valueSource": ".env (via env_file + environment substitution)",
+    "runtimeCheck": "docker compose exec -T orchestrator sh -c 'echo ${WORKER_SERVICE_TOKEN:+SET}' => SET if present"
+  },
+  "agents": [
+    {
+      "serviceName": "agent-stage2-lit",
+      "purpose": "Stage 2 literature review (tier selection, synthesis)",
+      "dependencies": ["chromadb", "SEMANTIC_SCHOLAR_API_KEY", "NCBI_API_KEY", "OLLAMA_URL (optional)"]
+    },
+    {
+      "serviceName": "agent-stage2-screen",
+      "purpose": "Deduplication, inclusion/exclusion, study-type tagging",
+      "dependencies": ["AI_BRIDGE_URL", "WORKER_SERVICE_TOKEN or AI_BRIDGE_TOKEN"]
+    },
+    {
+      "serviceName": "agent-stage2-extract",
+      "purpose": "PICO, endpoints, sample size, key results from papers",
+      "dependencies": ["AI_BRIDGE_URL", "WORKER_SERVICE_TOKEN"]
+    },
+    {
+      "serviceName": "agent-lit-retrieval",
+      "purpose": "Deterministic literature retrieval (e.g. PubMed)",
+      "dependencies": ["NCBI_API_KEY", "NCBI_EMAIL"]
+    },
+    {
+      "serviceName": "agent-rag-retrieve",
+      "purpose": "Chroma vector retrieval to GroundingPack",
+      "dependencies": ["CHROMADB_URL", "CHROMADB_AUTH_TOKEN", "OPENAI_API_KEY (optional)"]
+    },
+    {
+      "serviceName": "agent-policy-review",
+      "purpose": "Governance and compliance",
+      "dependencies": ["GOVERNANCE_MODE"]
+    },
+    {
+      "serviceName": "agent-rag-ingest",
+      "purpose": "Chunk, embed, write to Chroma",
+      "dependencies": ["CHROMADB_URL", "CHROMADB_AUTH_TOKEN", "OPENAI_API_KEY (optional)"]
+    },
+    {
+      "serviceName": "agent-verify",
+      "purpose": "Claim verification vs GroundingPack",
+      "dependencies": ["AI_BRIDGE_URL", "GOVERNANCE_MODE"]
+    },
+    {
+      "serviceName": "agent-intro-writer",
+      "purpose": "Section writer (intro); AI Bridge + evidence refs",
+      "dependencies": ["AI_BRIDGE_URL", "GOVERNANCE_MODE"]
+    },
+    {
+      "serviceName": "agent-methods-writer",
+      "purpose": "Section writer (methods)",
+      "dependencies": ["AI_BRIDGE_URL", "GOVERNANCE_MODE"]
+    }
+  ],
+  "taskTypeToAgent": {
+    "STAGE_2_LITERATURE_REVIEW": "agent-stage2-lit",
+    "STAGE2_SCREEN": "agent-stage2-screen",
+    "STAGE_2_EXTRACT": "agent-stage2-extract",
+    "STAGE2_EXTRACT": "agent-stage2-extract",
+    "STAGE2_SYNTHESIZE": "agent-stage2-synthesize",
+    "LIT_RETRIEVAL": "agent-lit-retrieval",
+    "POLICY_REVIEW": "agent-policy-review",
+    "RAG_INGEST": "agent-rag-ingest",
+    "RAG_RETRIEVE": "agent-rag-retrieve",
+    "SECTION_WRITE_INTRO": "agent-intro-writer",
+    "SECTION_WRITE_METHODS": "agent-methods-writer",
+    "SECTION_WRITE_RESULTS": "agent-results-writer",
+    "SECTION_WRITE_DISCUSSION": "agent-discussion-writer",
+    "CLAIM_VERIFY": "agent-verify"
+  },
+  "agentGaps": {
+    "inComposeButNotService": ["agent-stage2-synthesize appears in AGENT_ENDPOINTS_JSON but has no service in docker-compose.yml"],
+    "inCodeButNoComposeService": ["agent-results-writer", "agent-discussion-writer"],
+    "inCodeButNotInAgentEndpointsJson": ["agent-results-writer", "agent-discussion-writer"]
+  },
+  "langsmithHostedAgents": [
+    {
+      "agentName": "agent-results-interpretation",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["RESULTS_INTERPRETATION", "STATISTICAL_ANALYSIS"],
+      "inAgentEndpointsJson": false,
+      "dispatchStatus": "fails with AGENT_NOT_CONFIGURED",
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"],
+      "optionalEnv": ["GOOGLE_DOCS_API_KEY", "GOOGLE_SHEETS_API_KEY", "TAVILY_API_KEY"],
+      "canonicalDoc": "docs/agents/results-interpretation/wiring.md",
+      "validation": "CHECK_RESULTS_INTERPRETATION=1 in stagewise-smoke.sh"
+    },
+    {
+      "agentName": "agent-clinical-manuscript",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["CLINICAL_MANUSCRIPT_WRITE"],
+      "inAgentEndpointsJson": false,
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"]
+    },
+    {
+      "agentName": "agent-clinical-section-drafter",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["CLINICAL_SECTION_DRAFT"],
+      "inAgentEndpointsJson": false,
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"]
+    }
+  ]
+}

@@ -143,6 +143,67 @@ class InterpretationAgent(BaseStageAgent):
             )
         super().__init__(bridge_config=bridge_config)
 
+    async def _run_bias_detection_stage9(self, context: StageContext, interpretation_output: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Run bias detection agent for interpretation results (feature-flagged, non-blocking).
+        
+        Args:
+            context: Stage context
+            interpretation_output: Interpretation results with key findings
+            
+        Returns:
+            Bias detection results or None if disabled/failed
+        """
+        try:
+            import httpx
+            
+            # Build interpretation summary for bias detection
+            key_findings = interpretation_output.get("key_findings", [])
+            dataset_summary = f"Results interpretation with {len(key_findings)} key findings"
+            
+            # Call orchestrator AI router for bias detection
+            orchestrator_url = os.getenv("ORCHESTRATOR_INTERNAL_URL", "http://orchestrator:3001")
+            service_token = os.getenv("WORKER_SERVICE_TOKEN", "")
+            
+            payload = {
+                "task_type": "CLINICAL_BIAS_DETECTION",
+                "request_id": f"{context.run_id}-stage9-bias",
+                "workflow_id": context.run_id,
+                "mode": context.config.get("mode", "DEMO"),
+                "inputs": {
+                    "dataset_summary": dataset_summary,
+                    "pasted_data": json.dumps({"key_findings": key_findings[:10]}, indent=2),
+                    "generate_report": True
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{orchestrator_url}/api/ai/router/dispatch",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {service_token}"}
+                )
+                
+                if response.status_code == 200:
+                    dispatch_result = response.json()
+                    
+                    # Write artifact
+                    artifact_dir = os.path.join("/data/artifacts", context.run_id, "bias_detection", "stage_9")
+                    os.makedirs(artifact_dir, exist_ok=True)
+                    
+                    report_path = os.path.join(artifact_dir, "report.json")
+                    with open(report_path, "w") as f:
+                        json.dump(dispatch_result, f, indent=2)
+                    
+                    logger.info(f"Bias detection artifact written to {report_path}")
+                    return dispatch_result
+                else:
+                    logger.warning(f"Bias detection dispatch failed: HTTP {response.status_code}")
+                    return None
+                    
+        except Exception as e:
+            logger.warning(f"Bias detection error (non-blocking): {str(e)}")
+            return None
+
     def get_tools(self) -> List[Any]:
         """Get LangChain tools available to this stage."""
         if not LANGCHAIN_AVAILABLE:
@@ -451,6 +512,17 @@ Previous Agent Scratchpad:
         except Exception as e:
             logger.error(f"Error during interpretation: {str(e)}")
             errors.append(f"Interpretation failed: {str(e)}")
+
+        # Feature-flagged: Optional bias detection in result interpretation
+        if os.getenv("ENABLE_BIAS_DETECTION_STAGE9", "false").lower() == "true":
+            try:
+                bias_result = await self._run_bias_detection_stage9(context, output)
+                if bias_result:
+                    output["bias_detection"] = bias_result
+                    logger.info(f"Bias detection completed for stage 9: {bias_result.get('bias_verdict', 'N/A')}")
+            except Exception as e:
+                logger.warning(f"Bias detection failed (non-blocking): {str(e)}")
+                warnings.append(f"Bias detection unavailable: {str(e)}")
 
         status = "failed" if errors else "completed"
         return self.create_stage_result(

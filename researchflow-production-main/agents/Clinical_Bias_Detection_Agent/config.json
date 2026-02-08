@@ -1,0 +1,6 @@
+{
+  "name": "Clinical Bias Detection Agent",
+  "description": "A bias detection system for clinical research data that analyzes datasets for demographic, selection, and algorithmic biases. It follows a Scan → Flag → Mitigate workflow: scanning data for imbalances across sensitive attributes (e.g., gender, ethnicity, age), flagging detected biases with explanations and impact assessments, and suggesting mitigations such as resampling or stratified sampling. Outputs detailed reports in chat and Google Docs, with compliance awareness for FDA AI fairness guidelines.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

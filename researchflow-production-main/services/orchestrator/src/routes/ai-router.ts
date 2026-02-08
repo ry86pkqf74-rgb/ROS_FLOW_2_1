@@ -121,25 +121,121 @@ const DispatchRequestSchema = z.object({
   budgets: z.record(z.any()).optional(),
 });
 
-// Parse AGENT_ENDPOINTS_JSON at module initialization
-// Format: {"agent-stage2-lit": "http://agent-stage2-lit:8010", ...}
-const AGENT_ENDPOINTS_STATE: { endpoints: Record<string, string>; error?: string } = (() => {
+/**
+ * Parse and validate AGENT_ENDPOINTS_JSON at module initialization.
+ * Format: {"agent-stage2-lit": "http://agent-stage2-lit:8000", ...}
+ * This is the SINGLE SOURCE OF TRUTH for all agent routing.
+ * 
+ * Validation rules:
+ * 1. Must be valid JSON object
+ * 2. All values must be valid http:// or https:// URLs
+ * 3. All values must not have trailing slashes (normalized automatically)
+ */
+function getAgentEndpoints(): Record<string, string> {
   const envVar = process.env.AGENT_ENDPOINTS_JSON;
+  
   if (!envVar) {
-    console.warn('[ai-router] AGENT_ENDPOINTS_JSON not set, agent dispatch will fail');
-    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not set' };
+    throw new Error(
+      'AGENT_ENDPOINTS_JSON environment variable is missing. ' +
+      'Add it to docker-compose.yml orchestrator environment and restart.'
+    );
   }
+
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(envVar);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON must be a JSON object mapping agent names to URLs' };
-    }
-    return { endpoints: parsed as Record<string, string> };
+    parsed = JSON.parse(envVar);
   } catch (error) {
-    console.error('[ai-router] Failed to parse AGENT_ENDPOINTS_JSON:', error);
-    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not valid JSON' };
+    throw new Error(
+      `AGENT_ENDPOINTS_JSON is not valid JSON: ${error instanceof Error ? error.message : String(error)}. ` +
+      'Fix the JSON syntax in docker-compose.yml orchestrator environment.'
+    );
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(
+      'AGENT_ENDPOINTS_JSON must be a JSON object (e.g., {"agent-name":"http://..."}), ' +
+      `but got: ${typeof parsed}. Fix in docker-compose.yml orchestrator environment.`
+    );
+  }
+
+  const endpoints = parsed as Record<string, unknown>;
+  const invalidUrls: string[] = [];
+  const normalizedEndpoints: Record<string, string> = {};
+
+  for (const [agentKey, url] of Object.entries(endpoints)) {
+    if (typeof url !== 'string') {
+      invalidUrls.push(`${agentKey}: not a string (got ${typeof url})`);
+      continue;
+    }
+
+    // Validate URL format (must be http:// or https://)
+    if (!url.match(/^https?:\/\//)) {
+      invalidUrls.push(`${agentKey}: "${url}" (must start with http:// or https://)`);
+      continue;
+    }
+
+    // Normalize by trimming trailing slash
+    normalizedEndpoints[agentKey] = url.replace(/\/+$/, '');
+  }
+
+  if (invalidUrls.length > 0) {
+    throw new Error(
+      'AGENT_ENDPOINTS_JSON contains invalid URLs:\n' +
+      invalidUrls.map(err => `  - ${err}`).join('\n') +
+      '\nFix these entries in docker-compose.yml orchestrator environment.'
+    );
+  }
+
+  console.log(`[ai-router] ✓ Loaded ${Object.keys(normalizedEndpoints).length} agent endpoints from AGENT_ENDPOINTS_JSON`);
+  return normalizedEndpoints;
+}
+
+// Initialize agent endpoints at module load (fail-fast)
+const AGENT_ENDPOINTS_STATE: { endpoints: Record<string, string>; error?: string } = (() => {
+  try {
+    const endpoints = getAgentEndpoints();
+    return { endpoints };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[ai-router] CRITICAL:', errorMessage);
+    return { endpoints: {}, error: errorMessage };
   }
 })();
+
+/**
+ * Resolve agent base URL from AGENT_ENDPOINTS_JSON registry.
+ * 
+ * @param agentKey - The agent key to resolve (must match a key in AGENT_ENDPOINTS_JSON)
+ * @returns The base URL for the agent (without trailing slash)
+ * @throws Error with detailed remediation if agent is not configured
+ */
+function resolveAgentBaseUrl(agentKey: string): string {
+  // Check if registry is misconfigured
+  if (AGENT_ENDPOINTS_STATE.error) {
+    throw new Error(
+      `Agent registry is misconfigured: ${AGENT_ENDPOINTS_STATE.error}\n` +
+      'Fix AGENT_ENDPOINTS_JSON in docker-compose.yml orchestrator environment and restart.'
+    );
+  }
+
+  const url = AGENT_ENDPOINTS_STATE.endpoints[agentKey];
+  if (!url) {
+    const availableKeys = Object.keys(AGENT_ENDPOINTS_STATE.endpoints);
+    const sortedKeys = availableKeys.sort();
+    
+    throw new Error(
+      `Missing agent endpoint for key: ${agentKey}\n\n` +
+      `Available agents (${availableKeys.length}):\n` +
+      sortedKeys.map(k => `  - ${k}: ${AGENT_ENDPOINTS_STATE.endpoints[k]}`).join('\n') + '\n\n' +
+      `Remediation:\n` +
+      `  1. Add "${agentKey}":"http://${agentKey}:8000" to AGENT_ENDPOINTS_JSON in docker-compose.yml\n` +
+      `  2. Ensure the compose service "${agentKey}" is defined\n` +
+      `  3. Restart orchestrator: docker compose up -d --force-recreate orchestrator`
+    );
+  }
+
+  return url;
+}
 
 /**
  * GET /api/ai/router/tiers
@@ -218,8 +314,10 @@ router.post(
     const { task_type, request_id, workflow_id, user_id, mode, risk_tier, domain_id, inputs, budgets } =
       validation.data;
 
-    // Map task_type to agent service name
+    // Map task_type to agentKey (must match keys in AGENT_ENDPOINTS_JSON)
+    // IMPORTANT: For LangSmith-backed agents, use the proxy service name (e.g., agent-X-proxy), not the logical name
     const TASK_TYPE_TO_AGENT: Record<string, string> = {
+      // Native agents (FastAPI services with local execution)
       STAGE_2_LITERATURE_REVIEW: 'agent-stage2-lit',
       STAGE2_SCREEN: 'agent-stage2-screen',
       STAGE_2_EXTRACT: 'agent-stage2-extract',
@@ -227,6 +325,7 @@ router.post(
       STAGE2_EXTRACT: 'agent-stage2-extract',
       STAGE2_SYNTHESIZE: 'agent-stage2-synthesize',
       LIT_RETRIEVAL: 'agent-lit-retrieval',
+      LIT_TRIAGE: 'agent-lit-triage',
       POLICY_REVIEW: 'agent-policy-review',
       RAG_INGEST: 'agent-rag-ingest',
       RAG_RETRIEVE: 'agent-rag-retrieve',
@@ -235,6 +334,17 @@ router.post(
       SECTION_WRITE_RESULTS: 'agent-results-writer',
       SECTION_WRITE_DISCUSSION: 'agent-discussion-writer',
       CLAIM_VERIFY: 'agent-verify',
+      EVIDENCE_SYNTHESIS: 'agent-evidence-synthesis',
+      
+      // LangSmith-backed agents (use proxy service names as keys)
+      CLINICAL_MANUSCRIPT_WRITE: 'agent-clinical-manuscript-proxy',
+      CLINICAL_SECTION_DRAFT: 'agent-section-drafter-proxy',
+      RESULTS_INTERPRETATION: 'agent-results-interpretation-proxy',
+      STATISTICAL_ANALYSIS: 'agent-results-interpretation-proxy',  // Alias for results interpretation
+      PEER_REVIEW_SIMULATION: 'agent-peer-review-simulator-proxy',
+      CLINICAL_BIAS_DETECTION: 'agent-bias-detection-proxy',
+      DISSEMINATION_FORMATTING: 'agent-dissemination-formatter-proxy',
+      PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer-proxy',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {
@@ -246,20 +356,17 @@ router.post(
       });
     }
 
-    if (AGENT_ENDPOINTS_STATE.error) {
-      return res.status(500).json({
-        error: 'AGENT_ENDPOINTS_INVALID',
-        message: AGENT_ENDPOINTS_STATE.error,
-      });
-    }
-
-    const agent_url = AGENT_ENDPOINTS_STATE.endpoints[agent_name];
-
-    if (!agent_url) {
+    // Resolve agent URL from AGENT_ENDPOINTS_JSON (single source of truth - no fallbacks)
+    let agent_url: string;
+    try {
+      agent_url = resolveAgentBaseUrl(agent_name);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return res.status(500).json({
         error: 'AGENT_NOT_CONFIGURED',
-        message: `Agent "${agent_name}" not found in AGENT_ENDPOINTS_JSON configuration`,
-        agent_name,
+        message: errorMessage,
+        agent_key: agent_name,
+        task_type,
       });
     }
 

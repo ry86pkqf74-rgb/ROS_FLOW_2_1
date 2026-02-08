@@ -1,0 +1,22 @@
+{
+  "tools": [
+    {
+      "name": "google_docs_create_document",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_create_document",
+      "description": "Create reviewer response document"
+    },
+    {
+      "name": "google_docs_append_text",
+      "mcp_server_url": "https://tools.langchain.com",
+      "mcp_server_name": "Agent Builder",
+      "display_name": "google_docs_append_text",
+      "description": "Add response content to document"
+    }
+  ],
+  "interrupt_config": {
+    "https://tools.langchain.com::google_docs_create_document::Agent Builder": false,
+    "https://tools.langchain.com::google_docs_append_text::Agent Builder": false
+  }
+}
