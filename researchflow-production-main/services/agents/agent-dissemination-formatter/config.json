@@ -1,0 +1,14 @@
+{
+  "name": "Dissemination Formatter",
+  "description": "A publication formatting agent that converts academic manuscripts into journal-specific formats (LaTeX, Word, APA/MLA). It parses IMRaD structure, applies journal-specific templates and citation styles, validates compliance, and delivers formatted outputs via chat and Google Docs. Supports both manual invocation and email-triggered workflows.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false,
+  "task_type": "DISSEMINATION_FORMATTING",
+  "stage": 19,
+  "integration": {
+    "langsmith": {
+      "source": "custom_agent",
+      "imported_date": "2026-02-08"
+    }
+  }
+}

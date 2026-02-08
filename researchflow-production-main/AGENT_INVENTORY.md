@@ -9,11 +9,11 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 20 (15 native + 5 LangSmith proxies)
+- **Microservice Agents (Docker):** 21 (15 native + 6 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 7 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection)
+- **LangSmith Multi-Agent Systems:** 8 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter)
 - **LangSmith Proxy Services:** 5 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
@@ -403,6 +403,106 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **LangSmith Source:** Clinical Bias Detection Agent configuration
 - **Communication Style:** Precise & quantitative, direct about findings, actionable recommendations, clinical terminology with explanations, patient equity focus, compliance-aware
 - **Validation:** Preflight checks LANGSMITH_API_KEY + agent ID + task type registration; smoke test validates router dispatch + proxy health (CHECK_BIAS_DETECTION=1)
+
+**NEW:** `agent-dissemination-formatter` — Dissemination Formatter Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
+- **Purpose:** Publication formatting agent that converts academic manuscripts into journal-specific, submission-ready formats. Handles LaTeX/Word formatting, citation style conversion, reference verification, cover letter drafting, and reviewer response formatting.
+- **Architecture:** LangSmith multi-agent system with 1 main agent + 5 specialized worker subagents
+- **Main Agent (Dissemination Formatter):**
+  - Seven-phase workflow: Input Gathering → Journal Research → Manuscript Formatting → Reference Verification → Cover Letter Drafting → Output Delivery → Submission Email Draft
+  - Manuscript intake: Pasted text, Google Docs, email triggers
+  - Multi-format output: LaTeX, Google Docs, structured text
+  - IMRaD structure parsing and journal template application
+  - Citation style conversion (APA, Vancouver, IEEE, numbered, author-year)
+  - Comprehensive validation and compliance checking
+  - Automated cover letter generation with journal-specific tailoring
+  - Reviewer response document formatting for revisions
+- **Worker Subagents:**
+  - `Journal_Guidelines_Researcher`: Researches journal-specific formatting requirements (margins, fonts, citation styles, word limits, submission requirements). Uses web search and URL content extraction to compile comprehensive formatting guidelines.
+  - `Manuscript_Formatter`: Core formatting engine. Parses IMRaD structure, applies journal templates, generates LaTeX/Word output, reformats citations, validates compliance. Returns formatted manuscript with validation checklist.
+  - `Reference_Verifier`: Cross-checks bibliographic references for accuracy and completeness. Verifies DOIs, author names, publication years, journal titles, flags retractions, identifies missing fields. Returns detailed verification report with suggested corrections.
+  - `Cover_Letter_Drafter`: Drafts professional submission cover letters. Researches journal editorial scope, identifies editor names, analyzes manuscript contributions, produces tailored cover letter. Returns letter as Google Doc and text.
+  - `Reviewer_Response_Formatter`: Formats point-by-point responses to peer reviewer comments. Parses reviewer feedback, structures rebuttal document, tracks revisions with page/line references. Returns formatted response-to-reviewers document.
+- **Supported Journals & Templates:**
+  - **arXiv**: Standard LaTeX article class, flexible citation style
+  - **Nature**: Word preferred, numbered superscript citations, ~3,000 words
+  - **Science**: Word/LaTeX, numbered citations, ~2,500 words
+  - **NEJM**: Word, Vancouver style, ~2,500 words
+  - **IEEE**: LaTeX IEEEtran class, two-column, numbered [1]
+  - **ACM**: LaTeX acmart class, numbered [1]
+  - **PLOS ONE**: Word/LaTeX, Vancouver style, unlimited length
+  - **APA Journals**: Word, APA 7th edition, author-year citations
+  - Plus any journal via Journal_Guidelines_Researcher
+- **Formatting Capabilities:**
+  - **IMRaD Parsing**: Automatic section identification (Title, Authors, Abstract, Keywords, Introduction, Methods, Results, Discussion, Conclusions, Acknowledgments, References, Figures, Tables)
+  - **LaTeX Generation**: Complete compilable .tex files with proper document class, packages, formatting
+  - **Citation Conversion**: Automatic reformatting between APA, Vancouver, IEEE, numbered, author-year styles
+  - **Compliance Validation**: 11-point checklist (sections, word limits, citations, references, figures/tables, title page, declarations, headings, fonts, spacing)
+  - **Reference Quality**: DOI verification, author name checking, retraction detection, completeness validation
+  - **Figure/Table Handling**: Placeholder environments, caption formatting, cross-reference preservation
+- **Workflow Phases:**
+  1. **Input Gathering**: Read manuscript (chat/Google Doc/email), identify target journal and output format
+  2. **Journal Research**: Journal_Guidelines_Researcher fetches formatting requirements
+  3. **Manuscript Formatting**: Manuscript_Formatter applies journal template and citations
+  4. **Reference Verification**: Reference_Verifier validates bibliography (optional)
+  5. **Cover Letter Drafting**: Cover_Letter_Drafter generates submission letter (optional)
+  6. **Output Delivery**: Present formatted manuscript, validation report, reference report in chat/Google Docs
+  7. **Submission Email**: Optional email draft for submission
+- **Revision Workflow:**
+  - Handles peer review feedback and revision formatting
+  - Reviewer_Response_Formatter creates point-by-point rebuttals
+  - Re-formats revised manuscripts for resubmission
+  - Tracks changes with page/line references
+- **Output Artifacts:**
+  - **Formatted Manuscript**: LaTeX code or Google Doc with journal formatting applied
+  - **Validation Report**: Compliance checklist with pass/fail for each requirement
+  - **Reference Verification Report**: Bibliography accuracy assessment with flagged issues
+  - **Cover Letter**: Professional submission letter (Google Doc + text)
+  - **Reviewer Response Document**: Structured rebuttal with numbered comments and responses (for revisions)
+  - **Submission Email Draft**: Pre-filled email for journal submission
+- **Tool Dependencies:**
+  - `google_docs_read_document`: Read manuscripts from Google Docs
+  - `google_docs_create_document`: Create formatted output documents
+  - `google_docs_append_text`: Add content to documents
+  - `google_docs_replace_text`: Make targeted edits
+  - `gmail_read_emails`: Process email triggers
+  - `gmail_draft_email`: Draft submission emails
+  - `tavily_web_search`: Search journal requirements and research guidelines
+  - `read_url_content`: Extract content from journal websites
+- **Quality Standards:**
+  - LaTeX output must be compilable without errors
+  - 100% citation style consistency
+  - No content loss during formatting
+  - Honest validation (never mark passing if failing)
+  - Never alter scientific content
+  - Never fabricate references or data
+- **Edge Case Handling:**
+  - Non-IMRaD manuscripts (reviews, letters): Identifies actual structure
+  - Large reference lists (50+): Prioritizes verification, notes limitations
+  - Missing journal information: Explicit user prompts rather than guessing
+  - Figure/table references: Preserves all cross-references and captions
+  - Multiple journal targets: Formats once per journal
+  - Iterative edits: Uses targeted replace for corrections
+- **Integration Points:**
+  - **Stage 19 (DisseminationAgent)**: Publication formatting for manuscript submission
+  - **Stage 13 + Revision Workflow**: Reviewer response formatting for revisions
+  - **Standalone**: Independent manuscript formatting and cover letter drafting
+- **Status:** ✅ **IMPORTED** (2026-02-08) | 📋 **Config Available** | ⏳ **Proxy Not Yet Deployed**
+- **Location:** `services/agents/agent-dissemination-formatter/` (config + workers)
+  - Main agent: `README.md`, `config.json`, `tools.json`
+  - Workers: `workers/journal_guidelines_researcher/`, `workers/manuscript_formatter/`, `workers/reference_verifier/`, `workers/cover_letter_drafter/`, `workers/reviewer_response_formatter/`
+- **Documentation:**
+  - **Main README:** `services/agents/agent-dissemination-formatter/README.md` ⭐ **PRIMARY REFERENCE**
+  - **Worker Specs:** `services/agents/agent-dissemination-formatter/workers/*/AGENTS.md`
+  - **Config:** `services/agents/agent-dissemination-formatter/config.json`
+  - **Tools:** `services/agents/agent-dissemination-formatter/tools.json`
+- **LangSmith Source:** Dissemination Formatter custom agent
+- **Communication Style:** Meticulous, precise, thorough, professional academic tone, concise but explanatory, explicit about uncertainties
+- **Next Steps:** 
+  - Create proxy service structure (`agent-dissemination-formatter-proxy/`)
+  - Add to docker-compose.yml
+  - Register task type `DISSEMINATION_FORMATTING` in ai-router
+  - Add to AGENT_ENDPOINTS_JSON
+  - Create wiring documentation
 
 ---
 
