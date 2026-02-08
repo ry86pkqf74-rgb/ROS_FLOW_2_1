@@ -67,3 +67,44 @@ git push origin --delete branch-name
    - Get it merged quickly (less time = fewer conflicts)
    - Extract next piece in a new PR
    - Repeat until all useful changes are migrated
+
+## Hetzner Full-Stack Deploy (IP-First)
+
+For deploying the complete ResearchFlow stack on Hetzner VPS servers without domain/TLS configuration:
+
+**Current Production Server:**
+- **Server:** ROSflow2
+- **IP:** 178.156.139.210
+
+**Quick Deploy:**
+```bash
+# SSH into server
+ssh root@178.156.139.210
+
+# Navigate to deployment directory
+cd /opt/researchflow/researchflow-production-main
+
+# Pull latest changes
+git pull
+
+# Update environment if needed
+nano .env
+
+# Restart services
+docker compose pull && docker compose up -d
+
+# Verify health
+./scripts/health-check.sh
+```
+
+For complete setup instructions, firewall configuration, troubleshooting, and health check details:
+
+📖 **[Hetzner Full-Stack Deployment Guide](../researchflow-production-main/docs/deployment/hetzner-fullstack.md)**
+
+This guide covers:
+- Server prerequisites and sizing recommendations
+- Firewall configuration (ports 22, 80 public; keep 3001 internal)
+- Step-by-step deployment using `docker-compose.yml`
+- Environment variable configuration from `.env.example`
+- Canonical health checks for all services
+- Common failure modes and fixes
