@@ -13,7 +13,7 @@ Add to `.env` on ROSflow2:
 
 ```bash
 # LangSmith credentials (required)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 
 # Tool credentials (for agent capabilities)

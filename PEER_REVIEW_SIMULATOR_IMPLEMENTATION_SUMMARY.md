@@ -261,7 +261,7 @@ git checkout chore/inventory-capture
 git pull --ff-only
 
 # 2. Set environment (add to .env)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PEER_REVIEW_AGENT_ID=<uuid-from-langsmith>
 
 # 3. Build and start
@@ -443,7 +443,7 @@ python3 -m py_compile ...agent-peer-review... # ✅ Pass
 
 ```bash
 # Required
-LANGSMITH_API_KEY=lsv2_pt_...                    # LangSmith API key (DO NOT COMMIT)
+LANGSMITH_API_KEY=<your-langsmith-api-key>                    # LangSmith API key (DO NOT COMMIT)
 LANGSMITH_PEER_REVIEW_AGENT_ID=uuid              # Assistant UUID from LangSmith
 
 # Optional (defaults shown)

@@ -80,7 +80,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
-          ref: ${{ github.event.workflow_run.head_sha }}
           tags: |
             type=sha,format=long
             type=raw,value=main

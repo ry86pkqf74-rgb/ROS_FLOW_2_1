@@ -104,7 +104,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 
 ```bash
 # LangSmith API credentials
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 ```
 
@@ -196,7 +196,7 @@ git pull --ff-only
 
 # 3. Set environment variables
 cat >> .env << 'ENV_EOF'
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 ENV_EOF
 
@@ -273,7 +273,7 @@ CHECK_COMPLIANCE_AUDITOR=1 DEV_AUTH=true SKIP_ADMIN_CHECKS=1 \
 
 **Fix:**
 ```bash
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 docker compose up -d --force-recreate agent-compliance-auditor-proxy orchestrator
 ```
 

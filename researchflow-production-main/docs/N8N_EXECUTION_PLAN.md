@@ -209,7 +209,7 @@ N8N_MCP_SERVER_URL=https://loganglosser13.app.n8n.cloud/mcp-server/http
 N8N_MCP_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (MCP API JWT)
 
 # Third-party Integrations
-GITHUB_PAT=ghp_xxxxxxxxxxxxx (GitHub Personal Access Token)
+GITHUB_PAT=<your-github-token> (GitHub Personal Access Token)
 NOTION_API_KEY=ntn_xxxxxxxxxxxxxxxx
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 ```
@@ -1481,7 +1481,7 @@ N8N_MCP_SERVER_URL=https://loganglosser13.app.n8n.cloud/mcp-server/http
 N8N_MCP_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... # MCP API JWT
 
 # GitHub Integration
-GITHUB_PAT=ghp_xxxxxxxxxxxxx # Personal Access Token
+GITHUB_PAT=<your-github-token> # Personal Access Token
 GITHUB_WEBHOOK_SECRET=whsec_xxxxx # For webhook validation
 
 # Notion Integration
@@ -1494,7 +1494,7 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 SLACK_DEFAULT_CHANNEL=#deployments
 
 # CI/CD Systems
-GITHUB_ACTIONS_TOKEN=ghp_xxxxxxxxxxxxx # For dispatch API
+GITHUB_ACTIONS_TOKEN=<your-github-token> # For dispatch API
 CIRCLECI_TOKEN=xxxxxxxxxxxxx # If using CircleCI
 ```
 

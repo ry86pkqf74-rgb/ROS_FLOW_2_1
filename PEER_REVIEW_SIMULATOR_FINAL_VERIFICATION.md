@@ -166,7 +166,7 @@ git log --oneline -2
 # b30f7ec feat(agents): wire Peer Review Simulator for Stage 13 deployment
 
 # Add environment variables to .env
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 echo "LANGSMITH_PEER_REVIEW_AGENT_ID=<uuid>" >> .env
 
 # Build and deploy

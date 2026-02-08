@@ -136,7 +136,7 @@ services/agents/agent-compliance-auditor-proxy/
 
 ```bash
 # LangSmith API credentials (required)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 
 # Compliance Auditor Agent ID (required)
 LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID=<uuid-from-langsmith>
@@ -336,7 +336,7 @@ docker compose exec orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}'
 
 **Fix:**
 ```bash
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 docker compose up -d --force-recreate orchestrator agent-compliance-auditor-proxy
 ```
 
@@ -525,7 +525,7 @@ The agent audits against 5 major frameworks:
 
 1. **Set Environment Variables** in production `.env`:
    ```bash
-   LANGSMITH_API_KEY=lsv2_pt_...
+   LANGSMITH_API_KEY=<your-langsmith-api-key>
    LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID=<uuid>
    GOOGLE_WORKSPACE_API_KEY=...  # For Sheets/Docs
    GITHUB_TOKEN=...              # For code scanning

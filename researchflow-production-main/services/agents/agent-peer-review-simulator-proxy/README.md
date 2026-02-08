@@ -96,7 +96,7 @@ Optional:
 cd services/agents/agent-peer-review-simulator-proxy
 
 # Set environment variables
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="uuid-from-langsmith"
 
 # Run locally
@@ -112,7 +112,7 @@ curl http://localhost:8000/health/ready
 ```bash
 docker build -t agent-peer-review-simulator-proxy .
 docker run -p 8000:8000 \
-  -e LANGSMITH_API_KEY="lsv2_pt_..." \
+  -e LANGSMITH_API_KEY="<your-langsmith-api-key>" \
   -e LANGSMITH_AGENT_ID="uuid" \
   agent-peer-review-simulator-proxy
 ```
@@ -203,7 +203,7 @@ async def test_proxy_with_mock_langsmith(mocker):
 ### End-to-End (Real LangSmith)
 
 ```bash
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="uuid"
 pytest tests/e2e/test_peer_review_e2e.py
 ```

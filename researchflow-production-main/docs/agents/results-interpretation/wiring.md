@@ -90,7 +90,7 @@ The core agent logic runs on **LangSmith cloud**, but ResearchFlow includes a
 See [`ENVIRONMENT.md`](./ENVIRONMENT.md) for complete setup instructions.
 
 **Required:**
-- `LANGSMITH_API_KEY` - LangSmith API key (format: `lsv2_pt_...`)
+- `LANGSMITH_API_KEY` - LangSmith API key (format: `<your-langsmith-api-key>`)
 - `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` - Assistant UUID from LangSmith
 
 **Optional:**
@@ -109,7 +109,7 @@ See [`ENVIRONMENT.md`](./ENVIRONMENT.md) for complete setup instructions.
 
 2. **Add to `.env` file:**
    ```bash
-   LANGSMITH_API_KEY=lsv2_pt_YOUR_KEY_HERE
+   LANGSMITH_API_KEY=<your-langsmith-api-key>
    LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=YOUR_AGENT_UUID_HERE
    ```
 
@@ -153,7 +153,7 @@ See [`ENVIRONMENT.md`](./ENVIRONMENT.md) for complete setup instructions.
 | Property | Value |
 |----------|-------|
 | Env var | `LANGSMITH_API_KEY` |
-| Format | `lsv2_pt_...` |
+| Format | `<your-langsmith-api-key>` |
 | Used by | `agent-results-interpretation-proxy` service |
 | Agent ID | `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` (UUID) |
 

@@ -199,7 +199,7 @@ if not result.deployment_approved:
 
 ```python
 {
-    "github_token": "ghp_...",
+    "github_token": "<your-github-token>",
     "repo_owner": "researchflow",
     "repo_name": "main",
     "branch": "develop",
@@ -215,7 +215,7 @@ if not result.deployment_approved:
 ```python
 {
     # GitHub
-    "github_token": "ghp_...",
+    "github_token": "<your-github-token>",
     "repo_owner": "researchflow",
     "repo_name": "main",
     "branch": "main",
@@ -330,7 +330,7 @@ context["alerting_rules"] = {
 
 Required:
 ```bash
-export GITHUB_TOKEN="ghp_..."
+export GITHUB_TOKEN="<your-github-token>"
 export OPENAI_API_KEY="sk-..."
 ```
 

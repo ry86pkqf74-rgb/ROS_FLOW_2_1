@@ -6,7 +6,7 @@ Add these to your `.env` file to enable the Results Interpretation Agent:
 
 ```bash
 # LangSmith API Configuration (REQUIRED)
-LANGSMITH_API_KEY=lsv2_pt_YOUR_API_KEY_HERE
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 
 # Results Interpretation Agent ID (REQUIRED)
 # Get this from LangSmith UI: https://smith.langchain.com/

@@ -23,7 +23,7 @@ Orchestrator → agent-results-interpretation-proxy:8000 → LangSmith Cloud API
 ## Environment Variables
 
 **Required:**
-- `LANGSMITH_API_KEY` - LangSmith API key (format: `lsv2_pt_...`)
+- `LANGSMITH_API_KEY` - LangSmith API key (format: `<your-langsmith-api-key>`)
 - `LANGSMITH_AGENT_ID` - Assistant ID from LangSmith (format: UUID)
 
 **Optional:**
@@ -40,7 +40,7 @@ Orchestrator → agent-results-interpretation-proxy:8000 → LangSmith Cloud API
 pip install -r requirements.txt
 
 # Set environment variables
-export LANGSMITH_API_KEY="lsv2_pt_..."
+export LANGSMITH_API_KEY="<your-langsmith-api-key>"
 export LANGSMITH_AGENT_ID="your-assistant-id"
 
 # Run locally

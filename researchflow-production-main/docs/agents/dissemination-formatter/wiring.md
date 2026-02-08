@@ -106,7 +106,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 
 ```bash
 # LangSmith API credentials
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid-from-langsmith>
 ```
 
@@ -206,7 +206,7 @@ git pull --ff-only
 
 # 3. Set environment variables
 cat >> .env << 'ENV_EOF'
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid-from-langsmith>
 ENV_EOF
 
@@ -365,7 +365,7 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 
 **Fix:**
 ```bash
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 docker compose up -d --force-recreate agent-dissemination-formatter-proxy orchestrator
 ```
 

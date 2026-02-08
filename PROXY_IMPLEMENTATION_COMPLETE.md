@@ -142,7 +142,7 @@ Proxy Agents (FastAPI → LangSmith cloud):
 
 ```bash
 # Core LangSmith configuration
-LANGSMITH_API_KEY=lsv2_pt_...                              # Shared API key
+LANGSMITH_API_KEY=<your-langsmith-api-key>                              # Shared API key
 
 # Agent IDs (unique per agent)
 LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=uuid-1           # Results interpretation

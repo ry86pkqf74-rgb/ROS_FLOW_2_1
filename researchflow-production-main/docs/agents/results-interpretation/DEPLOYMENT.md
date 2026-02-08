@@ -16,7 +16,7 @@ Complete step-by-step guide to deploy the Results Interpretation Agent on your R
 1. Log in to LangSmith: https://smith.langchain.com/
 2. Navigate to **Settings** → **API Keys**
 3. Click **Create API Key**
-4. Copy the key (format: `lsv2_pt_...`)
+4. Copy the key (format: `<your-langsmith-api-key>`)
 5. Save it securely - you won't be able to see it again
 
 ### 1.2 Get Agent ID
@@ -51,7 +51,7 @@ Add these lines to `.env`:
 
 ```bash
 # Results Interpretation Agent - LangSmith Configuration
-LANGSMITH_API_KEY=lsv2_pt_YOUR_API_KEY_HERE
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=YOUR_AGENT_UUID_HERE
 ```
 

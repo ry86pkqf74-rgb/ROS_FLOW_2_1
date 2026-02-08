@@ -44,7 +44,7 @@ N8N_MCP_SERVER_URL=https://loganglosser13.app.n8n.cloud/mcp-server/http
 N8N_MCP_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (MCP JWT Token)
 
 # GitHub Integration
-GITHUB_PAT=ghp_xxxxxxxxxxxxxxx (Personal Access Token)
+GITHUB_PAT=<your-github-token> (Personal Access Token)
 GITHUB_WEBHOOK_SECRET=whsec_xxxxx (Optional)
 
 # Notion Integration
@@ -873,7 +873,7 @@ Checklist:
 **Configuration:**
 ```bash
 # Personal Access Token (PAT)
-GITHUB_PAT=ghp_xxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_PAT=<your-github-token>
 
 # Optional: Webhook secret for signature verification
 GITHUB_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx

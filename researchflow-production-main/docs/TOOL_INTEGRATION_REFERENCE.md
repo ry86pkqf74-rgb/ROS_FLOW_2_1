@@ -53,7 +53,7 @@ composio apps                     # List available apps
 
 ### Environment Variables
 ```bash
-LANGSMITH_API_KEY=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
+LANGSMITH_API_KEY=<REDACTED_LANGSMITH_KEY>
 LANGSMITH_PROJECT="ROS FLOW"
 LANGSMITH_TRACING_V2=true
 ```

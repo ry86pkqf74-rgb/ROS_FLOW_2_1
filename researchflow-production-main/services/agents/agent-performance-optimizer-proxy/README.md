@@ -58,7 +58,7 @@ Streaming execution via Server-Sent Events (SSE).
 ## Environment Variables
 
 ### Required
-- `LANGSMITH_API_KEY` - LangSmith API key (lsv2_pt_...)
+- `LANGSMITH_API_KEY` - LangSmith API key (<your-langsmith-api-key>)
 - `LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID` - Agent UUID from LangSmith
 
 ### Optional
@@ -74,7 +74,7 @@ Streaming execution via Server-Sent Events (SSE).
 ```bash
 cd services/agents/agent-performance-optimizer-proxy
 pip install -r requirements.txt
-export LANGSMITH_API_KEY=lsv2_pt_...
+export LANGSMITH_API_KEY=<your-langsmith-api-key>
 export LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID=<uuid>
 uvicorn app.main:app --reload
 ```

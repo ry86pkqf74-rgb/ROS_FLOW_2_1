@@ -36,7 +36,7 @@ OPENAI_API_KEY=sk-your_key_here
 
 # Optional but recommended
 ANTHROPIC_API_KEY=sk-ant-your_key_here
-GITHUB_TOKEN=ghp_your_token_here
+GITHUB_TOKEN=<your-github-token>
 NOTION_API_KEY=secret_your_key_here
 
 # Secret backend (default: env)

@@ -406,7 +406,7 @@ def test_error_recovery():
 ```bash
 # .env
 FIGMA_API_TOKEN=fgk_your_token
-GITHUB_TOKEN=ghp_your_token
+GITHUB_TOKEN=<your-github-token>
 OPENAI_API_KEY=sk-your_key
 
 # Optional

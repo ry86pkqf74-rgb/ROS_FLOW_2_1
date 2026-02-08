@@ -59,7 +59,7 @@ git pull
 nano .env
 
 # Add these lines:
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 # Optional (for Google Docs/Sheets output):
 GOOGLE_DOCS_API_KEY=...
 GOOGLE_SHEETS_API_KEY=...
@@ -210,7 +210,7 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 ## Environment Variables Reference
 
 ### Required
-- `LANGSMITH_API_KEY` - LangSmith cloud API key (format: `lsv2_pt_...`)
+- `LANGSMITH_API_KEY` - LangSmith cloud API key (format: `<your-langsmith-api-key>`)
 - `WORKER_SERVICE_TOKEN` - Internal dispatch authentication (min 32 chars)
 
 ### Optional (for full manuscript output)

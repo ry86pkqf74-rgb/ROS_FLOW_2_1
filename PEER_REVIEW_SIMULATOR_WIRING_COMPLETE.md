@@ -271,7 +271,7 @@ Return to caller
 Add to `/opt/researchflow/.env`:
 ```bash
 # Required (for proxy service)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PEER_REVIEW_AGENT_ID=<uuid-from-langsmith>
 
 # Optional (default values shown)
@@ -455,7 +455,7 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 
 ### Required:
 ```bash
-LANGSMITH_API_KEY=lsv2_pt_...                     # LangSmith API key
+LANGSMITH_API_KEY=<your-langsmith-api-key>                     # LangSmith API key
 LANGSMITH_PEER_REVIEW_AGENT_ID=uuid               # Assistant ID from LangSmith
 ```
 

@@ -62,7 +62,7 @@ agent-clinical-manuscript-proxy:
 
 ```bash
 # .env
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_MANUSCRIPT_AGENT_ID=<uuid>
 LANGSMITH_MANUSCRIPT_TIMEOUT_SECONDS=300  # 5 minutes (optional)
 ```

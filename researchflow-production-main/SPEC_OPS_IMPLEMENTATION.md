@@ -242,7 +242,7 @@ Uses existing project dependencies:
 ### Environment Setup
 ```bash
 export NOTION_API_TOKEN=ntn_...
-export GITHUB_TOKEN=ghp_...
+export GITHUB_TOKEN=<your-github-token>
 export GITHUB_REPO=owner/repo
 export OPENAI_API_KEY=sk_...
 ```
@@ -253,7 +253,7 @@ from agents.spec_ops import create_spec_ops_agent
 
 agent = create_spec_ops_agent(
     notion_token="ntn_...",
-    github_token="ghp_...",
+    github_token="<your-github-token>",
     github_repo="owner/repo"
 )
 ```

@@ -310,7 +310,7 @@ results_draft = await clinical_section_drafter.draft(
 
 **LangSmith Integration:**
 ```bash
-LANGCHAIN_API_KEY=lsv2_pt_...
+LANGCHAIN_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PROJECT=ResearchFlow-Production
 LANGSMITH_TRACING=true
 ```

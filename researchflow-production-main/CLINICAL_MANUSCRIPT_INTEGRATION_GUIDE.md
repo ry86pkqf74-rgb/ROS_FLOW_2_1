@@ -159,7 +159,7 @@
 ```python
 from langsmith import Client
 
-client = Client(api_key="lsv2_pt_...")
+client = Client(api_key="<your-langsmith-api-key>")
 response = client.invoke_agent(
     agent_id="clinical-manuscript-writer",
     input={

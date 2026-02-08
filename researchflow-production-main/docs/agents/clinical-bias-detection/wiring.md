@@ -291,7 +291,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 Add to `/opt/researchflow/.env`:
 ```bash
 # Required (for proxy service)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_BIAS_DETECTION_AGENT_ID=<uuid-from-langsmith>
 
 # Optional (tune timeouts)
@@ -446,7 +446,7 @@ curl -X POST http://agent-bias-detection-proxy:8000/agents/run/sync \
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
-| `LANGSMITH_API_KEY` | LangSmith API authentication | `lsv2_pt_...` |
+| `LANGSMITH_API_KEY` | LangSmith API authentication | `<your-langsmith-api-key>` |
 | `LANGSMITH_BIAS_DETECTION_AGENT_ID` | Agent UUID from LangSmith | `<uuid>` |
 
 ### Optional (Tuning)
