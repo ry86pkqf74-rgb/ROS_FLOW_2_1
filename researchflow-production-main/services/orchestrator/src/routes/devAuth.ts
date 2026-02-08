@@ -40,8 +40,6 @@ function signDevToken(userId: string) {
     sub: userId,
     userId,
     role: "researcher",
-    iss: jwtConfig.issuer,
-    aud: jwtConfig.audience,
   };
 
   // Match authService dev fallback behavior

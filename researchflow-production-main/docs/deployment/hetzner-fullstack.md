@@ -248,17 +248,31 @@ docker image inspect ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:abc1234 \
 
 ### 4. Run Preflight Checks
 
-Before starting the stack, run preflight checks to verify the server is ready:
+Before starting the stack, run preflight checks to verify the server is ready.
+
+**Redeploy after code fixes (pull → preflight → up → stagewise smoke):**
 
 ```bash
-# Make script executable
+cd /opt/researchflow/researchflow-production-main
+git fetch --all --prune && git pull --ff-only
+
+# Preflight (optional before up: validates Docker/resources)
 chmod +x scripts/hetzner-preflight.sh
-
-# Run preflight checks
 ./scripts/hetzner-preflight.sh
-```
 
-Expected output: All checks should PASS. If any checks fail, review the diagnostics and fix issues before proceeding.
+# Bring up stack (use same compose file as usual: docker-compose.yml or docker-compose.prod.yml)
+docker compose up -d
+
+# Preflight again to verify service health
+./scripts/hetzner-preflight.sh
+
+# Stagewise smoke (staging only: enables dev-auth, mints JWT, runs stagewise-smoke.sh)
+./scripts/hetzner-dev-auth-stagewise-runbook.sh
+# Or run smoke only if you already have a token: ACCESS_TOKEN=... ./scripts/hetzner-dev-auth-stagewise-runbook.sh 4
+```
+Expected: preflight checks PASS; stagewise smoke completes successfully.
+
+For a first-time deployment, run preflight once before starting the stack (same commands as in the block above). Expected output: All checks should PASS. If any checks fail, review the diagnostics and fix issues before proceeding.
 
 **Note:** The preflight script checks:
 - Docker and Docker Compose installation and versions
