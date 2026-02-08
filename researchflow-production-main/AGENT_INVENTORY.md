@@ -114,7 +114,18 @@ These are standalone FastAPI services running in Docker containers with health c
   - Literature alignment validation
   - Structured audit reports
 - **Integration:** Complements `agent-clinical-manuscript` for specialized section drafting; can receive evidence from `agent-evidence-synthesis`
-- **Deployment:** Currently LangSmith-hosted (containerization planned)
+- **Deployment:** LangSmith cloud-hosted (no containerization; invoked via REST API)
+  - **Invocation:** `https://api.smith.langchain.com/agents/run/sync`
+  - **Task Type:** `CLINICAL_SECTION_DRAFT` (registered in orchestrator ai-router)
+  - **Authentication:** Requires `LANGSMITH_API_KEY` environment variable
+  - **Health Check:** Via preflight/smoke scripts (checks LANGSMITH_API_KEY + router registration)
+  - **Artifact Paths:** `/data/artifacts/manuscripts/{workflow_id}/sections/{section_type}.md`
+- **Required Environment Variables:**
+  - `LANGSMITH_API_KEY` - LangSmith API access (required)
+  - `TAVILY_API_KEY` - For Clinical_Evidence_Researcher sub-worker (optional)
+  - `EXA_API_KEY` - For enhanced literature search (optional)
+  - `GOOGLE_DOCS_API_KEY` - For Google Docs output (optional)
+- **Validation:** Preflight checks LANGSMITH_API_KEY + task type registration; smoke test validates router dispatch
 - **Source:** LangSmith Agent (see `agents/Clinical_Study_Section_Drafter/`)
 
 **NEW:** `agent-clinical-manuscript` — Clinical Manuscript Writer (Imported from LangSmith, 2026-02-07)

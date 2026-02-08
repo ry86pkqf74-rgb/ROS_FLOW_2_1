@@ -238,6 +238,7 @@ router.post(
       CLAIM_VERIFY: 'agent-verify',
       EVIDENCE_SYNTHESIS: 'agent-evidence-synthesis',
       CLINICAL_MANUSCRIPT_WRITE: 'agent-clinical-manuscript',
+      CLINICAL_SECTION_DRAFT: 'agent-clinical-section-drafter',  // LangSmith-hosted Results/Discussion drafter
       RESULTS_INTERPRETATION: 'agent-results-interpretation',
       STATISTICAL_ANALYSIS: 'agent-results-interpretation',  // Alias for results interpretation
     };

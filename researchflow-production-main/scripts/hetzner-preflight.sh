@@ -408,6 +408,25 @@ if docker ps >/dev/null 2>&1; then
             fi
         fi
         
+        # Clinical Study Section Drafter Agent (commit 6a5c93e - LangSmith-based, not containerized)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured (same key as Manuscript Writer)
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Clinical Section Drafter" "LANGSMITH_API_KEY configured"
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_SECTION_DRAFT" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Section Drafter Router" "task type registered"
+                else
+                    check_fail "Section Drafter Router" "CLINICAL_SECTION_DRAFT not found in ai-router.ts"
+                fi
+            else
+                check_warn "Clinical Section Drafter" "LANGSMITH_API_KEY not set (optional: add to .env for specialized section drafting)"
+            fi
+        fi
+        
         # Other Stage 2 agents
         for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
             if docker ps --format "{{.Names}}" | grep -q "$agent"; then
