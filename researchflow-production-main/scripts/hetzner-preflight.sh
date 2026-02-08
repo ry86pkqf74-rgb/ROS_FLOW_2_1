@@ -329,6 +329,58 @@ fi
 
 echo ""
 
+# Agent fleet health checks (Step 5 agents)
+print_header "Agent Fleet Health Checks"
+
+if docker ps >/dev/null 2>&1; then
+    # Check if agent containers are running
+    AGENT_COUNT=$(docker ps --format "{{.Names}}" 2>/dev/null | grep -c "agent-" || echo "0")
+    
+    if [ "$AGENT_COUNT" -gt 0 ]; then
+        echo "Found $AGENT_COUNT agent containers running"
+        echo ""
+        
+        # Evidence Synthesis Agent (commit 197bfcd)
+        if docker ps --format "{{.Names}}" | grep -q "agent-evidence-synthesis"; then
+            check_pass "Evidence Synthesis Agent" "container running"
+            
+            # Health check (port 8015 for testing, 8000 internal)
+            if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "http://127.0.0.1:8015/health" 2>/dev/null | grep -q "200"; then
+                check_pass "Evidence Synthesis Health" "HTTP 200"
+            else
+                check_warn "Evidence Synthesis Health" "not reachable on port 8015 (may be internal-only)"
+            fi
+            
+            # Check router registration
+            if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+                AGENT_REGISTERED=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-evidence-synthesis" || echo "0")
+                if [ "$AGENT_REGISTERED" -gt 0 ]; then
+                    check_pass "Evidence Synthesis Router" "registered in AGENT_ENDPOINTS_JSON"
+                else
+                    check_fail "Evidence Synthesis Router" "not found in AGENT_ENDPOINTS_JSON"
+                fi
+            fi
+        else
+            check_warn "Evidence Synthesis Agent" "container not running (new agent, may not be started yet)"
+        fi
+        
+        # Other Stage 2 agents
+        for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
+            if docker ps --format "{{.Names}}" | grep -q "$agent"; then
+                check_pass "$agent" "running"
+            else
+                check_warn "$agent" "not running"
+            fi
+        done
+    else
+        check_warn "Agent containers" "no agent containers found (may not be deployed yet)"
+    fi
+else
+    check_fail "Docker status" "cannot check agent containers"
+fi
+
+echo ""
+
 # Summary
 print_header "Summary"
 

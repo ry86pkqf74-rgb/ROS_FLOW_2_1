@@ -1,3 +1,16 @@
 fastapi==0.115.6
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
+httpx==0.27.2
+python-dotenv==1.0.1
+
+# AI/ML dependencies for LangSmith agent
+langchain==0.3.12
+langchain-core==0.3.28
+langchain-community==0.3.12
+langgraph==0.2.57
+langsmith==0.2.7
+
+# Optional: Exa API client for web search
+# exa-py==1.0.0
+

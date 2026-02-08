@@ -164,6 +164,15 @@ SEMANTIC_SCHOLAR_API_KEY=
 NOTION_API_KEY=
 SOURCEGRAPH_API_KEY=
 
+# Evidence Synthesis Agent (commit 197bfcd - optional, enhances retrieval)
+TAVILY_API_KEY=
+GOOGLE_DOCS_API_KEY=
+
+# ============================================
+# Internal Service Auth (REQUIRED for Stage 2)
+# ============================================
+WORKER_SERVICE_TOKEN=<generate-with-openssl-rand-hex-32>
+
 # ============================================
 # Application Settings
 # ============================================
@@ -269,6 +278,9 @@ docker compose up -d
 # Stagewise smoke (staging only: enables dev-auth, mints JWT, runs stagewise-smoke.sh)
 ./scripts/hetzner-dev-auth-stagewise-runbook.sh
 # Or run smoke only if you already have a token: ACCESS_TOKEN=... ./scripts/hetzner-dev-auth-stagewise-runbook.sh 4
+
+# Optional: Test Evidence Synthesis Agent (commit 197bfcd)
+CHECK_EVIDENCE_SYNTH=1 DEV_AUTH=true ./scripts/stagewise-smoke.sh
 ```
 Expected: preflight checks PASS; stagewise smoke completes successfully.
 
@@ -738,6 +750,67 @@ docker compose up -d
 | Redis data | Cache and queue data | `redis-data` |
 
 **Note**: All `/data/*` paths are mounted to the `shared-data` volume, which is shared between orchestrator and worker services for artifact exchange.
+
+**Agent Artifacts:**
+
+Most agents (including Evidence Synthesis Agent, commit 197bfcd) do not write persistent artifacts to `/data` volumes. Instead, they return results inline via the agent contract (`AgentResponse.outputs`). The orchestrator/worker is responsible for capturing and persisting these results as needed.
+
+---
+
+## Agent Fleet Validation (Optional)
+
+### Evidence Synthesis Agent (Commit 197bfcd)
+
+The Evidence Synthesis Agent provides GRADE-based systematic evidence synthesis with conflict analysis.
+
+**Health Check:**
+```bash
+# Agent health
+curl http://localhost:8015/health
+# Expected: {"status":"ok"}
+
+# Router registration
+docker compose exec orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | jq . | grep evidence-synthesis
+# Expected: "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000"
+```
+
+**Direct Test:**
+```bash
+curl -X POST http://localhost:8015/agents/run/sync \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_type": "EVIDENCE_SYNTHESIS",
+    "request_id": "test-001",
+    "mode": "DEMO",
+    "inputs": {
+      "research_question": "Is aspirin effective for cardiovascular disease prevention?",
+      "max_papers": 5
+    }
+  }'
+```
+
+**Expected Response Fields:**
+- `executive_summary`: High-level synthesis
+- `evidence_table`: Array of studies with GRADE ratings
+- `overall_certainty`: High/Moderate/Low/Very Low
+- `synthesis_by_subquestion`: Detailed analysis
+- `conflicting_evidence`: Conflict detection results (if applicable)
+
+**Optional API Keys:**
+
+The agent works with stubs by default. For enhanced retrieval:
+```bash
+# Add to .env
+TAVILY_API_KEY=tvly-your-key-here
+GOOGLE_DOCS_API_KEY=your-key-here
+
+# Restart agent
+docker compose restart agent-evidence-synthesis
+```
+
+**See Also:**
+- [EVIDENCE_SYNTHESIS_INTEGRATION_GUIDE.md](../../EVIDENCE_SYNTHESIS_INTEGRATION_GUIDE.md)
+- [services/agents/agent-evidence-synthesis/README.md](../../services/agents/agent-evidence-synthesis/README.md)
 
 ---
 

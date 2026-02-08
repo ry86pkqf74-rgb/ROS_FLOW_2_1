@@ -11,6 +11,8 @@ AUTH_HEADER="${AUTH_HEADER:-}"
 SKIP_ADMIN_CHECKS="${SKIP_ADMIN_CHECKS:-0}"
 # When set to "true", mint a dev token via POST /api/dev-auth/login (requires server ENABLE_DEV_AUTH=true).
 DEV_AUTH="${DEV_AUTH:-false}"
+# When set to "1", run optional Evidence Synthesis Agent check (commit 197bfcd)
+CHECK_EVIDENCE_SYNTH="${CHECK_EVIDENCE_SYNTH:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -217,4 +219,88 @@ else
   echo "[7] Skip PATCH workflow-runs step (set RUN_ID and STEP_DB_ID to test)"
 fi
 
+# --- 8. Optional: Evidence Synthesis Agent validation (commit 197bfcd)
+if [ "$CHECK_EVIDENCE_SYNTH" = "1" ] || [ "$CHECK_EVIDENCE_SYNTH" = "true" ]; then
+  echo "[8] Evidence Synthesis Agent Check (optional)"
+  
+  # 8a. Health check
+  echo "[8a] GET agent-evidence-synthesis /health"
+  _synth_health_out=$(curl "${CURL_OPTS[@]}" -X GET "http://127.0.0.1:8015/health" 2>/dev/null || echo -e "\n000")
+  _synth_health_code=$(echo "$_synth_health_out" | tail -n 1)
+  if [ "${_synth_health_code:0:1}" = "2" ]; then
+    echo "Evidence Synthesis Agent health OK"
+  else
+    echo "Warning: Evidence Synthesis Agent health check failed (code: $_synth_health_code)"
+    echo "This is optional - continuing smoke test."
+  fi
+  
+  # 8b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[8b] POST /api/ai/router/dispatch (EVIDENCE_SYNTHESIS)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"EVIDENCE_SYNTHESIS","request_id":"smoke-test-synth","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-evidence-synthesis" ]; then
+        echo "✓ Correctly routed to agent-evidence-synthesis"
+      else
+        echo "Warning: Expected agent-evidence-synthesis, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[8b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 8c. Direct agent call with minimal fixture
+  echo "[8c] POST /agents/run/sync (direct agent call)"
+  _agent_out=$(curl "${CURL_OPTS[@]}" -X POST -H "Content-Type: application/json" \
+    -d '{
+      "task_type":"EVIDENCE_SYNTHESIS",
+      "request_id":"smoke-test-direct",
+      "mode":"DEMO",
+      "inputs":{
+        "research_question":"Is aspirin effective for cardiovascular disease prevention?",
+        "max_papers":3
+      }
+    }' \
+    "http://127.0.0.1:8015/agents/run/sync" 2>/dev/null || echo -e "\n000")
+  _agent_body=$(echo "$_agent_out" | head -n -1)
+  _agent_code=$(echo "$_agent_out" | tail -n 1)
+  
+  if [ "${_agent_code:0:1}" = "2" ]; then
+    AGENT_OK=$(echo "$_agent_body" | sed -n 's/.*"ok"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p' | head -1)
+    echo "Direct agent call completed (ok: $AGENT_OK)"
+    
+    # Check for expected output fields
+    if echo "$_agent_body" | grep -q "executive_summary"; then
+      echo "✓ Response contains executive_summary"
+    else
+      echo "Warning: Response missing executive_summary field"
+    fi
+    
+    if echo "$_agent_body" | grep -q "evidence_table"; then
+      echo "✓ Response contains evidence_table"
+    else
+      echo "Warning: Response missing evidence_table field"
+    fi
+  else
+    echo "Warning: Direct agent call failed (code: $_agent_code)"
+    echo "Response: $_agent_body"
+  fi
+  
+  echo "Evidence Synthesis Agent check complete (optional - does not block)"
+else
+  echo "[8] Skipping Evidence Synthesis Agent check (set CHECK_EVIDENCE_SYNTH=1 to enable)"
+fi
+
+echo ""
 echo "Stagewise smoke completed successfully."

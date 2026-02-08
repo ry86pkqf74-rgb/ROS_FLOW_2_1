@@ -80,11 +80,37 @@ These are standalone FastAPI services running in Docker containers with health c
 | Agent | Port | Status | Purpose |
 |-------|------|--------|---------|
 | `agent-policy-review` | 8000 | ✅ Production | Governance compliance checks |
-| `agent-lit-triage` | 8000 | 🚧 Stub | Literature triage/prioritization |
+| `agent-lit-triage` | 8000 | ✅ Production | AI-powered literature triage & prioritization |
 | `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis |
 
 **Location:** `services/agents/agent-policy-review`, etc.  
 **Environment:** `GOVERNANCE_MODE=LIVE` or `DEMO`
+
+**NEW:** `agent-lit-triage` — AI-Powered Literature Triage (Imported from LangSmith, 2026-02-07)
+- **Purpose:** Comprehensive medical literature discovery, ranking, and prioritization
+- **Architecture:** Three-phase pipeline (SEARCH → RANK → PRIORITIZE)
+- **Workers:**
+  - `LiteratureSearchWorker`: Semantic search with query expansion (Exa API integration)
+  - `LiteratureRankingWorker`: Multi-criteria scoring (recency, relevance, journal impact, author reputation, citations)
+- **Scoring Model:**
+  - Recency (20%): Publication date scoring (1-10)
+  - Keyword Relevance (30%): Query match scoring
+  - Journal Impact (20%): Venue reputation (NEJM, Lancet, JAMA = 10)
+  - Author Reputation (15%): Institutional credentials
+  - Citation Count (15%): Citation impact adjusted for recency
+  - Composite Score: 0-100 scale
+- **Tiering:**
+  - Tier 1 (Must Read 🔴): Score ≥ 75
+  - Tier 2 (Should Read 🟡): Score 50-74
+  - Tier 3 (Optional 🟢): Score < 50
+- **Output:** Structured markdown reports with executive summary and prioritized papers
+- **API:** Supports both sync (`/agents/run/sync`) and streaming (`/agents/run/stream`) endpoints
+- **LangSmith Source:** Literature_Triage_Agent configuration
+- **Environment Variables:**
+  - `EXA_API_KEY`: For semantic search (optional, mocks if not set)
+  - `LANGCHAIN_API_KEY`: For LangSmith tracing
+- **Legacy Mode:** Maintains backward compatibility with rule-based triage (`use_ai: false`)
+- **Integration:** Feeds Stage 2 Literature Pipeline and Evidence Synthesis agents
 
 ---
 
