@@ -106,7 +106,7 @@ const TASK_TYPE_TO_AGENT: Record<string, string> = {
 
 ```bash
 # LangSmith API credentials
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 ```
 
@@ -126,7 +126,7 @@ LANGCHAIN_PROJECT=researchflow-artifact-auditor
 LANGCHAIN_TRACING_V2=false
 
 # Worker tools (optional - enhances functionality)
-GITHUB_TOKEN=ghp_...                   # GitHub artifact retrieval
+GITHUB_TOKEN=<your-github-token>   # GitHub artifact retrieval
 GOOGLE_DOCS_API_KEY=...                # Google Docs integration
 GOOGLE_SHEETS_API_KEY=...              # Audit tracker spreadsheet
 ```
@@ -242,7 +242,7 @@ git pull --ff-only
 
 # 3. Set environment variables
 cat >> .env << 'ENV_EOF'
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 ENV_EOF
 
@@ -407,7 +407,7 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 
 **Fix:**
 ```bash
-echo "LANGSMITH_API_KEY=lsv2_pt_..." >> .env
+echo "LANGSMITH_API_KEY=<your-langsmith-api-key>" >> .env
 docker compose up -d --force-recreate agent-artifact-auditor-proxy orchestrator
 ```
 

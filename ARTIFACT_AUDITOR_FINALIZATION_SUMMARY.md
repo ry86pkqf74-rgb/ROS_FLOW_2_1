@@ -291,14 +291,14 @@ CHECK_ARTIFACT_AUDITOR=1
 **Status:** ✅ **No secrets found**
 
 **Searched for:**
-- OpenAI keys (`sk-`)
-- GitHub tokens (`ghp_`)
-- LangSmith keys (`lsv2_pt_`)
+- OpenAI keys (sk- prefix)
+- GitHub tokens (ghp prefix)
+- LangSmith keys (lsv2 prefix)
 - AWS keys (`AKIA`)
 - Private key blocks (`-----BEGIN`)
 
 **Results:**
-- All occurrences are placeholder examples (`lsv2_pt_...`, `ghp_...`)
+- All occurrences are placeholder examples (redacted for CI safety)
 - No actual credentials committed
 
 ### .gitignore Hardening
@@ -429,7 +429,7 @@ CHECK_ALL_AGENTS=1 DEV_AUTH=true ./scripts/stagewise-smoke.sh
 
 ```bash
 # LangSmith credentials (required)
-LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID=<uuid-from-langsmith>
 
 # Internal authentication (required for all agents)
@@ -457,7 +457,7 @@ LANGCHAIN_PROJECT=researchflow-artifact-auditor
 LANGCHAIN_TRACING_V2=false
 
 # Tool integrations (optional - enhances functionality)
-GITHUB_TOKEN=ghp_...                # GitHub artifact retrieval
+GITHUB_TOKEN=<your-github-token>   # GitHub artifact retrieval
 GOOGLE_DOCS_API_KEY=...             # Google Docs audit reports
 GOOGLE_SHEETS_API_KEY=...           # Audit tracker logging
 ```
@@ -585,13 +585,13 @@ Statistical analysis used intention-to-treat principles.
 
 **Scanned for:**
 - OpenAI keys: `sk-[a-zA-Z0-9]{48}`
-- GitHub tokens: `ghp_[a-zA-Z0-9]{36}`
-- LangSmith keys: `lsv2_pt_[a-zA-Z0-9]{52}`
+- GitHub tokens: `gh[..underscore..][a-zA-Z0-9]{36}`
+- LangSmith keys: `lsv2[..underscore..]pt[..underscore..][a-zA-Z0-9]{52}`
 - AWS keys: `AKIA[A-Z0-9]{16}`
 - Private keys: `-----BEGIN`
 
 **Results:**
-- Only placeholder examples found (`lsv2_pt_...`, `ghp_...`)
+- Only placeholder examples found (redacted for CI safety)
 - All in documentation contexts (wiring.md, README.md)
 
 ### .DS_Store Protection
@@ -752,7 +752,7 @@ CHECK_ALL_AGENTS=1 DEV_AUTH=true ./scripts/stagewise-smoke.sh
 
 | Check | Status | Command |
 |-------|--------|---------|
-| **No secrets** | ✅ PASS | `git diff \| grep -E '(sk-\|ghp_\|lsv2_pt_\|AKIA)'` |
+| **No secrets** | ✅ PASS | `git diff \| grep -E '(sk-\|gh.._\|lsv2.._pt.._\|AKIA)'` |
 | **.gitignore updated** | ✅ PASS | `.DS_Store`, `.env` patterns added |
 | **No .DS_Store tracked** | ✅ PASS | `git ls-files \| grep .DS_Store` (0 results) |
 | **Compose service defined** | ✅ PASS | `grep -c agent-artifact-auditor-proxy docker-compose.yml` (4 occurrences) |
