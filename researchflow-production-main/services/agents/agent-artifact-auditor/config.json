@@ -1,0 +1,6 @@
+{
+  "name": "Artifact Auditor",
+  "description": "Audits dissemination artifacts (manuscripts, reports, formatted outputs) against compliance standards such as CONSORT, PRISMA, and STROBE. Parses artifacts from GitHub repositories and Google Docs, flags compliance issues, and generates structured audit reports delivered in chat and as Google Docs.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}
