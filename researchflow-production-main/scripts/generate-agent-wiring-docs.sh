@@ -90,8 +90,12 @@ done)
 ### Agent Endpoints Registry
 
 **AGENT_ENDPOINTS_JSON Entry:**
-\`\`\`json
-"${agent_key}": "http://${agent_key}:${port}"
+
+Agent must be present in \`AGENT_ENDPOINTS_JSON\` environment variable in \`docker-compose.yml\`.
+
+To verify current registration:
+\`\`\`bash
+docker compose exec orchestrator sh -c 'echo \$AGENT_ENDPOINTS_JSON' | python3 -m json.tool | grep "${agent_key}"
 \`\`\`
 
 **Location:** \`docker-compose.yml\` orchestrator environment

@@ -123,7 +123,7 @@ const DispatchRequestSchema = z.object({
 
 /**
  * Parse and validate AGENT_ENDPOINTS_JSON at module initialization.
- * Format: {"agent-stage2-lit": "http://agent-stage2-lit:8000", ...}
+ * Format: JSON object mapping agent keys to base URLs (schema: {"<agent-key>": "<url>", ...})
  * This is the SINGLE SOURCE OF TRUTH for all agent routing.
  * 
  * Validation rules:
@@ -228,7 +228,7 @@ function resolveAgentBaseUrl(agentKey: string): string {
       `Available agents (${availableKeys.length}):\n` +
       sortedKeys.map(k => `  - ${k}: ${AGENT_ENDPOINTS_STATE.endpoints[k]}`).join('\n') + '\n\n' +
       `Remediation:\n` +
-      `  1. Add "${agentKey}":"http://${agentKey}:8000" to AGENT_ENDPOINTS_JSON in docker-compose.yml\n` +
+      `  1. Add agent entry to AGENT_ENDPOINTS_JSON in docker-compose.yml (copy format from existing entries)\n` +
       `  2. Ensure the compose service "${agentKey}" is defined\n` +
       `  3. Restart orchestrator: docker compose up -d --force-recreate orchestrator`
     );

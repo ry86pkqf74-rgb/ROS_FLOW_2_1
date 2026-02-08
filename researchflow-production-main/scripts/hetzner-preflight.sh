@@ -492,13 +492,21 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
     check_pass "  $agent_key [Container]" "running"
     
     # 5. Health check via docker exec (internal network)
-    # Try /health first, then /api/health, then /routes/health (fallback for legacy agents)
-    HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/health" 2>/dev/null || echo "")
+    # Try /health/ready first (preferred), then /health, then /api/health, then /routes/health (fallback for legacy agents)
+    HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/health/ready" 2>/dev/null || echo "")
+    HEALTH_ENDPOINT="/health/ready"
+    
+    if [ -z "$HEALTH_CHECK" ]; then
+        # Try /health
+        HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/health" 2>/dev/null || echo "")
+        HEALTH_ENDPOINT="/health"
+    fi
     
     if [ -z "$HEALTH_CHECK" ]; then
         # Try /api/health
         HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/api/health" 2>/dev/null || echo "")
         if [ -n "$HEALTH_CHECK" ]; then
+            HEALTH_ENDPOINT="/api/health"
             check_warn "  $agent_key [Health]" "responds at /api/health (non-standard)"
         fi
     fi
@@ -507,7 +515,42 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
         # Try /routes/health
         HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/routes/health" 2>/dev/null || echo "")
         if [ -n "$HEALTH_CHECK" ]; then
+            HEALTH_ENDPOINT="/routes/health"
             check_warn "  $agent_key [Health]" "responds at /routes/health (non-standard)"
+        fi
+    fi
+    
+    # For proxy agents, validate upstream LangSmith /info is reachable (enforce readiness)
+    if [[ "$agent_key" == *"-proxy" ]]; then
+        # Check if LangSmith API is reachable (required for proxy readiness)
+        LANGSMITH_KEY=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY}' 2>/dev/null || echo "")
+        if [ -n "$LANGSMITH_KEY" ]; then
+            LANGSMITH_INFO_STATUS=$(docker compose exec -T "$SERVICE_NAME" sh -c "curl -fsS -o /dev/null -w '%{http_code}' -H 'x-api-key: \$LANGSMITH_API_KEY' https://api.smith.langchain.com/info 2>/dev/null" || echo "000")
+            
+            if [ "$LANGSMITH_INFO_STATUS" = "200" ]; then
+                check_pass "  $agent_key [LangSmith]" "upstream /info returns 2xx"
+            elif [ "$LANGSMITH_INFO_STATUS" = "401" ] || [ "$LANGSMITH_INFO_STATUS" = "403" ] || [ "$LANGSMITH_INFO_STATUS" = "404" ]; then
+                check_fail "  $agent_key [LangSmith]" "upstream /info returns $LANGSMITH_INFO_STATUS (auth/not found)"
+                AGENT_VALIDATION_FAILED=1
+                echo ""
+                echo -e "${YELLOW}  Remediation:${NC}"
+                echo "    Verify LANGSMITH_API_KEY is valid in .env"
+                echo "    Check LangSmith account status: https://smith.langchain.com"
+                echo "    Restart proxy: docker compose restart $SERVICE_NAME"
+                echo ""
+                continue
+            else
+                check_fail "  $agent_key [LangSmith]" "upstream /info returns non-2xx: $LANGSMITH_INFO_STATUS"
+                AGENT_VALIDATION_FAILED=1
+                echo ""
+                echo -e "${YELLOW}  Remediation:${NC}"
+                echo "    Check network connectivity to https://api.smith.langchain.com"
+                echo "    Verify LANGSMITH_API_KEY is set: docker compose exec orchestrator env | grep LANGSMITH"
+                echo ""
+                continue
+            fi
+        else
+            check_warn "  $agent_key [LangSmith]" "LANGSMITH_API_KEY not set (readiness check skipped)"
         fi
     fi
     

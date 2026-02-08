@@ -40,9 +40,11 @@ echo -e "${BLUE}Bias Detection Wiring Validation${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Check 1: AGENT_ENDPOINTS_JSON key
+# Check 1: AGENT_ENDPOINTS_JSON key (validate key exists, not hardcoded URL pattern)
 echo -e "${BLUE}[1] AGENT_ENDPOINTS_JSON Configuration${NC}"
-if grep -q '"agent-bias-detection-proxy":"http://agent-bias-detection-proxy:8000"' docker-compose.yml; then
+if docker compose config 2>/dev/null | grep -q '"agent-bias-detection-proxy"'; then
+    check_pass "docker-compose.yml uses correct key: agent-bias-detection-proxy"
+elif grep -q '"agent-bias-detection-proxy"' docker-compose.yml; then
     check_pass "docker-compose.yml uses correct key: agent-bias-detection-proxy"
 else
     check_fail "docker-compose.yml missing or incorrect key (expected: agent-bias-detection-proxy)"
