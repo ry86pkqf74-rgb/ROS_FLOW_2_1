@@ -85,6 +85,46 @@ FAILED=0
 WARNINGS=0
 
 # Helper functions
+write_validation_artifact() {
+    local agent_key="$1"
+    local timestamp="$2"
+    local status="$3"
+    local container_running="$4"
+    local health_endpoint="$5"
+    local health_status="$6"
+    local langsmith_status="$7"
+    local error_msg="$8"
+    local agent_url="$9"
+    local service_name="${10:-}"
+    
+    local artifact_dir="/data/artifacts/validation/${agent_key}/${timestamp}"
+    mkdir -p "$artifact_dir" 2>/dev/null || return 1
+    
+    python3 -c "
+import json
+import sys
+data = {
+    'agentKey': sys.argv[1],
+    'validation_script': 'hetzner-preflight.sh',
+    'timestamp': sys.argv[2],
+    'status': sys.argv[3],
+    'container_running': sys.argv[4].lower() == 'true',
+    'health_endpoint': sys.argv[5],
+    'health_response_status': sys.argv[6],
+    'langsmith_info_status': sys.argv[7],
+    'error': sys.argv[8] if sys.argv[8] else None,
+    'agent_url': sys.argv[9]
+}
+if len(sys.argv) > 10 and sys.argv[10]:
+    data['service_name'] = sys.argv[10]
+json.dump(data, sys.stdout, indent=2)
+" "$agent_key" "$timestamp" "$status" "$container_running" "$health_endpoint" \
+  "$health_status" "$langsmith_status" "$error_msg" "$agent_url" "$service_name" \
+  > "${artifact_dir}/summary.json" 2>/dev/null || return 1
+    
+    return 0
+}
+
 print_header() {
     echo ""
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
@@ -459,25 +499,11 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
         
         # Write failure artifact
         TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || {
-            echo "  Warning: Could not create artifact directory (permissions or /data not mounted)"
+        if ! write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+            "${ARTIFACT_CONTAINER_RUNNING}" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+            "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL"; then
+            echo "  Warning: Could not write artifact (permissions or /data not mounted)"
             AGENT_VALIDATION_FAILED=1
-        }
-        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}"
-}
-ARTIFACT_EOF
         fi
         
         echo ""
@@ -493,23 +519,9 @@ ARTIFACT_EOF
         
         # Write failure artifact
         TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}"
-}
-ARTIFACT_EOF
-        fi
+        write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+            "${ARTIFACT_CONTAINER_RUNNING}" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+            "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" >/dev/null 2>&1
         
         echo ""
         echo -e "${YELLOW}  Remediation:${NC}"
@@ -533,24 +545,9 @@ ARTIFACT_EOF
         
         # Write failure artifact
         TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}",
-  "service_name": "parse_failed"
-}
-ARTIFACT_EOF
-        fi
+        write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+            "${ARTIFACT_CONTAINER_RUNNING}" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+            "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" "parse_failed" >/dev/null 2>&1
         
         echo "    Expected format: http://service-name:port"
         echo ""
@@ -567,24 +564,9 @@ ARTIFACT_EOF
         
         # Write failure artifact
         TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}",
-  "service_name": "${SERVICE_NAME}"
-}
-ARTIFACT_EOF
-        fi
+        write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+            "false" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+            "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" "$SERVICE_NAME" >/dev/null 2>&1
         
         echo ""
         echo -e "${YELLOW}  Remediation:${NC}"
@@ -640,7 +622,8 @@ ARTIFACT_EOF
         # Check if LangSmith API is reachable (required for proxy readiness)
         LANGSMITH_KEY=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY}' 2>/dev/null || echo "")
         if [ -n "$LANGSMITH_KEY" ]; then
-            LANGSMITH_INFO_STATUS=$(docker compose exec -T "$SERVICE_NAME" sh -c "curl -fsS -o /dev/null -w '%{http_code}' -H 'x-api-key: \$LANGSMITH_API_KEY' https://api.smith.langchain.com/info 2>/dev/null" || echo "000")
+            LANGSMITH_API_URL="${LANGSMITH_API_URL:-https://api.smith.langchain.com/api/v1}"
+            LANGSMITH_INFO_STATUS=$(docker compose exec -T "$SERVICE_NAME" sh -c "curl -fsS -o /dev/null -w '%{http_code}' -H 'x-api-key: \$LANGSMITH_API_KEY' ${LANGSMITH_API_URL}/info 2>/dev/null" || echo "000")
             ARTIFACT_LANGSMITH_INFO_STATUS="$LANGSMITH_INFO_STATUS"
             
             if [ "$LANGSMITH_INFO_STATUS" = "200" ]; then
@@ -653,24 +636,9 @@ ARTIFACT_EOF
                 
                 # Write failure artifact
                 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-                mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-                if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-                    cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}",
-  "service_name": "${SERVICE_NAME}"
-}
-ARTIFACT_EOF
-                fi
+                write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+                    "true" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+                    "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" "$SERVICE_NAME" >/dev/null 2>&1
                 
                 echo ""
                 echo -e "${YELLOW}  Remediation:${NC}"
@@ -687,24 +655,9 @@ ARTIFACT_EOF
                 
                 # Write failure artifact
                 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-                mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-                if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-                    cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}",
-  "service_name": "${SERVICE_NAME}"
-}
-ARTIFACT_EOF
-                fi
+                write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+                    "true" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+                    "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" "$SERVICE_NAME" >/dev/null 2>&1
                 
                 echo ""
                 echo -e "${YELLOW}  Remediation:${NC}"
@@ -730,24 +683,9 @@ ARTIFACT_EOF
         
         # Write failure artifact
         TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": "${ARTIFACT_ERROR}",
-  "agent_url": "${AGENT_URL}",
-  "service_name": "${SERVICE_NAME}"
-}
-ARTIFACT_EOF
-        fi
+        write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+            "true" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+            "$ARTIFACT_LANGSMITH_INFO_STATUS" "$ARTIFACT_ERROR" "$AGENT_URL" "$SERVICE_NAME" >/dev/null 2>&1
         
         echo ""
         echo -e "${YELLOW}  Remediation:${NC}"
@@ -761,35 +699,10 @@ ARTIFACT_EOF
     
     # Write success artifact
     TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-    mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || {
-        echo "  Warning: Could not create artifact directory - /data may not be mounted or insufficient permissions"
-        AGENT_VALIDATION_FAILED=1
-        echo ""
-        continue
-    }
-    
-    if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-        cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "hetzner-preflight.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
-  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
-  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
-  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
-  "error": null,
-  "agent_url": "${AGENT_URL}",
-  "service_name": "${SERVICE_NAME}"
-}
-ARTIFACT_EOF
-        if [ ! -f "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" ]; then
-            echo "  Warning: Failed to write artifact summary (permissions issue)"
-            AGENT_VALIDATION_FAILED=1
-        fi
-    else
-        echo "  Warning: Artifact directory creation failed"
+    if ! write_validation_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" \
+        "true" "$ARTIFACT_HEALTH_ENDPOINT" "$ARTIFACT_HEALTH_STATUS" \
+        "$ARTIFACT_LANGSMITH_INFO_STATUS" "" "$AGENT_URL" "$SERVICE_NAME"; then
+        echo "  Warning: Failed to write artifact summary (permissions or /data not mounted)"
         AGENT_VALIDATION_FAILED=1
     fi
     

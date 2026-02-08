@@ -43,6 +43,40 @@ fail() {
   exit 1
 }
 
+# Helper function to write JSON artifacts safely (no injection risk)
+write_smoke_artifact() {
+  local agent_key="$1"
+  local timestamp="$2"
+  local status="$3"
+  local task_type="$4"
+  local dispatch_status="$5"
+  local routed_agent="$6"
+  local error_msg="$7"
+  
+  local artifact_dir="/data/artifacts/validation/${agent_key}/${timestamp}"
+  mkdir -p "$artifact_dir" 2>/dev/null || return 1
+  
+  python3 -c "
+import json
+import sys
+data = {
+    'agentKey': sys.argv[1],
+    'validation_script': 'stagewise-smoke.sh',
+    'timestamp': sys.argv[2],
+    'status': sys.argv[3],
+    'task_type': sys.argv[4],
+    'dispatch_http_status': sys.argv[5],
+    'routed_agent': sys.argv[6] if sys.argv[6] else None,
+    'error': sys.argv[7] if sys.argv[7] else None
+}
+json.dump(data, sys.stdout, indent=2)
+" "$agent_key" "$timestamp" "$status" "$task_type" "$dispatch_status" \
+  "$routed_agent" "$error_msg" \
+  > "${artifact_dir}/summary.json" 2>/dev/null || return 1
+  
+  return 0
+}
+
 # Emit clearer auth errors (401/403)
 auth_error() {
   local code="$1" url="$2"
@@ -953,21 +987,8 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
       
       # Write skipped artifact
       TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-      mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
-      if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-        cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "stagewise-smoke.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "task_type": "${TASK_TYPE}",
-  "dispatch_http_status": "${ARTIFACT_DISPATCH_STATUS}",
-  "routed_agent": null,
-  "error": "${ARTIFACT_ERROR}"
-}
-ARTIFACT_EOF
-      fi
+      write_smoke_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" "$TASK_TYPE" \
+        "$ARTIFACT_DISPATCH_STATUS" "" "$ARTIFACT_ERROR" >/dev/null 2>&1
       
       continue
     fi
@@ -1005,38 +1026,13 @@ ARTIFACT_EOF
     
     # Write artifact (CRITICAL: must succeed in CHECK_ALL_AGENTS=1 mode)
     TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-    ARTIFACT_WRITE_FAILED=false
     
-    mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || {
-      echo "  CRITICAL: Could not create artifact directory - /data may not be mounted or insufficient permissions"
-      ARTIFACT_WRITE_FAILED=true
+    if ! write_smoke_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" "$TASK_TYPE" \
+        "$ARTIFACT_DISPATCH_STATUS" "$ARTIFACT_ROUTED_AGENT" "$ARTIFACT_ERROR"; then
+      echo "  CRITICAL: Failed to write artifact summary - treating as failure"
       AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
-    }
-    
-    if [ "$ARTIFACT_WRITE_FAILED" = false ] && [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
-      cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
-{
-  "agentKey": "${agent_key}",
-  "validation_script": "stagewise-smoke.sh",
-  "timestamp": "${TIMESTAMP}",
-  "status": "${ARTIFACT_STATUS}",
-  "task_type": "${TASK_TYPE}",
-  "dispatch_http_status": "${ARTIFACT_DISPATCH_STATUS}",
-  "routed_agent": $([ -n "$ARTIFACT_ROUTED_AGENT" ] && echo "\"$ARTIFACT_ROUTED_AGENT\"" || echo "null"),
-  "error": $([ -n "$ARTIFACT_ERROR" ] && echo "\"$ARTIFACT_ERROR\"" || echo "null")
-}
-ARTIFACT_EOF
       
-      # Verify write succeeded
-      if [ ! -f "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" ]; then
-        echo "  CRITICAL: Failed to write artifact summary (permissions issue) - treating as failure"
-        ARTIFACT_WRITE_FAILED=true
-        AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
-      fi
-    fi
-    
-    # If artifact write failed but dispatch passed, downgrade to failure
-    if [ "$ARTIFACT_WRITE_FAILED" = true ]; then
+      # If dispatch passed but artifact write failed, downgrade to failure
       if [ "$ARTIFACT_STATUS" = "pass" ]; then
         echo "  CRITICAL: Dispatch passed but artifact write failed - treating validation as FAILED"
         # Decrement the pass counter if we had counted it
