@@ -665,6 +665,66 @@ docker compose images --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Cre
 
 ---
 
+## Persistent Data Storage
+
+### Artifact Storage
+
+The worker service stores generated artifacts (reports, exports, analysis results) in `/data/artifacts` inside the container. This path is mounted to a Docker volume for persistence across container restarts.
+
+**Configuration:**
+- **Environment Variable**: `ARTIFACTS_PATH=/data/artifacts` (set in docker-compose.yml)
+- **Volume Mount**: `shared-data:/data` (mounted to worker container)
+- **Physical Location**: Docker volume `shared-data` (managed by Docker)
+
+**Key Benefits:**
+- **Durability**: Artifacts survive container restarts and updates
+- **Host-agnostic**: Works on any host without path dependencies
+- **No root required**: Worker runs as non-root user with proper permissions
+
+**Accessing Artifacts:**
+
+```bash
+# List artifacts
+docker compose exec worker ls -lh /data/artifacts
+
+# Copy artifact to host
+docker compose cp worker:/data/artifacts/example.zip ./example.zip
+
+# View volume location on host
+docker volume inspect researchflow-production-main_shared-data
+```
+
+**Troubleshooting:**
+
+If the worker fails to start with artifact path errors:
+
+```bash
+# Check volume exists
+docker volume ls | grep shared-data
+
+# Inspect volume permissions
+docker compose exec worker ls -ld /data/artifacts
+
+# Recreate volume if needed (WARNING: DATA LOSS)
+docker compose down -v
+docker compose up -d
+```
+
+### Other Persistent Data
+
+| Path | Description | Volume |
+|------|-------------|--------|
+| `/data/artifacts` | Generated artifacts and reports | `shared-data` |
+| `/data/logs` | Application logs | `shared-data` |
+| `/data/manifests` | Data provenance manifests | `shared-data` |
+| `/data/projects` | Version control projects | `shared-data` |
+| PostgreSQL data | Database files | `postgres-data` |
+| Redis data | Cache and queue data | `redis-data` |
+
+**Note**: All `/data/*` paths are mounted to the `shared-data` volume, which is shared between orchestrator and worker services for artifact exchange.
+
+---
+
 ## Next Steps
 
 After successful deployment and health validation:

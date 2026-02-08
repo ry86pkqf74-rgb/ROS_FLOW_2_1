@@ -243,6 +243,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Startup validation: ensure artifacts path exists and is writable
+@app.on_event("startup")
+async def validate_artifact_path():
+    """
+    Validate ARTIFACTS_PATH on startup.
+    Creates the directory if missing and errors with clear message if not writable.
+    """
+    # Check both ARTIFACTS_PATH (preferred) and legacy ARTIFACT_PATH
+    artifact_path = os.environ.get("ARTIFACTS_PATH") or os.environ.get("ARTIFACT_PATH", "/data/artifacts")
+    artifact_dir = Path(artifact_path)
+    
+    print(f"[ROS] Validating artifact path: {artifact_path}")
+    
+    # Create directory if it doesn't exist
+    try:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[ROS] ✓ Artifact directory ready: {artifact_path}")
+    except Exception as e:
+        error_msg = f"Failed to create artifact directory {artifact_path}: {e}"
+        print(f"[ROS] ✗ FATAL: {error_msg}")
+        raise RuntimeError(error_msg)
+    
+    # Verify directory is writable
+    if not os.access(artifact_dir, os.W_OK):
+        error_msg = f"Artifact directory {artifact_path} is not writable. Check permissions and volume mounts."
+        print(f"[ROS] ✗ FATAL: {error_msg}")
+        raise RuntimeError(error_msg)
+    
+    print(f"[ROS] ✓ Artifact directory is writable")
+
 # Register extraction router if available
 if EXTRACTION_AVAILABLE:
     app.include_router(extraction_router, prefix="/api", tags=["extraction"])

@@ -106,7 +106,7 @@ class WorkerConfig:
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             log_format=log_fmt,
             governance_mode=os.getenv("GOVERNANCE_MODE", "DEMO"),
-            artifact_path=os.getenv("ARTIFACT_PATH", "/data/artifacts"),
+            artifact_path=os.getenv("ARTIFACTS_PATH") or os.getenv("ARTIFACT_PATH", "/data/artifacts"),
             log_path=os.getenv("LOG_PATH", "/data/logs"),
             orchestrator_url=os.getenv("ORCHESTRATOR_URL", "http://orchestrator:3001"),
             bridge_timeout=_parse_float(os.getenv("BRIDGE_TIMEOUT"), 30.0),

@@ -65,8 +65,8 @@ async def ready():
         checks["config"] = f"failed: {str(e)}"
         all_ok = False
 
-    # Artifact path
-    artifact_path = os.environ.get("ARTIFACT_PATH", "/data/artifacts")
+    # Artifact path (check both ARTIFACTS_PATH and legacy ARTIFACT_PATH)
+    artifact_path = os.environ.get("ARTIFACTS_PATH") or os.environ.get("ARTIFACT_PATH", "/data/artifacts")
     try:
         artifact_dir = Path(artifact_path)
         if artifact_dir.exists() and artifact_dir.is_dir():

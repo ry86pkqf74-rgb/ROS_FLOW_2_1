@@ -40,14 +40,14 @@ class AgenticPipeline:
     def __init__(
         self,
         data_dir: str = "/app/data",
-        output_dir: str = "/app/artifacts"
+        output_dir: str = "/data/artifacts"
     ):
         """
         Initialize pipeline.
 
         Args:
             data_dir: Directory for input data
-            output_dir: Directory for output artifacts
+            output_dir: Directory for output artifacts (default: /data/artifacts for durability)
         """
         self.data_dir = Path(data_dir)
         self.output_dir = Path(output_dir)
