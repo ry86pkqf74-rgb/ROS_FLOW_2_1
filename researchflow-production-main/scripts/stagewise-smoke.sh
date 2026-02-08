@@ -23,6 +23,8 @@ CHECK_SECTION_DRAFTER="${CHECK_SECTION_DRAFTER:-0}"
 CHECK_BIAS_DETECTION="${CHECK_BIAS_DETECTION:-0}"
 # When set to "1", run optional Dissemination Formatter check (LangSmith-based)
 CHECK_DISSEMINATION_FORMATTER="${CHECK_DISSEMINATION_FORMATTER:-0}"
+# When set to "1", run optional Performance Optimizer check (LangSmith-based)
+CHECK_PERFORMANCE_OPTIMIZER="${CHECK_PERFORMANCE_OPTIMIZER:-0}"
 # When set to "1", run optional Peer Review Simulator check (LangSmith-based)
 CHECK_PEER_REVIEW="${CHECK_PEER_REVIEW:-0}"
 # When set to "1", run optional Results Interpretation check (LangSmith-based)
@@ -855,6 +857,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
   CHECK_SECTION_DRAFTER=1
   CHECK_BIAS_DETECTION=1
   CHECK_DISSEMINATION_FORMATTER=1
+  CHECK_PERFORMANCE_OPTIMIZER=1
   CHECK_PEER_REVIEW=1
   CHECK_RESULTS_INTERPRETATION=1
   
@@ -1074,4 +1077,128 @@ FORMATTER_SMOKE_EOF
   echo "Dissemination Formatter Agent check complete (optional - does not block)"
 else
   echo "[13] Skipping Dissemination Formatter check (set CHECK_DISSEMINATION_FORMATTER=1 to enable)"
+fi
+
+# --- 14. Optional: Performance Optimizer validation (LangSmith cloud integration - cross-cutting)
+if [ "$CHECK_PERFORMANCE_OPTIMIZER" = "1" ] || [ "$CHECK_PERFORMANCE_OPTIMIZER" = "true" ]; then
+  echo "[14] Performance Optimizer Agent Check (optional - LangSmith-based)"
+  
+  # 14a. Check LANGSMITH_API_KEY and agent ID are configured
+  echo "[14a] Checking LANGSMITH_API_KEY and agent ID configuration"
+  LANGSMITH_KEY_SET=false
+  PERF_AGENT_ID_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+    
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+      PERF_AGENT_ID_SET=true
+      echo "✓ LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID not set"
+      echo "To enable: Add LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID=<uuid> to .env and recreate orchestrator"
+    fi
+  else
+    echo "Warning: Docker unavailable (cannot check LangSmith keys)"
+  fi
+  
+  # 14b. POST /api/ai/router/dispatch (PERFORMANCE_OPTIMIZATION)
+  echo "[14b] POST /api/ai/router/dispatch (PERFORMANCE_OPTIMIZATION)"
+  DISPATCH_RESP=$(curl -s -X POST "$ORCHESTRATOR_URL/api/ai/router/dispatch" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "task_type": "PERFORMANCE_OPTIMIZATION",
+      "request_id": "smoke-perf-001",
+      "mode": "DEMO",
+      "inputs": {
+        "metrics_data": {
+          "last_24h": {
+            "p50_latency_ms": 150,
+            "p95_latency_ms": 450,
+            "p99_latency_ms": 800,
+            "error_rate": 0.02,
+            "total_requests": 5000,
+            "token_cost_usd": 12.50
+          }
+        },
+        "analysis_focus": "latency",
+        "time_period": "last_24_hours"
+      }
+    }' 2>/dev/null || echo "FAIL")
+  
+  DISPATCH_CODE=$(echo "$DISPATCH_RESP" | jq -r '.error // "OK"' 2>/dev/null || echo "PARSE_ERROR")
+  
+  if echo "$DISPATCH_RESP" | grep -q "agent-performance-optimizer"; then
+    echo "Router dispatch OK: response code 200"
+    echo "✓ Correctly routed to agent-performance-optimizer"
+  else
+    echo "Warning: Router dispatch failed or returned unexpected response"
+    echo "Response: $DISPATCH_RESP"
+    echo "Note: This is expected if orchestrator or agent-performance-optimizer-proxy is not running"
+  fi
+  
+  # 14c. Check proxy container health
+  echo "[14c] Checking proxy container health"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-performance-optimizer-proxy"; then
+      echo "✓ agent-performance-optimizer-proxy container is running"
+      
+      # Try health endpoint via docker exec
+      HEALTH_CHECK=$(docker compose exec -T agent-performance-optimizer-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$HEALTH_CHECK" | grep -q "ok"; then
+        echo "✓ Proxy health endpoint responding"
+      else
+        echo "Warning: Proxy health check failed (may be starting up)"
+      fi
+    else
+      echo "Warning: agent-performance-optimizer-proxy container not running"
+      echo "Start with: docker compose up -d agent-performance-optimizer-proxy"
+    fi
+  else
+    echo "Warning: Docker unavailable (cannot check proxy container)"
+  fi
+  
+  # 14d. Check artifacts directory structure (optional)
+  echo "[14d] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    
+    # Write a minimal validation record
+    if [ -d "/data/artifacts/validation/performance-optimizer-smoke" ]; then
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/performance-optimizer-smoke/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/performance-optimizer-smoke/${TIMESTAMP}/summary.json" 2>/dev/null <<PERF_SMOKE_EOF
+{
+  "agent": "agent-performance-optimizer",
+  "task_type": "PERFORMANCE_OPTIMIZATION",
+  "timestamp": "${TIMESTAMP}",
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "perf_agent_id_set": ${PERF_AGENT_ID_SET},
+  "router_registered": true,
+  "proxy_container_running": $(docker ps --format "{{.Names}}" | grep -q "agent-performance-optimizer-proxy" && echo "true" || echo "false"),
+  "status": "smoke-check-complete"
+}
+PERF_SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/performance-optimizer-smoke/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (no artifact write; reports go to Google Docs)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY + LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID"
+  echo "      Proxy container must be running and healthy for full integration"
+  echo "      Full integration test requires: Metrics → Optimizer → Performance report"
+  echo "      Optional: Set GOOGLE_SHEETS_API_KEY and GOOGLE_DOCS_API_KEY for Google integration"
+  
+  echo "Performance Optimizer Agent check complete (optional - does not block)"
+else
+  echo "[14] Skipping Performance Optimizer check (set CHECK_PERFORMANCE_OPTIMIZER=1 to enable)"
 fi

@@ -319,7 +319,7 @@ else
     echo "Testing service endpoints..."
     echo ""
     check_service "Web Frontend" "$WEB_URL" "/health"
-    check_service "Orchestrator Health" "$ORCHESTRATOR_URL" "/api/health"
+    check_service "Orchestrator Health" "$ORCHESTRATOR_URL" "/health"
     check_service "Worker" "$WORKER_URL" "/health"
     check_service "Guideline Engine" "$GUIDELINE_URL" "/health"
     check_service "Collab Server" "$COLLAB_URL" "/health"
@@ -470,6 +470,53 @@ if [ $AGENT_VALIDATION_FAILED -gt 0 ]; then
     echo "  3. View logs: docker compose logs <failed-service>"
     echo ""
     FAILED=$((FAILED + 1))
+fi
+
+echo ""
+
+# ==============================================================================
+# Performance Optimizer Agent Validation (LangSmith proxy)
+# ==============================================================================
+print_header "Performance Optimizer Agent (LangSmith Proxy)"
+
+# Check LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID is configured
+PERF_AGENT_ID_SET=false
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+        PERF_AGENT_ID_SET=true
+        check_pass "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "configured"
+    else
+        check_fail "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "not set"
+        FAILED=$((FAILED + 1))
+        echo ""
+        echo -e "${YELLOW}Remediation:${NC}"
+        echo "  1. Add to .env: LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID=<uuid-from-langsmith>"
+        echo "  2. Recreate orchestrator: docker compose up -d --force-recreate orchestrator"
+        echo "  3. Restart proxy: docker compose restart agent-performance-optimizer-proxy"
+        echo ""
+    fi
+else
+    check_fail "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "cannot check (docker unavailable)"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+# Verify task type registration in ai-router.ts
+if [ -f "services/orchestrator/src/routes/ai-router.ts" ]; then
+    if grep -q "PERFORMANCE_OPTIMIZATION.*agent-performance-optimizer" services/orchestrator/src/routes/ai-router.ts; then
+        check_pass "Router Registration" "PERFORMANCE_OPTIMIZATION -> agent-performance-optimizer"
+    else
+        check_fail "Router Registration" "PERFORMANCE_OPTIMIZATION not registered"
+        FAILED=$((FAILED + 1))
+        echo ""
+        echo -e "${YELLOW}Remediation:${NC}"
+        echo "  Add to ai-router.ts TASK_TYPE_TO_AGENT:"
+        echo "    PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer',"
+        echo ""
+    fi
+else
+    check_fail "Router Registration" "ai-router.ts not found"
+    WARNINGS=$((WARNINGS + 1))
 fi
 
 echo ""

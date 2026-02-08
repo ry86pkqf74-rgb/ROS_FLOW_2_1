@@ -586,7 +586,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - Validation: Preflight + smoke test hooks ✅
   - **Wiring Guide:** `docs/agents/dissemination-formatter/wiring.md` ⭐
 
-**NEW:** `agent-performance-optimizer` — Performance Optimizer Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
+**NEW:** `agent-performance-optimizer` — Performance Optimizer Agent (Imported from LangSmith, 2026-02-08) ✅ **PRODUCTION READY**
 - **Purpose:** Monitors and optimizes LLM/agent workflow metrics including latency, token costs, error rates. Provides actionable recommendations to reduce API costs by 20-30% and improve performance at enterprise scale.
 - **Architecture:** LangSmith multi-agent system with 2 specialized sub-workers (Optimization_Researcher, Cost_Benchmarker)
 - **Main Agent Capabilities:**
@@ -611,15 +611,29 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **Tools:** Google Sheets (read/write/append/create), Google Docs (create/append/read), Web search (research)
 - **Integration:** Cross-cutting monitoring for all agents and workflow stages; independent operation with metrics input
 - **Output:** Performance reports (Google Docs), optimization tracking spreadsheet, chat summaries with recommendations
-- **Deployment:** LangSmith cloud agent (config-only, no local proxy required)
 - **Location:** `services/agents/agent-performance-optimizer/` (config, tools, subagents)
-- **Documentation:** `AGENTS.md`, `config.json`, `tools.json`, `subagents/*/AGENTS.md`
-- **Task Type:** `PERFORMANCE_OPTIMIZATION` (stage 0 - cross-cutting monitoring)
-- **Environment Variables:**
-  - `LANGSMITH_API_KEY` - LangSmith API access (optional for LangSmith-hosted execution)
-  - `GOOGLE_SHEETS_API_KEY` - For metrics reading/writing (optional)
-  - `GOOGLE_DOCS_API_KEY` - For report generation (optional)
-- **Status:** ✅ **IMPORTED** (2026-02-08) | Configuration files ready | Awaiting deployment integration
+- **Documentation:**
+  - **Main README:** `services/agents/agent-performance-optimizer/README.md` ⭐ **PRIMARY REFERENCE**
+  - **Agent Prompt:** `services/agents/agent-performance-optimizer/AGENTS.md`
+  - **Config:** `services/agents/agent-performance-optimizer/config.json`
+  - **Tools:** `services/agents/agent-performance-optimizer/tools.json`
+  - **Sub-Workers:** `services/agents/agent-performance-optimizer/subagents/*/AGENTS.md`
+- **LangSmith Source:** Performance Optimizer custom agent
+- **Communication Style:** Data-driven, analytical, actionable recommendations with estimated impact, cost-benefit analysis focus
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-performance-optimizer-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `PERFORMANCE_OPTIMIZATION` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/performance-optimizer/wiring.md` ⭐
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `GOOGLE_SHEETS_API_KEY` - For metrics reading (disabled by default)
+  - `GOOGLE_DOCS_API_KEY` - For report generation (disabled by default)
+  - `LANGSMITH_PERFORMANCE_OPTIMIZER_TIMEOUT_SECONDS` - Request timeout (default: 300)
 
 ---
 
