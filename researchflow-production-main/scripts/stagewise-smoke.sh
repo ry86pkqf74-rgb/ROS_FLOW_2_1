@@ -908,6 +908,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     ["agent-journal-guidelines-cache-proxy"]="JOURNAL_GUIDELINES_CACHE"
     ["agent-compliance-auditor-proxy"]="COMPLIANCE_AUDIT"
     ["agent-artifact-auditor-proxy"]="ARTIFACT_AUDIT"
+    ["agent-resilience-architecture-advisor-proxy"]="RESILIENCE_ARCHITECTURE"
     ["agent-multilingual-literature-processor-proxy"]="MULTILINGUAL_LITERATURE_PROCESSING"
   )
   

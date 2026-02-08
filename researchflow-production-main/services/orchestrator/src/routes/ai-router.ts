@@ -348,6 +348,7 @@ router.post(
       JOURNAL_GUIDELINES_CACHE: 'agent-journal-guidelines-cache-proxy',
       COMPLIANCE_AUDIT: 'agent-compliance-auditor-proxy',
       ARTIFACT_AUDIT: 'agent-artifact-auditor-proxy',
+      RESILIENCE_ARCHITECTURE: 'agent-resilience-architecture-advisor-proxy',
       MULTILINGUAL_LITERATURE_PROCESSING: 'agent-multilingual-literature-processor-proxy',
       CLINICAL_MODEL_FINE_TUNING: 'agent-clinical-model-fine-tuner-proxy',
       HYPOTHESIS_REFINEMENT: 'agent-hypothesis-refiner-proxy',
