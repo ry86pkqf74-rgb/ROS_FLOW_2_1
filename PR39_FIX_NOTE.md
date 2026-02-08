@@ -1,1 +1,0 @@
-PR #39 fix applied: hypothesis-refiner main.py restored; /health/ready now requires 2xx-only. Commit: 1c3abce26cfe2e1c7b2723f6ba3566b35bec9fce
