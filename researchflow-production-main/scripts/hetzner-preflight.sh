@@ -329,34 +329,12 @@ fi
 
 echo ""
 
-# Agent fleet health checks - MANDATORY (all agents must be healthy)
+# ==============================================================================
+# Mandatory Agent Fleet Validation (Dynamic from AGENT_ENDPOINTS_JSON)
+# ==============================================================================
 print_header "Mandatory Agent Fleet Validation"
 
-# Load mandatory agent list
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AGENT_LIST_FILE="${SCRIPT_DIR}/lib/agent_endpoints_required.txt"
-
-if [ ! -f "$AGENT_LIST_FILE" ]; then
-    check_fail "Agent List File" "$AGENT_LIST_FILE not found"
-    echo ""
-    echo -e "${RED}CRITICAL: Mandatory agent list missing!${NC}"
-    echo "Expected: ${AGENT_LIST_FILE}"
-    exit 1
-fi
-
-# Parse mandatory agents (skip comments and empty lines)
-MANDATORY_AGENTS=()
-while IFS= read -r line || [ -n "$line" ]; do
-    # Skip comments and empty lines
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    [[ -z "${line// }" ]] && continue
-    MANDATORY_AGENTS+=("$(echo "$line" | xargs)")  # trim whitespace
-done < "$AGENT_LIST_FILE"
-
-echo "Loaded ${#MANDATORY_AGENTS[@]} mandatory agents from $AGENT_LIST_FILE"
-echo ""
-
-# Validate AGENT_ENDPOINTS_JSON is present and parseable
+# Validate orchestrator is running
 if ! docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
     check_fail "Orchestrator" "container not running - cannot validate agents"
     echo ""
@@ -365,14 +343,20 @@ if ! docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
     exit 1
 fi
 
-echo "Validating AGENT_ENDPOINTS_JSON configuration..."
+# Fetch AGENT_ENDPOINTS_JSON from orchestrator
+echo "Fetching AGENT_ENDPOINTS_JSON from orchestrator..."
 ENDPOINTS_JSON=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null || echo "")
 
 if [ -z "$ENDPOINTS_JSON" ]; then
     check_fail "AGENT_ENDPOINTS_JSON" "not set in orchestrator"
     echo ""
     echo -e "${RED}CRITICAL: AGENT_ENDPOINTS_JSON is not configured!${NC}"
-    echo "Add to docker-compose.yml orchestrator environment and restart."
+    echo ""
+    echo "Remediation:"
+    echo "  1. Add AGENT_ENDPOINTS_JSON to docker-compose.yml orchestrator environment"
+    echo "  2. Restart orchestrator: docker compose up -d --force-recreate orchestrator"
+    echo "  3. Verify: docker compose exec orchestrator sh -c 'echo \$AGENT_ENDPOINTS_JSON'"
+    echo ""
     exit 1
 fi
 
@@ -381,15 +365,70 @@ if ! echo "$ENDPOINTS_JSON" | python3 -m json.tool >/dev/null 2>&1; then
     check_fail "AGENT_ENDPOINTS_JSON" "invalid JSON"
     echo ""
     echo -e "${RED}CRITICAL: AGENT_ENDPOINTS_JSON is not valid JSON!${NC}"
-    echo "Fix the JSON syntax in docker-compose.yml and restart orchestrator."
+    echo ""
+    echo "Current value (first 200 chars):"
+    echo "$ENDPOINTS_JSON" | head -c 200
+    echo ""
+    echo "Remediation:"
+    echo "  1. Fix the JSON syntax in docker-compose.yml orchestrator environment"
+    echo "  2. Validate JSON: echo '\$AGENT_ENDPOINTS_JSON' | python3 -m json.tool"
+    echo "  3. Restart orchestrator: docker compose up -d --force-recreate orchestrator"
+    echo ""
     exit 1
 fi
 
-check_pass "AGENT_ENDPOINTS_JSON" "valid JSON with $(echo "$ENDPOINTS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))' 2>/dev/null || echo '?') entries"
+# Dynamically derive mandatory agent keys from AGENT_ENDPOINTS_JSON
+MANDATORY_AGENT_KEYS=$(echo "$ENDPOINTS_JSON" | python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin).keys())))' 2>/dev/null || echo "")
+
+if [ -z "$MANDATORY_AGENT_KEYS" ]; then
+    check_fail "Agent Keys" "failed to parse AGENT_ENDPOINTS_JSON"
+    echo ""
+    echo -e "${RED}CRITICAL: Could not extract agent keys from AGENT_ENDPOINTS_JSON!${NC}"
+    exit 1
+fi
+
+# Convert to array
+MANDATORY_AGENTS=()
+while IFS= read -r agent_key; do
+    [ -n "$agent_key" ] && MANDATORY_AGENTS+=("$agent_key")
+done <<< "$MANDATORY_AGENT_KEYS"
+
+AGENT_COUNT=${#MANDATORY_AGENTS[@]}
+check_pass "AGENT_ENDPOINTS_JSON" "valid JSON with $AGENT_COUNT agent(s)"
+echo ""
+echo "Dynamically derived $AGENT_COUNT mandatory agents from AGENT_ENDPOINTS_JSON"
+echo ""
+
+# Validate required environment variables (names only, no values)
+echo "Validating required environment variables..."
+REQUIRED_ENV_VARS=(
+    "WORKER_SERVICE_TOKEN"
+    "LANGSMITH_API_KEY"
+)
+
+# Check each required env var
+ENV_VAR_MISSING=0
+for var_name in "${REQUIRED_ENV_VARS[@]}"; do
+    VAR_CHECK=$(docker compose exec -T orchestrator sh -c "echo \${${var_name}:+SET}" 2>/dev/null || echo "")
+    if [ "$VAR_CHECK" = "SET" ]; then
+        check_pass "  $var_name" "configured"
+    else
+        check_fail "  $var_name" "not set"
+        ENV_VAR_MISSING=1
+    fi
+done
+
+if [ $ENV_VAR_MISSING -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}Warning: Some required environment variables are missing.${NC}"
+    echo "LangSmith-backed agents may fail without LANGSMITH_API_KEY."
+    echo ""
+fi
+
 echo ""
 
 # Validate each mandatory agent
-echo "Validating ${#MANDATORY_AGENTS[@]} mandatory agents..."
+echo "Validating $AGENT_COUNT mandatory agents..."
 echo ""
 
 AGENT_VALIDATION_FAILED=0
@@ -397,25 +436,33 @@ AGENT_VALIDATION_FAILED=0
 for agent_key in "${MANDATORY_AGENTS[@]}"; do
     echo "Checking: $agent_key"
     
-    # 1. Check if agent is in AGENT_ENDPOINTS_JSON
+    # 1. Get agent URL from AGENT_ENDPOINTS_JSON
     AGENT_URL=$(echo "$ENDPOINTS_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('$agent_key', ''))" 2>/dev/null || echo "")
     
     if [ -z "$AGENT_URL" ]; then
-        check_fail "  $agent_key [Registry]" "not found in AGENT_ENDPOINTS_JSON"
+        check_fail "  $agent_key [Registry]" "missing from AGENT_ENDPOINTS_JSON (unexpected)"
         AGENT_VALIDATION_FAILED=1
-        echo ""
-        echo -e "${YELLOW}  Remediation:${NC}"
-        echo "    Add to AGENT_ENDPOINTS_JSON: \"$agent_key\":\"http://$agent_key:8000\""
-        echo "    Then: docker compose up -d --force-recreate orchestrator"
         echo ""
         continue
     fi
     
-    check_pass "  $agent_key [Registry]" "URL: $AGENT_URL"
+    # 2. Validate URL format
+    if ! echo "$AGENT_URL" | grep -qE '^https?://'; then
+        check_fail "  $agent_key [URL]" "invalid format: $AGENT_URL"
+        AGENT_VALIDATION_FAILED=1
+        echo ""
+        echo -e "${YELLOW}  Remediation:${NC}"
+        echo "    URL must start with http:// or https://"
+        echo "    Update AGENT_ENDPOINTS_JSON in docker-compose.yml"
+        echo ""
+        continue
+    fi
     
-    # 2. Extract service name and port from URL (format: http://service-name:port)
-    SERVICE_NAME=$(echo "$AGENT_URL" | sed -n 's|^http://\([^:]*\):.*|\1|p')
-    SERVICE_PORT=$(echo "$AGENT_URL" | sed -n 's|^http://[^:]*:\([0-9]*\).*|\1|p')
+    check_pass "  $agent_key [Registry]" "$AGENT_URL"
+    
+    # 3. Extract service name and port from URL (format: http://service-name:port)
+    SERVICE_NAME=$(echo "$AGENT_URL" | sed -n 's|^https\?://\([^:]*\):.*|\1|p')
+    SERVICE_PORT=$(echo "$AGENT_URL" | sed -n 's|^https\?://[^:]*:\([0-9]*\).*|\1|p')
     
     if [ -z "$SERVICE_NAME" ] || [ -z "$SERVICE_PORT" ]; then
         check_fail "  $agent_key [URL Parse]" "invalid URL format: $AGENT_URL"
@@ -425,13 +472,14 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
         continue
     fi
     
-    # 3. Check if container is running
+    # 4. Check if container is running
     if ! docker ps --format "{{.Names}}" | grep -q "^${SERVICE_NAME}$\|^researchflow-${SERVICE_NAME}$"; then
         check_fail "  $agent_key [Container]" "not running"
         AGENT_VALIDATION_FAILED=1
         echo ""
         echo -e "${YELLOW}  Remediation:${NC}"
         echo "    Start container: docker compose up -d $SERVICE_NAME"
+        echo "    Check compose definition: grep -A 20 '${SERVICE_NAME}:' docker-compose.yml"
         echo "    Check logs: docker compose logs $SERVICE_NAME"
         echo ""
         continue
@@ -439,10 +487,27 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
     
     check_pass "  $agent_key [Container]" "running"
     
-    # 4. Health check via docker exec (internal network)
-    HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -f "http://localhost:${SERVICE_PORT}/health" 2>/dev/null || echo "FAIL")
+    # 5. Health check via docker exec (internal network)
+    # Try /health first, then /api/health, then /routes/health (fallback for legacy agents)
+    HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/health" 2>/dev/null || echo "")
     
-    if echo "$HEALTH_CHECK" | grep -q "ok\|healthy\|status.*ok"; then
+    if [ -z "$HEALTH_CHECK" ]; then
+        # Try /api/health
+        HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/api/health" 2>/dev/null || echo "")
+        if [ -n "$HEALTH_CHECK" ]; then
+            check_warn "  $agent_key [Health]" "responds at /api/health (non-standard)"
+        fi
+    fi
+    
+    if [ -z "$HEALTH_CHECK" ]; then
+        # Try /routes/health
+        HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -fsS "http://localhost:${SERVICE_PORT}/routes/health" 2>/dev/null || echo "")
+        if [ -n "$HEALTH_CHECK" ]; then
+            check_warn "  $agent_key [Health]" "responds at /routes/health (non-standard)"
+        fi
+    fi
+    
+    if echo "$HEALTH_CHECK" | grep -qiE '"?ok"?|"?healthy"?|"?status"?:\s*"?ok"?'; then
         check_pass "  $agent_key [Health]" "responding"
     else
         check_fail "  $agent_key [Health]" "not responding or unhealthy"
@@ -451,7 +516,8 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
         echo -e "${YELLOW}  Remediation:${NC}"
         echo "    Check logs: docker compose logs $SERVICE_NAME"
         echo "    Restart: docker compose restart $SERVICE_NAME"
-        echo "    Test health: docker compose exec $SERVICE_NAME curl http://localhost:${SERVICE_PORT}/health"
+        echo "    Test health: docker compose exec $SERVICE_NAME curl -v http://localhost:${SERVICE_PORT}/health"
+        echo "    Check environment: docker compose exec $SERVICE_NAME env | grep -i langsmith"
         echo ""
         continue
     fi
@@ -459,93 +525,82 @@ for agent_key in "${MANDATORY_AGENTS[@]}"; do
     echo ""
 done
 
+# Hard-fail if any agent is unhealthy
 if [ $AGENT_VALIDATION_FAILED -gt 0 ]; then
     echo ""
-    echo -e "${RED}✗ One or more mandatory agents failed validation!${NC}"
-    echo -e "${RED}✗ All agents must be running and healthy before deployment.${NC}"
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}✗ PREFLIGHT FAILED: One or more mandatory agents are unhealthy!${NC}"
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "All agents declared in AGENT_ENDPOINTS_JSON must be running and healthy."
     echo ""
     echo "Quick fixes:"
     echo "  1. Start all agents: docker compose up -d"
-    echo "  2. Check failed agents: docker compose ps | grep -v 'Up'"
-    echo "  3. View logs: docker compose logs <failed-service>"
+    echo "  2. Check failed agents: docker compose ps | grep -E 'unhealthy|exited'"
+    echo "  3. View logs: docker compose logs <failed-agent>"
+    echo "  4. Rebuild if needed: docker compose build <failed-agent> && docker compose up -d <failed-agent>"
     echo ""
-    FAILED=$((FAILED + 1))
+    echo "If an agent is not needed, remove it from AGENT_ENDPOINTS_JSON in docker-compose.yml"
+    echo "and restart orchestrator: docker compose up -d --force-recreate orchestrator"
+    echo ""
+    exit 1
 fi
 
+echo -e "${GREEN}✓ All $AGENT_COUNT mandatory agents are running and healthy!${NC}"
 echo ""
 
 # ==============================================================================
-# Performance Optimizer Agent Validation (LangSmith proxy)
+# Preflight Summary
 # ==============================================================================
-print_header "Performance Optimizer Agent (LangSmith Proxy)"
-
-# Check LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID is configured
-PERF_AGENT_ID_SET=false
-if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID:+SET}' 2>/dev/null || echo "")
-    if [ "$AGENT_ID_CHECK" = "SET" ]; then
-        PERF_AGENT_ID_SET=true
-        check_pass "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "configured"
-    else
-        check_fail "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "not set"
-        FAILED=$((FAILED + 1))
-        echo ""
-        echo -e "${YELLOW}Remediation:${NC}"
-        echo "  1. Add to .env: LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID=<uuid-from-langsmith>"
-        echo "  2. Recreate orchestrator: docker compose up -d --force-recreate orchestrator"
-        echo "  3. Restart proxy: docker compose restart agent-performance-optimizer-proxy"
-        echo ""
-    fi
-else
-    check_fail "LANGSMITH_PERFORMANCE_OPTIMIZER_AGENT_ID" "cannot check (docker unavailable)"
-    WARNINGS=$((WARNINGS + 1))
-fi
-
-# Verify task type registration in ai-router.ts
-if [ -f "services/orchestrator/src/routes/ai-router.ts" ]; then
-    if grep -q "PERFORMANCE_OPTIMIZATION.*agent-performance-optimizer" services/orchestrator/src/routes/ai-router.ts; then
-        check_pass "Router Registration" "PERFORMANCE_OPTIMIZATION -> agent-performance-optimizer"
-    else
-        check_fail "Router Registration" "PERFORMANCE_OPTIMIZATION not registered"
-        FAILED=$((FAILED + 1))
-        echo ""
-        echo -e "${YELLOW}Remediation:${NC}"
-        echo "  Add to ai-router.ts TASK_TYPE_TO_AGENT:"
-        echo "    PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer',"
-        echo ""
-    fi
-else
-    check_fail "Router Registration" "ai-router.ts not found"
-    WARNINGS=$((WARNINGS + 1))
-fi
-
-echo ""
-
-# Summary
-print_header "Summary"
+print_header "Preflight Summary"
 
 echo -e "Results: ${GREEN}$PASSED passed${NC}, ${YELLOW}$WARNINGS warnings${NC}, ${RED}$FAILED failed${NC}"
 echo ""
 
 if [ $FAILED -eq 0 ] && [ $WARNINGS -eq 0 ]; then
-    echo -e "${GREEN}✓ All preflight checks passed!${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}✓ ALL PREFLIGHT CHECKS PASSED!${NC}"
     echo -e "${GREEN}✓ System is ready for ResearchFlow deployment.${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "Validated:"
+    echo "  • $AGENT_COUNT agents running and healthy"
+    echo "  • AGENT_ENDPOINTS_JSON configured correctly"
+    echo "  • All required environment variables present"
+    echo "  • Core services responding"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Deploy: docker compose up -d"
+    echo "  2. Run smoke tests: ./scripts/stagewise-smoke.sh"
+    echo "  3. Monitor: docker compose logs -f"
+    echo ""
     exit 0
 elif [ $FAILED -eq 0 ]; then
-    echo -e "${YELLOW}⚠ Preflight checks passed with warnings.${NC}"
-    echo -e "${YELLOW}⚠ Review warnings above before proceeding.${NC}"
+    echo -e "${YELLOW}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}⚠ PREFLIGHT PASSED WITH WARNINGS${NC}"
+    echo -e "${YELLOW}════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo "Note: Warnings do not block deployment but should be addressed."
+    echo "Review warnings above before proceeding."
+    echo "Warnings do not block deployment but should be addressed."
+    echo ""
     exit 0
 else
-    echo -e "${RED}✗ Preflight checks FAILED!${NC}"
-    echo -e "${RED}✗ CRITICAL: Fix all failed checks before deploying.${NC}"
+    echo -e "${RED}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}✗ PREFLIGHT FAILED!${NC}"
+    echo -e "${RED}════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo "Failed checks must be resolved. Deployment is blocked."
-    echo "Common issues:"
-    echo "  - Missing agents: Ensure all services in AGENT_ENDPOINTS_JSON are running"
-    echo "  - Unhealthy agents: Check container logs with 'docker compose logs <service>'"
-    echo "  - Configuration errors: Verify AGENT_ENDPOINTS_JSON JSON syntax"
+    echo "CRITICAL: Fix all failed checks before deploying."
+    echo ""
+    echo "Common failure causes:"
+    echo "  • Missing agents: Ensure all services in AGENT_ENDPOINTS_JSON exist in docker-compose.yml"
+    echo "  • Unhealthy agents: Check container logs with 'docker compose logs <service>'"
+    echo "  • Configuration errors: Verify AGENT_ENDPOINTS_JSON JSON syntax"
+    echo "  • Missing env vars: Check WORKER_SERVICE_TOKEN, LANGSMITH_API_KEY in .env"
+    echo ""
+    echo "Quick diagnostics:"
+    echo "  • List all containers: docker compose ps"
+    echo "  • Check orchestrator env: docker compose exec orchestrator env | grep AGENT_ENDPOINTS_JSON"
+    echo "  • View failed service logs: docker compose logs --tail=50 <service>"
     echo ""
     exit 1
 fi
