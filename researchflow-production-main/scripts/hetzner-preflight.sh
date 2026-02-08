@@ -404,6 +404,7 @@ echo "Validating required environment variables..."
 REQUIRED_ENV_VARS=(
     "WORKER_SERVICE_TOKEN"
     "LANGSMITH_API_KEY"
+    "LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID"
 )
 
 # Check each required env var
