@@ -1,0 +1,6 @@
+{
+  "name": "Clinical Study Section Drafter",
+  "description": "Drafts Results or Discussion sections for clinical studies using structured inputs including study summaries, statistical data, RAG evidence, key hypotheses, and few-shot examples. Automatically adapts to reporting guidelines (CONSORT, STROBE, etc.) based on study type, and can pull supplementary evidence from the web.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

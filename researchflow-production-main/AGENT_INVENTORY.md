@@ -13,7 +13,7 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 3 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage)
+- **LangSmith Multi-Agent Systems:** 4 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -74,6 +74,48 @@ These are standalone FastAPI services running in Docker containers with health c
 **Location:** `services/agents/agent-*-writer`, `agent-verify`  
 **Shared Library:** `services/agents/shared/section_writer/`  
 **Evidence System:** All writers attach `chunk_id` and `doc_id` references
+
+**NEW:** `Clinical_Study_Section_Drafter` — Clinical Results & Discussion Section Writer (Imported from LangSmith, 2026-02-07)
+- **Purpose:** Specialized drafting of Results and Discussion sections for clinical studies with reporting guideline compliance
+- **Architecture:** LangSmith multi-agent system with 2 specialized sub-workers
+- **Main Agent Capabilities:**
+  - Results section drafting (participant flow, outcomes, subgroup analyses, adverse events)
+  - Discussion section drafting (key findings, interpretation, comparison with literature, limitations, implications)
+  - Automatic guideline adaptation (CONSORT, STROBE, STARD, PRISMA, CARE)
+  - Few-shot style matching from example passages
+  - Statistical accuracy (never fabricates data)
+  - Evidence-based writing with citation management
+- **Sub-Workers:**
+  - `Clinical_Evidence_Researcher`: Web-based literature search (PubMed, ClinicalTrials.gov, Cochrane), extracts comparable sections, validates claims
+  - `Reporting_Guideline_Checker`: Compliance validation against 5 major guidelines, structured audit reports with missing items
+- **Guideline Support:**
+  - **CONSORT**: Randomized Controlled Trials (participant flow, baseline characteristics, effect sizes)
+  - **STROBE**: Observational studies (descriptive data, unadjusted/adjusted estimates)
+  - **STARD**: Diagnostic accuracy (test results, diagnostic accuracy estimates)
+  - **PRISMA**: Systematic reviews/meta-analyses (study selection, synthesis results, certainty of evidence)
+  - **CARE**: Case reports (timeline, diagnostic assessment, intervention, outcomes)
+- **Required Inputs:**
+  - `section_type`: "Results" or "Discussion"
+  - `study_summary`: Study design, population, intervention, comparator, outcomes
+  - `results_data`: Statistical outputs (endpoints, p-values, CIs, effect sizes)
+  - `evidence_chunks`: Supporting evidence from literature or RAG retrieval
+  - `key_hypotheses`: Hypotheses being tested or discussed
+  - `few_shot_examples`: 2-3 example passages for style guidance
+- **Tools:** Tavily Web Search, Read URL Content, Exa Search, Google Docs integration, Gmail (drafts/send)
+- **Writing Standards:**
+  - Formal clinical writing tone with appropriate hedging
+  - ICMJE format compliance
+  - Statistical precision (exact values, CIs, p-values)
+  - Evidence traceability with placeholders ([Figure X], [Table X], [REF])
+  - Plain language where appropriate
+- **Quality Control:**
+  - Automatic guideline compliance checking
+  - Statistical claim verification
+  - Literature alignment validation
+  - Structured audit reports
+- **Integration:** Complements `agent-clinical-manuscript` for specialized section drafting; can receive evidence from `agent-evidence-synthesis`
+- **Deployment:** Currently LangSmith-hosted (containerization planned)
+- **Source:** LangSmith Agent (see `agents/Clinical_Study_Section_Drafter/`)
 
 **NEW:** `agent-clinical-manuscript` — Clinical Manuscript Writer (Imported from LangSmith, 2026-02-07)
 - **Purpose:** Full IMRaD format manuscript generation with multi-guideline compliance (CONSORT, SPIRIT, STROBE, PRISMA)
