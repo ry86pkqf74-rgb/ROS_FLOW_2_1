@@ -141,6 +141,8 @@ services:
       - INCEPTIONLABS_API_KEY=${INCEPTIONLABS_API_KEY}
       # AI Router integrations (canonical keys only — dead AI_INTEGRATIONS_* aliases removed 2026-02-06)
       - AI_INTEGRATIONS_OPENAI_API_KEY=${OPENAI_API_KEY}
+      # LangSmith Integration (for clinical-manuscript-writer agent hosted on LangSmith cloud)
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
       # Local AI Model (Qwen3-Coder via Ollama)
       - LOCAL_MODEL_ENABLED=${LOCAL_MODEL_ENABLED:-false}
       - LOCAL_MODEL_ENDPOINT=${LOCAL_MODEL_ENDPOINT:-http://ollama:11434}
@@ -187,6 +189,7 @@ services:
       - INFERENCE_POLICY=cloud
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
+      # NOTE: agent-clinical-manuscript is LangSmith-based (not containerized); registered in TASK_TYPE_TO_AGENT map but invoked via external API
       - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-lit-triage":"http://agent-lit-triage:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
