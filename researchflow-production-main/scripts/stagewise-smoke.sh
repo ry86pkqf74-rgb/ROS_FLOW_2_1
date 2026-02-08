@@ -29,6 +29,8 @@ CHECK_PERFORMANCE_OPTIMIZER="${CHECK_PERFORMANCE_OPTIMIZER:-0}"
 CHECK_PEER_REVIEW="${CHECK_PEER_REVIEW:-0}"
 # When set to "1", run optional Results Interpretation check (LangSmith-based)
 CHECK_RESULTS_INTERPRETATION="${CHECK_RESULTS_INTERPRETATION:-0}"
+# When set to "1", run optional Compliance Auditor check (LangSmith-based)
+CHECK_COMPLIANCE_AUDITOR="${CHECK_COMPLIANCE_AUDITOR:-0}"
 # When set to "1", run ALL optional agent checks
 CHECK_ALL_AGENTS="${CHECK_ALL_AGENTS:-0}"
 
@@ -860,6 +862,8 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
   CHECK_PERFORMANCE_OPTIMIZER=1
   CHECK_PEER_REVIEW=1
   CHECK_RESULTS_INTERPRETATION=1
+  CHECK_COMPLIANCE_AUDITOR=1
+  CHECK_ARTIFACT_AUDITOR=1
   
   # Load mandatory agent list
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -871,6 +875,8 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
   fi
   
   # Define task type mappings for each agent
+  # Define task type mappings for each agent
+  # NOTE: Agent keys must match AGENT_ENDPOINTS_JSON keys (use -proxy suffix for LangSmith agents)
   declare -A AGENT_TASK_TYPES=(
     ["agent-stage2-lit"]="STAGE_2_LITERATURE_REVIEW"
     ["agent-stage2-screen"]="STAGE2_SCREEN"
@@ -887,12 +893,16 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     ["agent-results-writer"]="SECTION_WRITE_RESULTS"
     ["agent-discussion-writer"]="SECTION_WRITE_DISCUSSION"
     ["agent-evidence-synthesis"]="EVIDENCE_SYNTHESIS"
-    ["agent-results-interpretation"]="RESULTS_INTERPRETATION"
-    ["agent-clinical-manuscript"]="CLINICAL_MANUSCRIPT_WRITE"
-    ["agent-clinical-section-drafter"]="CLINICAL_SECTION_DRAFT"
-    ["agent-peer-review-simulator"]="PEER_REVIEW_SIMULATION"
-    ["agent-bias-detection"]="CLINICAL_BIAS_DETECTION"
-    ["agent-dissemination-formatter"]="DISSEMINATION_FORMATTING"
+    ["agent-results-interpretation-proxy"]="RESULTS_INTERPRETATION"
+    ["agent-clinical-manuscript-proxy"]="CLINICAL_MANUSCRIPT_WRITE"
+    ["agent-section-drafter-proxy"]="CLINICAL_SECTION_DRAFT"
+    ["agent-peer-review-simulator-proxy"]="PEER_REVIEW_SIMULATION"
+    ["agent-bias-detection-proxy"]="CLINICAL_BIAS_DETECTION"
+    ["agent-dissemination-formatter-proxy"]="DISSEMINATION_FORMATTING"
+    ["agent-performance-optimizer-proxy"]="PERFORMANCE_OPTIMIZATION"
+    ["agent-journal-guidelines-cache-proxy"]="JOURNAL_GUIDELINES_CACHE"
+    ["agent-compliance-auditor-proxy"]="COMPLIANCE_AUDIT"
+    ["agent-artifact-auditor-proxy"]="ARTIFACT_AUDIT"
   )
   
   # Parse mandatory agents

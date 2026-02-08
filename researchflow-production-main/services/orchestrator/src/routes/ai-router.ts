@@ -347,6 +347,7 @@ router.post(
       PERFORMANCE_OPTIMIZATION: 'agent-performance-optimizer-proxy',
       JOURNAL_GUIDELINES_CACHE: 'agent-journal-guidelines-cache-proxy',
       COMPLIANCE_AUDIT: 'agent-compliance-auditor-proxy',
+      ARTIFACT_AUDIT: 'agent-artifact-auditor-proxy',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {
