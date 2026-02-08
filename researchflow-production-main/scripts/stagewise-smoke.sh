@@ -43,6 +43,40 @@ fail() {
   exit 1
 }
 
+# Helper function to write JSON artifacts safely (no injection risk)
+write_smoke_artifact() {
+  local agent_key="$1"
+  local timestamp="$2"
+  local status="$3"
+  local task_type="$4"
+  local dispatch_status="$5"
+  local routed_agent="$6"
+  local error_msg="$7"
+  
+  local artifact_dir="/data/artifacts/validation/${agent_key}/${timestamp}"
+  mkdir -p "$artifact_dir" 2>/dev/null || return 1
+  
+  python3 -c "
+import json
+import sys
+data = {
+    'agentKey': sys.argv[1],
+    'validation_script': 'stagewise-smoke.sh',
+    'timestamp': sys.argv[2],
+    'status': sys.argv[3],
+    'task_type': sys.argv[4],
+    'dispatch_http_status': sys.argv[5],
+    'routed_agent': sys.argv[6] if sys.argv[6] else None,
+    'error': sys.argv[7] if sys.argv[7] else None
+}
+json.dump(data, sys.stdout, indent=2)
+" "$agent_key" "$timestamp" "$status" "$task_type" "$dispatch_status" \
+  "$routed_agent" "$error_msg" \
+  > "${artifact_dir}/summary.json" 2>/dev/null || return 1
+  
+  return 0
+}
+
 # Emit clearer auth errors (401/403)
 auth_error() {
   local code="$1" url="$2"
@@ -940,8 +974,22 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     
     echo "[$agent_key] Testing task type: $TASK_TYPE"
     
+    # Initialize artifact variables
+    ARTIFACT_STATUS="unknown"
+    ARTIFACT_DISPATCH_STATUS="000"
+    ARTIFACT_ERROR=""
+    ARTIFACT_ROUTED_AGENT=""
+    
     if [ -z "$AUTH_HEADER" ]; then
       echo "  Skipping (AUTH_HEADER not set)"
+      ARTIFACT_STATUS="skipped"
+      ARTIFACT_ERROR="AUTH_HEADER not set"
+      
+      # Write skipped artifact
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      write_smoke_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" "$TASK_TYPE" \
+        "$ARTIFACT_DISPATCH_STATUS" "" "$ARTIFACT_ERROR" >/dev/null 2>&1
+      
       continue
     fi
     
@@ -952,20 +1000,44 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
     _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
     
+    ARTIFACT_DISPATCH_STATUS="$_dispatch_code"
+    
     if [ "${_dispatch_code:0:1}" = "2" ]; then
       ROUTED_AGENT=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      ARTIFACT_ROUTED_AGENT="$ROUTED_AGENT"
       
       if [ "$ROUTED_AGENT" = "$agent_key" ]; then
         echo "  ✓ Router dispatch OK (routed to $agent_key)"
         AGENT_TESTS_PASSED=$((AGENT_TESTS_PASSED + 1))
+        ARTIFACT_STATUS="pass"
       else
         echo "  ✗ Router mismatch: expected $agent_key, got $ROUTED_AGENT"
         AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+        ARTIFACT_STATUS="fail"
+        ARTIFACT_ERROR="Router mismatch: expected $agent_key, got $ROUTED_AGENT"
       fi
     else
-      echo "  ✗ Router dispatch failed (HTTP $dispatch_code)"
+      echo "  ✗ Router dispatch failed (HTTP $_dispatch_code)"
       echo "  Response: $_dispatch_body"
       AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      ARTIFACT_STATUS="fail"
+      ARTIFACT_ERROR="Router dispatch failed: HTTP $_dispatch_code"
+    fi
+    
+    # Write artifact (CRITICAL: must succeed in CHECK_ALL_AGENTS=1 mode)
+    TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+    
+    if ! write_smoke_artifact "$agent_key" "$TIMESTAMP" "$ARTIFACT_STATUS" "$TASK_TYPE" \
+        "$ARTIFACT_DISPATCH_STATUS" "$ARTIFACT_ROUTED_AGENT" "$ARTIFACT_ERROR"; then
+      echo "  CRITICAL: Failed to write artifact summary - treating as failure"
+      AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      
+      # If dispatch passed but artifact write failed, downgrade to failure
+      if [ "$ARTIFACT_STATUS" = "pass" ]; then
+        echo "  CRITICAL: Dispatch passed but artifact write failed - treating validation as FAILED"
+        # Decrement the pass counter if we had counted it
+        AGENT_TESTS_PASSED=$((AGENT_TESTS_PASSED - 1))
+      fi
     fi
     
     echo ""
