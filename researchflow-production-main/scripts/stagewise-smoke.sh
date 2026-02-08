@@ -910,6 +910,8 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     ["agent-artifact-auditor-proxy"]="ARTIFACT_AUDIT"
     ["agent-resilience-architecture-advisor-proxy"]="RESILIENCE_ARCHITECTURE"
     ["agent-multilingual-literature-processor-proxy"]="MULTILINGUAL_LITERATURE_PROCESSING"
+    ["agent-clinical-model-fine-tuner-proxy"]="CLINICAL_MODEL_FINE_TUNING"
+    ["agent-hypothesis-refiner-proxy"]="HYPOTHESIS_REFINEMENT"
   )
   
   # Parse mandatory agents
@@ -930,7 +932,9 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     TASK_TYPE="${AGENT_TASK_TYPES[$agent_key]:-}"
     
     if [ -z "$TASK_TYPE" ]; then
-      echo "[$agent_key] WARNING: No task type mapping defined, skipping dispatch test"
+      echo "[$agent_key] ERROR: No task type mapping defined (required for CHECK_ALL_AGENTS=1)"
+      AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      echo ""
       continue
     fi
     
