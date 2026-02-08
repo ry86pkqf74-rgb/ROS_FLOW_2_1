@@ -121,12 +121,44 @@ class SystemCardWithRules(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
+    """
+    Health check endpoint with dependency status.
+    
+    Returns:
+        - status: "healthy" if all dependencies are available
+        - database: connection status
+        - service: service name
+        - version: service version
+    """
+    health_status = {
         "service": "guideline-engine",
         "version": "1.0.0",
+        "database": "unavailable",
+        "status": "unhealthy"
     }
+    
+    try:
+        # Check database connection
+        if db_pool:
+            async with db_pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            health_status["database"] = "connected"
+            health_status["status"] = "healthy"
+        else:
+            health_status["database"] = "not_initialized"
+            health_status["error"] = "Database pool not initialized"
+    except Exception as e:
+        health_status["database"] = "error"
+        health_status["error"] = str(e)
+        logger.error(f"Health check failed: {e}")
+    
+    # Return 503 if unhealthy, 200 if healthy
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    
+    if status_code == 503:
+        raise HTTPException(status_code=503, detail=health_status)
+    
+    return health_status
 
 
 # =============================================================================

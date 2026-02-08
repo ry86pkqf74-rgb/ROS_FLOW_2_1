@@ -330,22 +330,28 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ros}:${POSTGRES_PASSWORD:-ros}@postgres:5432/${POSTGRES_DB:-ros}
       - AI_ROUTER_URL=http://orchestrator:3001/api/ai
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+      # Ensure guideline engine doesn't share worker's artifact path assumptions
+      - ARTIFACTS_PATH=/data/guideline-artifacts
     depends_on:
       migrate:
         condition: service_completed_successfully
       postgres:
-        condition: service_started
+        condition: service_healthy
+      # Don't depend on orchestrator to avoid circular dependency
+    volumes:
+      - guideline-data:/data/guideline-artifacts
     networks:
       - backend  # Internal network only
     restart: unless-stopped
     stop_grace_period: 30s
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 20s  # Increased to allow DB connection time
     deploy:
       resources:
         limits:
@@ -894,6 +900,9 @@ volumes:
     driver: local
   chromadb-data:
     driver: local
+  guideline-data:
+    driver: local
+    # Independent storage for guideline-engine artifacts
 
 networks:
   frontend:

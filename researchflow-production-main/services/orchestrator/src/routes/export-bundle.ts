@@ -351,4 +351,78 @@ router.get(
   })
 );
 
+/**
+ * GET /manifest/:requestId
+ * Get the manifest for an export bundle without downloading the full archive
+ * Requires: RESEARCHER role
+ * 
+ * Returns:
+ * - 200: Bundle manifest (if bundle is ready)
+ * - 404: Request not found
+ * - 409: Bundle not ready yet (no artifacts generated)
+ * - 410: Download link expired
+ */
+router.get(
+  '/manifest/:requestId',
+  requireRole(ROLES.RESEARCHER),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { requestId } = req.params;
+
+    if (!requestId) {
+      return res.status(400).json({
+        error: 'requestId is required',
+        code: 'MISSING_REQUEST_ID',
+      });
+    }
+
+    const status = await getBundleRequestStatus(requestId);
+
+    if (!status) {
+      return res.status(404).json({
+        error: 'Export request not found',
+        code: 'REQUEST_NOT_FOUND',
+        message: 'The manifest will be available after the export bundle is generated and approved.',
+      });
+    }
+
+    // Check if bundle is ready
+    if (status.status !== 'approved') {
+      return res.status(409).json({
+        error: 'Bundle not ready',
+        code: 'BUNDLE_NOT_READY',
+        message: 'Manifest is only available after bundle is approved.',
+        currentStatus: status.status,
+      });
+    }
+
+    // Check if bundle has expired
+    if (status.expiresAt && new Date(status.expiresAt) < new Date()) {
+      return res.status(410).json({
+        error: 'Bundle has expired',
+        code: 'BUNDLE_EXPIRED',
+        expiredAt: status.expiresAt,
+      });
+    }
+
+    try {
+      const { manifest } = await generateBundleArchive(requestId);
+
+      // Return just the manifest metadata
+      res.json({
+        success: true,
+        requestId,
+        manifest,
+        downloadUrl: `/api/export/bundle/download/${requestId}`,
+      });
+    } catch (error) {
+      console.error('Error generating manifest:', error);
+      res.status(500).json({
+        error: 'Failed to generate manifest',
+        code: 'MANIFEST_GENERATION_FAILED',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  })
+);
+
 export default router;

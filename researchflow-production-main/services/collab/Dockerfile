@@ -69,12 +69,20 @@ COPY services/collab/src ./src
 
 # Ensure @researchflow packages are accessible
 RUN mkdir -p ./node_modules/@researchflow && \
-    rm -rf ./node_modules/@researchflow/core ./node_modules/@researchflow/phi-engine && \
+    rm -rf ./node_modules/@researchflow/core ./node_modules/@researchfish/phi-engine && \
     cp -r ./packages/core ./node_modules/@researchflow/core && \
     cp -r ./packages/phi-engine ./node_modules/@researchflow/phi-engine
 
 # Build TypeScript to JavaScript
 RUN npm run build
+
+# Verify dist/server.js was created
+RUN if [ ! -f "dist/server.js" ]; then \
+      echo "ERROR: dist/server.js was not created by build!" && \
+      echo "Contents of dist directory:" && \
+      ls -la dist/ && \
+      exit 1; \
+    fi
 
 # ===================
 # Development stage - Hot reload with tsx
@@ -147,9 +155,9 @@ ENV NODE_ENV=production
 # Expose WebSocket port
 EXPOSE 1234
 
-# Health check
+# Health check (use correct port)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:1234/health || exit 1
+  CMD curl -f http://localhost:1235/health || exit 1
 
-# Production uses compiled JavaScript
-CMD ["npm", "run", "start"]
+# Production uses compiled JavaScript from dist/server.js
+CMD ["node", "dist/server.js"]

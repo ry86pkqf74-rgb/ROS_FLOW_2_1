@@ -91,6 +91,17 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
+      - name: Verify collab build artifacts
+        if: matrix.service == 'collab'
+        run: |
+          echo "Verifying collab image contains dist/server.js..."
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          docker run --rm --entrypoint sh "$IMAGE_TAG" -c "ls -la /app/dist/server.js" || {
+            echo "ERROR: dist/server.js not found in collab image"
+            exit 1
+          }
+          echo "✓ dist/server.js verified"
+
   deploy:
     name: Deploy to Hetzner
     needs: build_and_push
