@@ -183,28 +183,37 @@ IMAGE_TAG=main
 - Keep `.env` file permissions restricted: `chmod 600 .env`
 - Never commit `.env` to version control
 
-### 3. Set IMAGE_TAG (Production Best Practice)
+### 3. Pin IMAGE_TAG (Required for Production)
 
-**Important:** Production deployments should explicitly set `IMAGE_TAG` to a specific commit SHA or release tag rather than relying on the default `main` tag.
+**🔒 PRODUCTION REQUIREMENT:** Always pin `IMAGE_TAG` to a specific commit SHA or release tag. Never use `main` in production.
 
-#### Recommended IMAGE_TAG Workflow
+**Why this matters:**
+- **Reproducibility:** Exact same images across all deployments
+- **Rollback safety:** Easy revert to known-good versions
+- **Change control:** No surprise updates from upstream
+- **Audit compliance:** Clear tracking of deployed versions
+
+#### Production IMAGE_TAG Workflow (Blessed Path)
+
+This is the recommended approach for all production deployments using GHCR (GitHub Container Registry).
 
 **Step 1: Pick a commit SHA or release tag**
 
 ```bash
-# Option A: Use a specific commit SHA from GitHub
-# Visit: https://github.com/ry86pkqf74-rgb/ROS_FLOW_2_1/commits
+# Option A: Use a specific commit SHA from GitHub (RECOMMENDED)
+# Visit: https://github.com/ry86pkqf74-rgb/ROS_FLOW_2_1/commits/main
 # Copy the short commit SHA (e.g., abc1234)
 
 # Option B: Use a release tag (if releases are published)
 # Visit: https://github.com/ry86pkqf74-rgb/ROS_FLOW_2_1/releases
 # Use the tag name (e.g., v1.2.3)
 
-# Example: Using commit SHA abc1234
+# Set IMAGE_TAG in your environment
 export IMAGE_TAG=abc1234
 
-# Or add to .env file
+# IMPORTANT: Also add to .env file for persistence
 echo "IMAGE_TAG=abc1234" >> .env
+# Or manually edit .env and set: IMAGE_TAG=abc1234
 ```
 
 **Step 2: Pull images with the specified tag**
