@@ -139,20 +139,50 @@ The agent supports multiple workflow phases:
 - `POST /agents/run/sync` - Synchronous execution
 - `POST /agents/run/stream` - Server-Sent Events streaming
 
-## Integration with ResearchFlow
+## Integration Steps
 
-This service is registered in `docker-compose.yml` as `agent-clinical-model-fine-tuner-proxy` and mapped in orchestrator's `AGENT_ENDPOINTS_JSON`:
+**Note**: This PR contains only the proxy service. Integration with ResearchFlow orchestrator/router requires separate changes:
 
+### 1. Docker Compose Configuration
+**File**: `researchflow-production-main/docker-compose.yml`
+
+Add the service:
+```yaml
+agent-clinical-model-fine-tuner-proxy:
+  build:
+    context: .
+    dockerfile: researchflow-production-main/services/agents/agent-clinical-model-fine-tuner-proxy/Dockerfile
+  environment:
+    - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+    - LANGSMITH_AGENT_ID=${LANGSMITH_CLINICAL_MODEL_FINE_TUNER_AGENT_ID}
+    - LANGSMITH_API_URL=https://api.smith.langchain.com/api/v1
+    - LANGSMITH_TIMEOUT_SECONDS=600
+    - LANGCHAIN_PROJECT=researchflow-clinical-model-fine-tuner
+    - LOG_LEVEL=INFO
+  ports:
+    - "8017:8000"
+```
+
+Update orchestrator's `AGENT_ENDPOINTS_JSON`:
 ```json
 {
   "agent-clinical-model-fine-tuner-proxy": "http://agent-clinical-model-fine-tuner-proxy:8000"
 }
 ```
 
-Router mapping in `ai-router.ts`:
+### 2. Router Task Type Mapping
+**File**: `researchflow-production-main/services/orchestrator/src/routes/ai-router.ts`
 
+Add to the `TASK_TYPE_TO_AGENT_MAP`:
 ```typescript
 CLINICAL_MODEL_FINE_TUNING: 'agent-clinical-model-fine-tuner-proxy'
+```
+
+### 3. Environment Variables
+Add to `.env`:
+```bash
+LANGSMITH_API_KEY=<your-langsmith-api-key>
+LANGSMITH_CLINICAL_MODEL_FINE_TUNER_AGENT_ID=<assistant-id-from-langsmith>
 ```
 
 ## Deployment

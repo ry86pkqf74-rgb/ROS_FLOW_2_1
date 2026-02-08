@@ -79,30 +79,44 @@ async def health():
 async def health_ready():
     """Readiness check - validates LangSmith connectivity"""
     if not settings.langsmith_api_key:
-        raise HTTPException(
+        return JSONResponse(
             status_code=503,
-            detail="LANGSMITH_API_KEY not configured"
+            content={"status": "not_ready", "reason": "LANGSMITH_API_KEY not configured"}
         )
     
-    # Verify LangSmith API is reachable
+    # Verify LangSmith API is reachable with 2xx response
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{settings.langsmith_api_url}/info",
                 headers={"x-api-key": settings.langsmith_api_key}
             )
-            if response.status_code < 500:
-                return {"status": "ready", "langsmith": "reachable"}
-            else:
-                raise HTTPException(
+            
+            # Only 2xx status means ready
+            if 200 <= response.status_code < 300:
+                return JSONResponse(
+                    status_code=200,
+                    content={"status": "ready", "langsmith": "reachable"}
+                )
+            # Auth failures are configuration issues
+            elif response.status_code in (401, 403):
+                logger.error(f"LangSmith authentication failed: {response.status_code}")
+                return JSONResponse(
                     status_code=503,
-                    detail=f"LangSmith API unhealthy: {response.status_code}"
+                    content={"status": "not_ready", "reason": "LangSmith authentication failed"}
+                )
+            # Other non-2xx responses
+            else:
+                logger.error(f"LangSmith API returned non-2xx: {response.status_code}")
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "reason": "LangSmith API unhealthy", "status_code": response.status_code}
                 )
     except httpx.RequestError as e:
-        logger.error(f"LangSmith readiness check failed: {e}")
-        raise HTTPException(
+        logger.error(f"LangSmith readiness check failed: {type(e).__name__}")
+        return JSONResponse(
             status_code=503,
-            detail=f"Cannot reach LangSmith API: {str(e)}"
+            content={"status": "not_ready", "reason": "Cannot reach LangSmith API"}
         )
 
 
@@ -205,7 +219,10 @@ async def run_agent_sync(request: AgentRunRequest):
         )
         
     except httpx.HTTPStatusError as e:
-        logger.error(f"LangSmith API error: {e.response.status_code} - {e.response.text}")
+        logger.error(
+            f"LangSmith API error for request_id={request.request_id}, "
+            f"task_type={request.task_type}, status_code={e.response.status_code}"
+        )
         return AgentRunResponse(
             ok=False,
             request_id=request.request_id,
@@ -265,7 +282,7 @@ async def run_agent_stream(request: AgentRunRequest):
     }
     
     async def event_stream():
-        """Generator for SSE events"""
+        """Generator for SSE events - proxy upstream verbatim"""
         try:
             async with http_client.stream(
                 "POST",
@@ -278,14 +295,19 @@ async def run_agent_stream(request: AgentRunRequest):
             ) as response:
                 response.raise_for_status()
                 
+                # Proxy upstream SSE stream verbatim (already framed)
                 async for chunk in response.aiter_text():
-                    if chunk.strip():
-                        # Forward LangSmith SSE events
-                        yield f"data: {chunk}\n\n"
+                    yield chunk
                         
         except Exception as e:
-            logger.exception(f"Streaming error: {e}")
-            yield f"data: {{'error': '{str(e)}'}}\n\n"
+            logger.error(
+                f"Streaming error for request_id={request.request_id}, "
+                f"task_type={request.task_type}, error_type={type(e).__name__}"
+            )
+            # Emit valid JSON error event
+            import json
+            error_data = json.dumps({"error": "STREAM_ERROR", "type": type(e).__name__})
+            yield f"data: {error_data}\n\n"
     
     return StreamingResponse(
         event_stream(),
@@ -296,8 +318,12 @@ async def run_agent_stream(request: AgentRunRequest):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler"""
-    logger.exception(f"Unhandled exception: {exc}")
+    logger.error(f"Unhandled exception: type={type(exc).__name__}, path={request.url.path}")
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error", "detail": str(exc)}
+        content={
+            "error": "INTERNAL_ERROR",
+            "message": "Proxy error",
+            "type": type(exc).__name__
+        }
     )
