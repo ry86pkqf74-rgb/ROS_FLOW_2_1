@@ -13,7 +13,7 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 8 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter)
+- **LangSmith Multi-Agent Systems:** 9 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Compliance Auditor)
 - **LangSmith Proxy Services:** 5 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
@@ -205,6 +205,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 | `agent-lit-triage` | 8000 | ✅ Production | AI-powered literature triage & prioritization (2026-02-07) |
 | `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis (deprecated, use agent-evidence-synthesis) |
 | `agent-bias-detection` | 8000 | ✅ Production | Clinical bias detection & fairness assessment (2026-02-08) |
+| `agent-compliance-auditor` | 8000 | ✅ Production | Regulatory compliance auditing across HIPAA, IRB, EU AI Act, GDPR, FDA SaMD (2026-02-08) |
 
 **Location:** `services/agents/agent-policy-review`, etc.  
 **Environment:** `GOVERNANCE_MODE=LIVE` or `DEMO`
@@ -398,6 +399,86 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **Documentation:** 
   - **Canonical Wiring Guide:** [`docs/agents/clinical-bias-detection/wiring.md`](docs/agents/clinical-bias-detection/wiring.md) ⭐ **PRIMARY REFERENCE**
   - **Agent Briefing:** `AGENT_BIAS_DETECTION_BRIEFING.md`
+
+**NEW:** `agent-compliance-auditor` — Compliance Auditor Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
+- **Purpose:** Comprehensive regulatory compliance auditing system for health technology workflows. Continuously scans workflow logs, detects violations across multiple regulatory frameworks (HIPAA, IRB, EU AI Act, GDPR, FDA SaMD), assesses risks, and generates remediation action plans.
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + 3 specialized sub-workers
+- **Main Agent (Compliance Auditor Coordinator):**
+  - Three-phase workflow: SCAN (log ingestion) → AUDIT (risk assessment) → REMEDIATE (action planning)
+  - Log intake: Google Sheets spreadsheets or direct chat paste
+  - Multi-framework violation detection with regulatory provision mapping
+  - Risk scoring: CRITICAL/HIGH/MEDIUM/LOW severity with timebound remediation
+  - PHI event detection and handling guidance
+  - Formal report generation via Google Docs
+  - Remediation tracking via Google Sheets with regression detection
+  - Code-level compliance scanning via GitHub API
+- **Sub-Workers:**
+  - `Audit_Report_Generator`: Generates formal, persistent compliance audit reports as Google Docs. Creates professionally formatted documents with executive summary, scan results, audit findings, remediation plan, regulatory updates, and audit metadata. Returns document URL and ID. Triggered when user requests formal report or CRITICAL findings detected.
+  - `Codebase_Compliance_Scanner`: Source code compliance auditor for GitHub repositories. Scans for hardcoded PHI/PII, missing encryption configurations, insecure logging patterns, AI/ML compliance gaps, GDPR data governance issues, and documentation gaps. Auto-creates GitHub issues for CRITICAL findings. Returns structured list with file paths, line references, severity, and remediation guidance.
+  - `Regulatory_Research_Worker`: Monitors and retrieves latest regulatory updates across all frameworks. Uses web search to find recent guidance documents, enforcement actions, and evolving requirements. Returns structured summary with effective dates, impact assessments, and action items. Prioritizes official government/regulatory sources (HHS.gov, FDA.gov, ec.europa.eu).
+- **Regulatory Frameworks Covered:**
+  - **HIPAA**: Privacy Rule, Security Rule, Breach Notification Rule (unauthorized PHI disclosures, missing encryption, inadequate access controls, absent audit trails)
+  - **IRB**: Human subjects research protections (protocol deviations, missing informed consent, unapproved amendments, adverse event reporting gaps)
+  - **EU AI Act**: High-risk health AI classification Article 6 Annex III (missing risk management, inadequate human oversight, insufficient transparency, conformity assessment gaps, missing CE marking)
+  - **GDPR**: Article 9 health data processing (processing without legal basis, missing DPIAs, cross-border transfers without safeguards, data subject rights violations)
+  - **FDA SaMD**: Software as Medical Device (missing regulatory classification, absent QMS documentation, post-market surveillance gaps, adverse event reporting failures)
+- **Audit Workflow Phases:**
+  1. **Phase 1 - SCAN**: Log ingestion, event extraction (PHI events, access control, system events, research events, AI/ML events), classification by regulatory domain
+  2. **Phase 2 - AUDIT**: Violation detection (VIOLATION 🔴/WARNING 🟡/COMPLIANT 🟢), risk scoring (CRITICAL/HIGH/MEDIUM/LOW), evidence mapping with regulatory provision citations
+  3. **Phase 3 - REMEDIATE**: Immediate actions, short-term fixes (30d), long-term improvements, auto-anonymization guidance for PHI leaks
+- **Event Types Monitored:**
+  - **PHI Events**: Creation, access, modification, transmission, deletion of Protected Health Information
+  - **Access Control Events**: Login attempts, permission changes, role assignments, data exports
+  - **System Events**: Configuration changes, encryption status, backups, software deployments
+  - **Research Events**: Study enrollments, consent captures, data collection, protocol modifications
+  - **AI/ML Events**: Model training, inference operations, data pipelines, deployments
+- **Output Artifacts:**
+  - **Audit Report (Chat)**: Executive summary, scan results table, audit findings table, remediation plan table, tracker status, regulatory updates, audit trail metadata
+  - **Formal Audit Report (Google Docs)**: Professional document with CONFIDENTIAL classification, report ID, comprehensive sections, timestamps, sign-off block
+  - **Remediation Tracker (Google Sheets)**: Persistent tracking with columns (Finding ID, Date Found, Severity, Framework, Provision, Description, Status, Owner, Due Date, Resolution Notes). Features repeat finding detection and overdue flagging.
+  - **GitHub Issues**: Auto-created for CRITICAL code-level findings with file path, line references, severity, remediation guidance
+- **Tool Dependencies:**
+  - `google_sheets_get_spreadsheet`, `google_sheets_read_range`: Log ingestion
+  - `google_sheets_create_spreadsheet`, `google_sheets_append_rows`, `google_sheets_write_range`: Remediation tracker management
+  - `google_docs_create_document`, `google_docs_append_text`: Formal report generation
+  - `tavily_web_search`, `read_url_content`: Regulatory research
+  - `github_list_directory`, `github_get_file`, `github_create_issue`: Code scanning (via Codebase_Compliance_Scanner)
+- **Usage Patterns:**
+  - **Pattern 1 - Log-Level Audit**: Ingest logs → Extract events → Assess violations → Generate remediation → [Auto-offer formal report if CRITICAL]
+  - **Pattern 2 - Code-Level Audit**: Delegate to Codebase_Compliance_Scanner → Scan repo → Detect violations → Auto-create GitHub issues → Integrate findings
+  - **Pattern 3 - Combined Audit**: Log + Code scanning → Cross-reference findings → Unified action plan → Formal report
+  - **Pattern 4 - Regulatory Update Check**: Delegate to Regulatory_Research_Worker → Search updates → Return structured summary → Integrate into audit report
+  - **Pattern 5 - Remediation Tracking**: Ingest existing tracker → Check for repeat findings → Append new findings → Report status (Open/Overdue/Repeat/Resolved)
+- **Behavioral Guidelines:**
+  - Cite specific regulatory provisions (e.g., "HIPAA §164.312(a)(1)")
+  - Conservative risk assessment: flag as WARNING rather than compliant when ambiguous
+  - Never display raw PHI: use `[PHI-REDACTED]` placeholders
+  - Acknowledge limitations when logs are incomplete
+  - Proactively suggest code scans when log findings hint at systemic issues
+  - Proactively suggest regulatory research when findings are in evolving areas
+  - Auto-offer formal report generation for CRITICAL findings
+- **Integration Points:**
+  - **Workflow Logs**: Application logs, access logs, system logs, audit trails
+  - **GitHub Repositories**: Source code compliance auditing
+  - **Google Workspace**: Report generation and remediation tracking
+  - **Monitoring Systems**: Can be triggered on-demand or scheduled
+- **Environment Variables:**
+  - `LANGSMITH_API_KEY` - LangSmith API access (required)
+  - `LANGSMITH_COMPLIANCE_AUDITOR_AGENT_ID` - Agent ID (when deployed via proxy)
+  - `GOOGLE_WORKSPACE_API_KEY` - For Sheets/Docs integration (required)
+  - `GITHUB_TOKEN` - For code scanning (required)
+  - `TAVILY_API_KEY` - For web research (optional)
+- **Status:** ✅ **IMPORTED** (2026-02-08) | 📋 **Pending Proxy Service Creation** | 📋 **Pending Orchestrator Integration**
+- **Location:** `services/agents/agent-compliance-auditor/` (config, subagents)
+- **Documentation:** 
+  - **Agent Briefing:** `AGENT_COMPLIANCE_AUDITOR_BRIEFING.md` ⭐ **PRIMARY REFERENCE**
+  - **Agent Definition:** `services/agents/agent-compliance-auditor/AGENTS.md`
+  - **Configuration:** `services/agents/agent-compliance-auditor/config.json`
+  - **Tools:** `services/agents/agent-compliance-auditor/tools.json`
+  - **Sub-Workers:** `services/agents/agent-compliance-auditor/subagents/*/AGENTS.md`
+- **Future Deployment Path:** LangSmith cloud via local proxy adapter (pattern: `agent-compliance-auditor-proxy`)
+- **Future Task Type:** `COMPLIANCE_AUDIT` → `agent-compliance-auditor` (to be registered in orchestrator ai-router)
+
   - **Proxy README:** `services/agents/agent-bias-detection-proxy/README.md`
   - **Agent Prompt:** `agents/Clinical_Bias_Detection_Agent/AGENTS.md`
 - **LangSmith Source:** Clinical Bias Detection Agent configuration
@@ -722,10 +803,14 @@ System prompts for conversational AI agent in frontend chat interface.
 - Legacy WORKER_URL support
 - Job dispatch
 
-### 7.3 Agent Routing Configuration
+### 7.3 Agent Routing Configuration (MANDATORY)
+
+**Status:** ✅ **Enforced as Single Source of Truth** (2026-02-08)
 
 **Environment Variable:** `AGENT_ENDPOINTS_JSON`  
-**Format:** JSON object mapping agent names to internal URLs
+**Format:** JSON object mapping agent names to internal URLs  
+**Validation:** Mandatory - preflight hard-fails if misconfigured  
+**Documentation:** See [`docs/maintenance/agent-orchestration.md`](docs/maintenance/agent-orchestration.md)
 
 ```json
 {
@@ -741,14 +826,28 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-verify": "http://agent-verify:8000",
   "agent-intro-writer": "http://agent-intro-writer:8000",
   "agent-methods-writer": "http://agent-methods-writer:8000",
+  "agent-results-writer": "http://agent-results-writer:8000",
+  "agent-discussion-writer": "http://agent-discussion-writer:8000",
   "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000",
   "agent-results-interpretation": "http://agent-results-interpretation-proxy:8000",
   "agent-clinical-manuscript": "http://agent-clinical-manuscript-proxy:8000",
-  "agent-clinical-section-drafter": "http://agent-section-drafter-proxy:8000"
+  "agent-clinical-section-drafter": "http://agent-section-drafter-proxy:8000",
+  "agent-peer-review-simulator": "http://agent-peer-review-simulator-proxy:8000",
+  "agent-bias-detection": "http://agent-bias-detection-proxy:8000",
+  "agent-dissemination-formatter": "http://agent-dissemination-formatter-proxy:8000"
 }
 ```
 
-**Note:** LangSmith-hosted agents use `-proxy` suffix in their service names but are accessed via their logical names (without `-proxy`) in routing.
+**Architecture:**
+- **Native Agents:** All use port 8000, backend network only
+- **Proxy Agents:** LangSmith-hosted agents use `-proxy` suffix in service names
+- **Health Standard:** All agents must implement `GET /health` returning `{"status": "ok"}`
+- **Mandatory Validation:** All agents in this registry are validated at deployment time
+- **No Hardcoded URLs:** Orchestrator routing exclusively uses AGENT_ENDPOINTS_JSON
+
+**Canonical List:** `scripts/lib/agent_endpoints_required.txt` (21 mandatory agents)
+
+**Note:** LangSmith-hosted agents use `-proxy` suffix in their compose service names but are accessed via their logical names (without `-proxy`) in routing.
 
 
 ---
@@ -963,27 +1062,50 @@ healthcheck:
 
 ---
 
-## 13. GAPS & NEXT STEPS
+## 13. DEPLOYMENT & VALIDATION
 
-### 13.1 Stub Agents (Not Implemented)
+### 13.1 Mandatory Agent Validation (2026-02-08)
 
-- `agent-stage2-synthesize` - Evidence synthesis (deprecated, use agent-evidence-synthesis)
-- `agent-results-writer` - Results section writing
-- `agent-discussion-writer` - Discussion section writing
-- `agent-evidence-synth` - Evidence synthesis (deprecated, use agent-evidence-synthesis)
+**Status:** ✅ **Enforced**
 
-### 13.2 Missing Integrations
+All agents in AGENT_ENDPOINTS_JSON are now **mandatory**. Deployment fails if any agent is:
+- Missing from AGENT_ENDPOINTS_JSON
+- Container not running
+- Health endpoint not responding
 
-- **GitHub Actions Integration** - Automated workflow triggers
-- **Slack Integration** - Team notifications
-- **Email Integration** - Automated reports
+**Validation Tools:**
+- **Preflight:** `scripts/hetzner-preflight.sh` - Hard-fails on missing/unhealthy agents
+- **Smoke Test:** `scripts/stagewise-smoke.sh` - Validates dispatch routing
+- **Agent List:** `scripts/lib/agent_endpoints_required.txt` - Canonical source of truth
 
-### 13.3 Enhancement Opportunities
+**Documentation:** [`docs/maintenance/agent-orchestration.md`](docs/maintenance/agent-orchestration.md)
 
-- **Agent Performance Metrics** - Track execution times, success rates
-- **Cost Tracking** - Per-agent LLM cost monitoring
+### 13.2 Deployment Checklist
+
+Before deploying to production:
+
+- [ ] All 21 mandatory agents defined in docker-compose.yml
+- [ ] AGENT_ENDPOINTS_JSON contains all agent keys
+- [ ] `./scripts/hetzner-preflight.sh` passes (exit 0)
+- [ ] `CHECK_ALL_AGENTS=1 ./scripts/stagewise-smoke.sh` passes
+- [ ] No hardcoded agent URLs in orchestrator code
+- [ ] All LangSmith proxy agents have required env vars set
+
+### 13.3 Stub Agents (Included but Limited)
+
+These agents are deployed but have limited functionality:
+- `agent-stage2-synthesize` - Basic stub (deprecated, use agent-evidence-synthesis)
+- `agent-results-writer` - Basic stub (use agent-clinical-section-drafter for clinical)
+- `agent-discussion-writer` - Basic stub (use agent-clinical-section-drafter for clinical)
+
+**Note:** Stub agents must still pass health checks and be included in AGENT_ENDPOINTS_JSON.
+
+### 13.4 Future Enhancements
+
+- **Agent Performance Metrics** - Track execution times, success rates, costs
 - **A/B Testing** - Model comparison framework
-- **Agent Versioning** - Track agent code versions
+- **Agent Versioning** - Track agent code versions via IMAGE_TAG
+- **Circuit Breakers** - Automatic fallback for failing agents
 
 ---
 

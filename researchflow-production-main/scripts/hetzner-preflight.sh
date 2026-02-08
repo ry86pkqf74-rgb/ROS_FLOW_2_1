@@ -329,230 +329,147 @@ fi
 
 echo ""
 
-# Agent fleet health checks (Step 5 agents)
-print_header "Agent Fleet Health Checks"
+# Agent fleet health checks - MANDATORY (all agents must be healthy)
+print_header "Mandatory Agent Fleet Validation"
 
-if docker ps >/dev/null 2>&1; then
-    # Check if agent containers are running
-    AGENT_COUNT=$(docker ps --format "{{.Names}}" 2>/dev/null | grep -c "agent-" || echo "0")
+# Load mandatory agent list
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_LIST_FILE="${SCRIPT_DIR}/lib/agent_endpoints_required.txt"
+
+if [ ! -f "$AGENT_LIST_FILE" ]; then
+    check_fail "Agent List File" "$AGENT_LIST_FILE not found"
+    echo ""
+    echo -e "${RED}CRITICAL: Mandatory agent list missing!${NC}"
+    echo "Expected: ${AGENT_LIST_FILE}"
+    exit 1
+fi
+
+# Parse mandatory agents (skip comments and empty lines)
+MANDATORY_AGENTS=()
+while IFS= read -r line || [ -n "$line" ]; do
+    # Skip comments and empty lines
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line// }" ]] && continue
+    MANDATORY_AGENTS+=("$(echo "$line" | xargs)")  # trim whitespace
+done < "$AGENT_LIST_FILE"
+
+echo "Loaded ${#MANDATORY_AGENTS[@]} mandatory agents from $AGENT_LIST_FILE"
+echo ""
+
+# Validate AGENT_ENDPOINTS_JSON is present and parseable
+if ! docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+    check_fail "Orchestrator" "container not running - cannot validate agents"
+    echo ""
+    echo -e "${RED}CRITICAL: Orchestrator must be running to validate agent configuration!${NC}"
+    echo "Start orchestrator: docker compose up -d orchestrator"
+    exit 1
+fi
+
+echo "Validating AGENT_ENDPOINTS_JSON configuration..."
+ENDPOINTS_JSON=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null || echo "")
+
+if [ -z "$ENDPOINTS_JSON" ]; then
+    check_fail "AGENT_ENDPOINTS_JSON" "not set in orchestrator"
+    echo ""
+    echo -e "${RED}CRITICAL: AGENT_ENDPOINTS_JSON is not configured!${NC}"
+    echo "Add to docker-compose.yml orchestrator environment and restart."
+    exit 1
+fi
+
+# Validate JSON is parseable
+if ! echo "$ENDPOINTS_JSON" | python3 -m json.tool >/dev/null 2>&1; then
+    check_fail "AGENT_ENDPOINTS_JSON" "invalid JSON"
+    echo ""
+    echo -e "${RED}CRITICAL: AGENT_ENDPOINTS_JSON is not valid JSON!${NC}"
+    echo "Fix the JSON syntax in docker-compose.yml and restart orchestrator."
+    exit 1
+fi
+
+check_pass "AGENT_ENDPOINTS_JSON" "valid JSON with $(echo "$ENDPOINTS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))' 2>/dev/null || echo '?') entries"
+echo ""
+
+# Validate each mandatory agent
+echo "Validating ${#MANDATORY_AGENTS[@]} mandatory agents..."
+echo ""
+
+AGENT_VALIDATION_FAILED=0
+
+for agent_key in "${MANDATORY_AGENTS[@]}"; do
+    echo "Checking: $agent_key"
     
-    if [ "$AGENT_COUNT" -gt 0 ]; then
-        echo "Found $AGENT_COUNT agent containers running"
+    # 1. Check if agent is in AGENT_ENDPOINTS_JSON
+    AGENT_URL=$(echo "$ENDPOINTS_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('$agent_key', ''))" 2>/dev/null || echo "")
+    
+    if [ -z "$AGENT_URL" ]; then
+        check_fail "  $agent_key [Registry]" "not found in AGENT_ENDPOINTS_JSON"
+        AGENT_VALIDATION_FAILED=1
         echo ""
-        
-        # Evidence Synthesis Agent (commit 197bfcd)
-        if docker ps --format "{{.Names}}" | grep -q "agent-evidence-synthesis"; then
-            check_pass "Evidence Synthesis Agent" "container running"
-            
-            # Health check (port 8015 for testing, 8000 internal)
-            if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "http://127.0.0.1:8015/health" 2>/dev/null | grep -q "200"; then
-                check_pass "Evidence Synthesis Health" "HTTP 200"
-            else
-                check_warn "Evidence Synthesis Health" "not reachable on port 8015 (may be internal-only)"
-            fi
-            
-            # Check router registration
-            if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-                AGENT_REGISTERED=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-evidence-synthesis" || echo "0")
-                if [ "$AGENT_REGISTERED" -gt 0 ]; then
-                    check_pass "Evidence Synthesis Router" "registered in AGENT_ENDPOINTS_JSON"
-                else
-                    check_fail "Evidence Synthesis Router" "not found in AGENT_ENDPOINTS_JSON"
-                fi
-            fi
-        else
-            check_warn "Evidence Synthesis Agent" "container not running (new agent, may not be started yet)"
-        fi
-        
-        # Literature Triage Agent (commit c1a42c1)
-        if docker ps --format "{{.Names}}" | grep -q "agent-lit-triage"; then
-            check_pass "Literature Triage Agent" "container running"
-            
-            # Health check via docker exec (internal network)
-            LIT_TRIAGE_HEALTH=$(docker compose exec -T agent-lit-triage curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
-            if echo "$LIT_TRIAGE_HEALTH" | grep -q "ok"; then
-                check_pass "Literature Triage Health" "HTTP 200"
-            else
-                check_warn "Literature Triage Health" "health endpoint not responding"
-            fi
-            
-            # Check router registration
-            if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-                AGENT_REGISTERED=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-lit-triage" || echo "0")
-                if [ "$AGENT_REGISTERED" -gt 0 ]; then
-                    check_pass "Literature Triage Router" "registered in AGENT_ENDPOINTS_JSON"
-                else
-                    check_fail "Literature Triage Router" "not found in AGENT_ENDPOINTS_JSON"
-                fi
-            fi
-        else
-            check_warn "Literature Triage Agent" "container not running (new agent, may not be started yet)"
-        fi
-        
-        # Clinical Manuscript Writer Agent (commit 040b13f - LangSmith-based, not containerized)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured (LangSmith cloud integration)
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Clinical Manuscript Writer" "LANGSMITH_API_KEY configured"
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_MANUSCRIPT_WRITE" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Manuscript Writer Router" "task type registered"
-                else
-                    check_fail "Manuscript Writer Router" "CLINICAL_MANUSCRIPT_WRITE not found in ai-router.ts"
-                fi
-            else
-                check_warn "Clinical Manuscript Writer" "LANGSMITH_API_KEY not set (optional: add to .env for manuscript generation)"
-            fi
-        fi
-        
-        # Clinical Study Section Drafter Agent (commit 6a5c93e - LangSmith-based, not containerized)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured (same key as Manuscript Writer)
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Clinical Section Drafter" "LANGSMITH_API_KEY configured"
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_SECTION_DRAFT" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Section Drafter Router" "task type registered"
-                else
-                    check_fail "Section Drafter Router" "CLINICAL_SECTION_DRAFT not found in ai-router.ts"
-                fi
-            else
-                check_warn "Clinical Section Drafter" "LANGSMITH_API_KEY not set (optional: add to .env for specialized section drafting)"
-            fi
-        fi
-        
-        # Dissemination Formatter Agent (LangSmith-based, proxy service)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured (same key as other LangSmith agents)
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Dissemination Formatter" "LANGSMITH_API_KEY configured"
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "DISSEMINATION_FORMATTING" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Dissemination Formatter Router" "task type registered"
-                else
-                    check_fail "Dissemination Formatter Router" "DISSEMINATION_FORMATTING not found in ai-router.ts"
-                fi
-            else
-                check_warn "Dissemination Formatter" "LANGSMITH_API_KEY not set (optional: add to .env for manuscript formatting)"
-            fi
-        fi
-        
-        # Results Interpretation Agent (LangSmith-based, not containerized)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured (same key as Manuscript Writer / Section Drafter)
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Results Interpretation Agent" "LANGSMITH_API_KEY configured"
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "RESULTS_INTERPRETATION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Results Interpretation Router" "task type registered"
-                else
-                    check_fail "Results Interpretation Router" "RESULTS_INTERPRETATION not found in ai-router.ts"
-                fi
-                
-                # Check if agent is in AGENT_ENDPOINTS_JSON (expected: not yet)
-                RI_IN_ENDPOINTS=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-results-interpretation" || echo "0")
-                if [ "$RI_IN_ENDPOINTS" -gt 0 ]; then
-                    check_pass "Results Interpretation Endpoints" "registered in AGENT_ENDPOINTS_JSON"
-                else
-                    check_warn "Results Interpretation Endpoints" "not in AGENT_ENDPOINTS_JSON (dispatch will fail until LangSmith proxy is configured)"
-                fi
-            else
-                check_warn "Results Interpretation Agent" "LANGSMITH_API_KEY not set (optional: add to .env for results interpretation)"
-            fi
-        fi
-        
-        # Peer Review Simulator Agent (LangSmith-based proxy for Stage 13)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Peer Review Simulator" "LANGSMITH_API_KEY configured"
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "PEER_REVIEW_SIMULATION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Peer Review Router" "task type registered"
-                else
-                    check_fail "Peer Review Router" "PEER_REVIEW_SIMULATION not found in ai-router.ts"
-                fi
-            else
-                check_warn "Peer Review Simulator" "LANGSMITH_API_KEY not set (optional: add to .env for Stage 13 comprehensive review)"
-            fi
-        fi
-        
-        # Clinical Bias Detection Agent (LangSmith-based proxy for Stage 4b/7/9/14)
-        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
-            # Check if LANGSMITH_API_KEY is configured
-            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
-            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
-                check_pass "Clinical Bias Detection" "LANGSMITH_API_KEY configured"
-                
-                # Check if LANGSMITH_BIAS_DETECTION_AGENT_ID is set
-                BIAS_AGENT_ID_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_BIAS_DETECTION_AGENT_ID:+SET}' 2>/dev/null || echo "")
-                if [ "$BIAS_AGENT_ID_SET" = "SET" ]; then
-                    check_pass "Bias Detection Agent ID" "configured"
-                else
-                    check_fail "Bias Detection Agent ID" "LANGSMITH_BIAS_DETECTION_AGENT_ID not set (required for bias detection)"
-                    echo ""
-                    echo -e "${YELLOW}Remediation:${NC}"
-                    echo "  1. Get Agent ID from LangSmith: https://smith.langchain.com/"
-                    echo "  2. Add to .env: LANGSMITH_BIAS_DETECTION_AGENT_ID=<uuid>"
-                    echo "  3. Recreate proxy: docker compose up -d --force-recreate agent-bias-detection-proxy"
-                    echo ""
-                fi
-                
-                # Check if task type is registered in ai-router
-                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_BIAS_DETECTION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
-                if [ "$ROUTER_CHECK" -gt 0 ]; then
-                    check_pass "Bias Detection Router" "task type registered"
-                else
-                    check_fail "Bias Detection Router" "CLINICAL_BIAS_DETECTION not found in ai-router.ts"
-                fi
-                
-                # Check if proxy container is running
-                if docker ps --format "{{.Names}}" | grep -q "agent-bias-detection-proxy"; then
-                    check_pass "Bias Detection Proxy" "container running"
-                    
-                    # Check proxy health
-                    PROXY_HEALTH=$(docker compose exec -T agent-bias-detection-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
-                    if echo "$PROXY_HEALTH" | grep -q "ok"; then
-                        check_pass "Bias Detection Health" "proxy responding"
-                    else
-                        check_warn "Bias Detection Health" "health endpoint not responding"
-                    fi
-                else
-                    check_warn "Bias Detection Proxy" "container not running (may not be started yet)"
-                fi
-            else
-                check_warn "Clinical Bias Detection" "LANGSMITH_API_KEY not set (optional: add to .env for bias detection)"
-            fi
-        fi
-        
-        # Other Stage 2 agents
-        for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
-            if docker ps --format "{{.Names}}" | grep -q "$agent"; then
-                check_pass "$agent" "running"
-            else
-                check_warn "$agent" "not running"
-            fi
-        done
-    else
-        check_warn "Agent containers" "no agent containers found (may not be deployed yet)"
+        echo -e "${YELLOW}  Remediation:${NC}"
+        echo "    Add to AGENT_ENDPOINTS_JSON: \"$agent_key\":\"http://$agent_key:8000\""
+        echo "    Then: docker compose up -d --force-recreate orchestrator"
+        echo ""
+        continue
     fi
-else
-    check_fail "Docker status" "cannot check agent containers"
+    
+    check_pass "  $agent_key [Registry]" "URL: $AGENT_URL"
+    
+    # 2. Extract service name and port from URL (format: http://service-name:port)
+    SERVICE_NAME=$(echo "$AGENT_URL" | sed -n 's|^http://\([^:]*\):.*|\1|p')
+    SERVICE_PORT=$(echo "$AGENT_URL" | sed -n 's|^http://[^:]*:\([0-9]*\).*|\1|p')
+    
+    if [ -z "$SERVICE_NAME" ] || [ -z "$SERVICE_PORT" ]; then
+        check_fail "  $agent_key [URL Parse]" "invalid URL format: $AGENT_URL"
+        AGENT_VALIDATION_FAILED=1
+        echo "    Expected format: http://service-name:port"
+        echo ""
+        continue
+    fi
+    
+    # 3. Check if container is running
+    if ! docker ps --format "{{.Names}}" | grep -q "^${SERVICE_NAME}$\|^researchflow-${SERVICE_NAME}$"; then
+        check_fail "  $agent_key [Container]" "not running"
+        AGENT_VALIDATION_FAILED=1
+        echo ""
+        echo -e "${YELLOW}  Remediation:${NC}"
+        echo "    Start container: docker compose up -d $SERVICE_NAME"
+        echo "    Check logs: docker compose logs $SERVICE_NAME"
+        echo ""
+        continue
+    fi
+    
+    check_pass "  $agent_key [Container]" "running"
+    
+    # 4. Health check via docker exec (internal network)
+    HEALTH_CHECK=$(docker compose exec -T "$SERVICE_NAME" curl -f "http://localhost:${SERVICE_PORT}/health" 2>/dev/null || echo "FAIL")
+    
+    if echo "$HEALTH_CHECK" | grep -q "ok\|healthy\|status.*ok"; then
+        check_pass "  $agent_key [Health]" "responding"
+    else
+        check_fail "  $agent_key [Health]" "not responding or unhealthy"
+        AGENT_VALIDATION_FAILED=1
+        echo ""
+        echo -e "${YELLOW}  Remediation:${NC}"
+        echo "    Check logs: docker compose logs $SERVICE_NAME"
+        echo "    Restart: docker compose restart $SERVICE_NAME"
+        echo "    Test health: docker compose exec $SERVICE_NAME curl http://localhost:${SERVICE_PORT}/health"
+        echo ""
+        continue
+    fi
+    
+    echo ""
+done
+
+if [ $AGENT_VALIDATION_FAILED -gt 0 ]; then
+    echo ""
+    echo -e "${RED}✗ One or more mandatory agents failed validation!${NC}"
+    echo -e "${RED}✗ All agents must be running and healthy before deployment.${NC}"
+    echo ""
+    echo "Quick fixes:"
+    echo "  1. Start all agents: docker compose up -d"
+    echo "  2. Check failed agents: docker compose ps | grep -v 'Up'"
+    echo "  3. View logs: docker compose logs <failed-service>"
+    echo ""
+    FAILED=$((FAILED + 1))
 fi
 
 echo ""
@@ -570,9 +487,18 @@ if [ $FAILED -eq 0 ] && [ $WARNINGS -eq 0 ]; then
 elif [ $FAILED -eq 0 ]; then
     echo -e "${YELLOW}⚠ Preflight checks passed with warnings.${NC}"
     echo -e "${YELLOW}⚠ Review warnings above before proceeding.${NC}"
+    echo ""
+    echo "Note: Warnings do not block deployment but should be addressed."
     exit 0
 else
-    echo -e "${RED}✗ Preflight checks failed!${NC}"
-    echo -e "${RED}✗ Fix the issues above before deploying.${NC}"
+    echo -e "${RED}✗ Preflight checks FAILED!${NC}"
+    echo -e "${RED}✗ CRITICAL: Fix all failed checks before deploying.${NC}"
+    echo ""
+    echo "Failed checks must be resolved. Deployment is blocked."
+    echo "Common issues:"
+    echo "  - Missing agents: Ensure all services in AGENT_ENDPOINTS_JSON are running"
+    echo "  - Unhealthy agents: Check container logs with 'docker compose logs <service>'"
+    echo "  - Configuration errors: Verify AGENT_ENDPOINTS_JSON JSON syntax"
+    echo ""
     exit 1
 fi

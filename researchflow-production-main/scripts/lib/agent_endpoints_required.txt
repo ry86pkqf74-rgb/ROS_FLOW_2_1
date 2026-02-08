@@ -1,0 +1,41 @@
+# Mandatory Agent Endpoints (canonical list)
+# Source: AGENT_INVENTORY.md + docker-compose.yml
+# All agents MUST be present in AGENT_ENDPOINTS_JSON and healthy before deployment.
+#
+# Format: one agent key per line (matches AGENT_ENDPOINTS_JSON keys)
+# Last updated: 2026-02-08 (chore/inventory-capture)
+
+# Stage 2 Pipeline Agents (Native)
+agent-stage2-lit
+agent-stage2-screen
+agent-stage2-extract
+agent-stage2-synthesize
+
+# Literature & Retrieval Agents (Native)
+agent-lit-retrieval
+agent-lit-triage
+
+# RAG Pipeline Agents (Native)
+agent-rag-ingest
+agent-rag-retrieve
+
+# Writing & Verification Agents (Native)
+agent-verify
+agent-intro-writer
+agent-methods-writer
+agent-results-writer
+agent-discussion-writer
+
+# Evidence & Analysis Agents (Native)
+agent-evidence-synthesis
+
+# Governance & Policy Agents (Native)
+agent-policy-review
+
+# LangSmith Proxy Agents (Cloud-hosted via local proxy)
+agent-results-interpretation
+agent-clinical-manuscript
+agent-clinical-section-drafter
+agent-peer-review-simulator
+agent-bias-detection
+agent-dissemination-formatter

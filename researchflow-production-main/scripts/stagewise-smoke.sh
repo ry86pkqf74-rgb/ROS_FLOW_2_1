@@ -23,6 +23,12 @@ CHECK_SECTION_DRAFTER="${CHECK_SECTION_DRAFTER:-0}"
 CHECK_BIAS_DETECTION="${CHECK_BIAS_DETECTION:-0}"
 # When set to "1", run optional Dissemination Formatter check (LangSmith-based)
 CHECK_DISSEMINATION_FORMATTER="${CHECK_DISSEMINATION_FORMATTER:-0}"
+# When set to "1", run optional Peer Review Simulator check (LangSmith-based)
+CHECK_PEER_REVIEW="${CHECK_PEER_REVIEW:-0}"
+# When set to "1", run optional Results Interpretation check (LangSmith-based)
+CHECK_RESULTS_INTERPRETATION="${CHECK_RESULTS_INTERPRETATION:-0}"
+# When set to "1", run ALL optional agent checks
+CHECK_ALL_AGENTS="${CHECK_ALL_AGENTS:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -833,6 +839,129 @@ else
 fi
 
 echo ""
+
+# --- ALL AGENTS VALIDATION (when CHECK_ALL_AGENTS=1)
+if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
+  echo ""
+  echo "=========================================="
+  echo "COMPREHENSIVE AGENT VALIDATION (CHECK_ALL_AGENTS=1)"
+  echo "=========================================="
+  echo ""
+  
+  # Override individual flags to run all checks
+  CHECK_EVIDENCE_SYNTH=1
+  CHECK_LIT_TRIAGE=1
+  CHECK_MANUSCRIPT_WRITER=1
+  CHECK_SECTION_DRAFTER=1
+  CHECK_BIAS_DETECTION=1
+  CHECK_DISSEMINATION_FORMATTER=1
+  CHECK_PEER_REVIEW=1
+  CHECK_RESULTS_INTERPRETATION=1
+  
+  # Load mandatory agent list
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  AGENT_LIST_FILE="${SCRIPT_DIR}/lib/agent_endpoints_required.txt"
+  
+  if [ ! -f "$AGENT_LIST_FILE" ]; then
+    echo "ERROR: Mandatory agent list not found at $AGENT_LIST_FILE"
+    fail "Agent list file missing"
+  fi
+  
+  # Define task type mappings for each agent
+  declare -A AGENT_TASK_TYPES=(
+    ["agent-stage2-lit"]="STAGE_2_LITERATURE_REVIEW"
+    ["agent-stage2-screen"]="STAGE2_SCREEN"
+    ["agent-stage2-extract"]="STAGE_2_EXTRACT"
+    ["agent-stage2-synthesize"]="STAGE2_SYNTHESIZE"
+    ["agent-lit-retrieval"]="LIT_RETRIEVAL"
+    ["agent-lit-triage"]="LIT_TRIAGE"
+    ["agent-policy-review"]="POLICY_REVIEW"
+    ["agent-rag-ingest"]="RAG_INGEST"
+    ["agent-rag-retrieve"]="RAG_RETRIEVE"
+    ["agent-verify"]="CLAIM_VERIFY"
+    ["agent-intro-writer"]="SECTION_WRITE_INTRO"
+    ["agent-methods-writer"]="SECTION_WRITE_METHODS"
+    ["agent-results-writer"]="SECTION_WRITE_RESULTS"
+    ["agent-discussion-writer"]="SECTION_WRITE_DISCUSSION"
+    ["agent-evidence-synthesis"]="EVIDENCE_SYNTHESIS"
+    ["agent-results-interpretation"]="RESULTS_INTERPRETATION"
+    ["agent-clinical-manuscript"]="CLINICAL_MANUSCRIPT_WRITE"
+    ["agent-clinical-section-drafter"]="CLINICAL_SECTION_DRAFT"
+    ["agent-peer-review-simulator"]="PEER_REVIEW_SIMULATION"
+    ["agent-bias-detection"]="CLINICAL_BIAS_DETECTION"
+    ["agent-dissemination-formatter"]="DISSEMINATION_FORMATTING"
+  )
+  
+  # Parse mandatory agents
+  MANDATORY_AGENTS=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line// }" ]] && continue
+    MANDATORY_AGENTS+=("$(echo "$line" | xargs)")
+  done < "$AGENT_LIST_FILE"
+  
+  echo "Testing ${#MANDATORY_AGENTS[@]} mandatory agents via orchestrator dispatch..."
+  echo ""
+  
+  AGENT_TESTS_PASSED=0
+  AGENT_TESTS_FAILED=0
+  
+  for agent_key in "${MANDATORY_AGENTS[@]}"; do
+    TASK_TYPE="${AGENT_TASK_TYPES[$agent_key]:-}"
+    
+    if [ -z "$TASK_TYPE" ]; then
+      echo "[$agent_key] WARNING: No task type mapping defined, skipping dispatch test"
+      continue
+    fi
+    
+    echo "[$agent_key] Testing task type: $TASK_TYPE"
+    
+    if [ -z "$AUTH_HEADER" ]; then
+      echo "  Skipping (AUTH_HEADER not set)"
+      continue
+    fi
+    
+    # Router dispatch test
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d "{\"task_type\":\"$TASK_TYPE\",\"request_id\":\"smoke-${agent_key}\",\"mode\":\"DEMO\"}" \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      ROUTED_AGENT=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      
+      if [ "$ROUTED_AGENT" = "$agent_key" ]; then
+        echo "  ✓ Router dispatch OK (routed to $agent_key)"
+        AGENT_TESTS_PASSED=$((AGENT_TESTS_PASSED + 1))
+      else
+        echo "  ✗ Router mismatch: expected $agent_key, got $ROUTED_AGENT"
+        AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      fi
+    else
+      echo "  ✗ Router dispatch failed (HTTP $dispatch_code)"
+      echo "  Response: $_dispatch_body"
+      AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+    fi
+    
+    echo ""
+  done
+  
+  echo "=========================================="
+  echo "Agent Validation Results:"
+  echo "  Passed: $AGENT_TESTS_PASSED"
+  echo "  Failed: $AGENT_TESTS_FAILED"
+  echo "=========================================="
+  
+  if [ $AGENT_TESTS_FAILED -gt 0 ]; then
+    echo ""
+    echo "WARNING: Some agent dispatch tests failed. Review logs above."
+    echo "Note: These are optional checks and do not block smoke test completion."
+  fi
+  
+  echo ""
+fi
+
 echo "Stagewise smoke completed successfully."
 
 # --- 13. Optional: Dissemination Formatter validation (LangSmith cloud integration)

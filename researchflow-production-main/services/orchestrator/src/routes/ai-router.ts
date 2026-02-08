@@ -122,24 +122,48 @@ const DispatchRequestSchema = z.object({
 });
 
 // Parse AGENT_ENDPOINTS_JSON at module initialization
-// Format: {"agent-stage2-lit": "http://agent-stage2-lit:8010", ...}
+// Format: {"agent-stage2-lit": "http://agent-stage2-lit:8000", ...}
+// This is the SINGLE SOURCE OF TRUTH for all agent routing.
 const AGENT_ENDPOINTS_STATE: { endpoints: Record<string, string>; error?: string } = (() => {
   const envVar = process.env.AGENT_ENDPOINTS_JSON;
   if (!envVar) {
-    console.warn('[ai-router] AGENT_ENDPOINTS_JSON not set, agent dispatch will fail');
-    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not set' };
+    console.error('[ai-router] CRITICAL: AGENT_ENDPOINTS_JSON not set, agent dispatch will fail');
+    return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not set. Add it to .env and restart orchestrator.' };
   }
   try {
     const parsed = JSON.parse(envVar);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON must be a JSON object mapping agent names to URLs' };
     }
+    console.log(`[ai-router] Loaded ${Object.keys(parsed).length} agent endpoints from AGENT_ENDPOINTS_JSON`);
     return { endpoints: parsed as Record<string, string> };
   } catch (error) {
     console.error('[ai-router] Failed to parse AGENT_ENDPOINTS_JSON:', error);
     return { endpoints: {}, error: 'AGENT_ENDPOINTS_JSON is not valid JSON' };
   }
 })();
+
+/**
+ * Get agent base URL from AGENT_ENDPOINTS_JSON registry.
+ * Throws with clear remediation if agent not configured.
+ */
+function getAgentBaseUrl(agentKey: string): string {
+  if (AGENT_ENDPOINTS_STATE.error) {
+    throw new Error(`Agent registry misconfigured: ${AGENT_ENDPOINTS_STATE.error}`);
+  }
+
+  const url = AGENT_ENDPOINTS_STATE.endpoints[agentKey];
+  if (!url) {
+    const availableKeys = Object.keys(AGENT_ENDPOINTS_STATE.endpoints).join(', ');
+    throw new Error(
+      `Agent "${agentKey}" not found in AGENT_ENDPOINTS_JSON. ` +
+      `Available agents: ${availableKeys || '(none)'}. ` +
+      `Add "${agentKey}":"http://${agentKey}:8000" to AGENT_ENDPOINTS_JSON and restart orchestrator.`
+    );
+  }
+
+  return url;
+}
 
 /**
  * GET /api/ai/router/tiers
@@ -256,20 +280,17 @@ router.post(
       });
     }
 
-    if (AGENT_ENDPOINTS_STATE.error) {
-      return res.status(500).json({
-        error: 'AGENT_ENDPOINTS_INVALID',
-        message: AGENT_ENDPOINTS_STATE.error,
-      });
-    }
-
-    const agent_url = AGENT_ENDPOINTS_STATE.endpoints[agent_name];
-
-    if (!agent_url) {
+    // Resolve agent URL from AGENT_ENDPOINTS_JSON (single source of truth)
+    let agent_url: string;
+    try {
+      agent_url = getAgentBaseUrl(agent_name);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return res.status(500).json({
         error: 'AGENT_NOT_CONFIGURED',
-        message: `Agent "${agent_name}" not found in AGENT_ENDPOINTS_JSON configuration`,
+        message: errorMessage,
         agent_name,
+        remediation: `Ensure "${agent_name}" is added to AGENT_ENDPOINTS_JSON in docker-compose.yml and orchestrator is restarted.`,
       });
     }
 
