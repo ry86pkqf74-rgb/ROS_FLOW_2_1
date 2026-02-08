@@ -92,13 +92,23 @@ async def health_ready():
                 f"{settings.langsmith_api_url}/info",
                 headers={"x-api-key": settings.langsmith_api_key}
             )
-            if response.status_code < 500:
-                return {"status": "ready", "langsmith": "reachable"}
-            else:
+            # Special-case auth failures for clarity
+            if response.status_code in (401, 403):
                 raise HTTPException(
                     status_code=503,
-                    detail=f"LangSmith API unhealthy: {response.status_code}"
+                    detail={"status": "not_ready", "langsmith": "auth_failed", "status_code": response.status_code}
                 )
+            # Only 2xx indicates truly ready
+            if 200 <= response.status_code < 300:
+                return {"status": "ready", "langsmith": "reachable"}
+            # Any other non-2xx is not ready
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "status": "not_ready",
+                    "langsmith": {"reachable": False, "status_code": response.status_code}
+                }
+            )
     except httpx.RequestError as e:
         logger.error(f"LangSmith readiness check failed: {e}")
         raise HTTPException(
