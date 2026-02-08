@@ -9,11 +9,12 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 15
+- **Microservice Agents (Docker):** 18 (15 native + 3 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 5 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation)
+- **LangSmith Multi-Agent Systems:** 6 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator)
+- **LangSmith Proxy Services:** 3 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -22,6 +23,12 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 ## 1. MICROSERVICE AGENTS (Docker Compose)
 
 These are standalone FastAPI services running in Docker containers with health checks and internal APIs.
+
+**Architecture Patterns:**
+- **Native Agents:** FastAPI + worker implementation (local execution)
+- **Proxy Agents:** FastAPI adapter → LangSmith cloud API (remote execution)
+
+All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sync`, `/agents/run/stream`
 
 
 ### 1.1 Stage 2 Pipeline Agents
@@ -114,17 +121,29 @@ These are standalone FastAPI services running in Docker containers with health c
   - Literature alignment validation
   - Structured audit reports
 - **Integration:** Complements `agent-clinical-manuscript` for specialized section drafting; can receive evidence from `agent-evidence-synthesis`
-- **Deployment:** LangSmith cloud-hosted (no containerization; invoked via REST API)
-  - **Invocation:** `https://api.smith.langchain.com/agents/run/sync`
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **DEPLOYED**
+  - **Execution model:** LangSmith cloud via local FastAPI proxy
+  - **Compose service:** `agent-section-drafter-proxy` (FastAPI proxy to LangSmith API)
+  - **Proxy location:** `services/agents/agent-section-drafter-proxy/`
+  - **Config bundle:** `agents/Clinical_Study_Section_Drafter/` (AGENTS.md, config.json, tools.json)
+  - **Invocation:** Orchestrator → proxy:8000 → LangSmith API
   - **Task Type:** `CLINICAL_SECTION_DRAFT` (registered in orchestrator ai-router)
-  - **Authentication:** Requires `LANGSMITH_API_KEY` environment variable
-  - **Health Check:** Via preflight/smoke scripts (checks LANGSMITH_API_KEY + router registration)
+  - **Authentication:** Requires `LANGSMITH_API_KEY` + `LANGSMITH_SECTION_DRAFTER_AGENT_ID` environment variables
+  - **Health Check:** `/health`, `/health/ready` endpoints on proxy
   - **Artifact Paths:** `/data/artifacts/manuscripts/{workflow_id}/sections/{section_type}.md`
 - **Required Environment Variables:**
   - `LANGSMITH_API_KEY` - LangSmith API access (required)
   - `TAVILY_API_KEY` - For Clinical_Evidence_Researcher sub-worker (optional)
   - `EXA_API_KEY` - For enhanced literature search (optional)
   - `GOOGLE_DOCS_API_KEY` - For Google Docs output (optional)
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **DEPLOYED**
+  - **Execution model:** LangSmith cloud via local FastAPI proxy
+  - **Compose service:** `agent-section-drafter-proxy` (FastAPI proxy to LangSmith API)
+  - **Proxy location:** `services/agents/agent-section-drafter-proxy/`
+  - **Config bundle:** `agents/Clinical_Study_Section_Drafter/` (AGENTS.md, config.json, tools.json)
+  - **Internal URL:** `http://agent-section-drafter-proxy:8000`
+  - **AGENT_ENDPOINTS_JSON:** ✅ Included as `"agent-clinical-section-drafter":"http://agent-section-drafter-proxy:8000"`
+  - **Health endpoints:** ✅ `/health`, `/health/ready` (validates LangSmith connectivity)
 - **Validation:** Preflight checks LANGSMITH_API_KEY + task type registration; smoke test validates router dispatch
 - **Source:** LangSmith Agent (see `agents/Clinical_Study_Section_Drafter/`)
 
@@ -146,21 +165,36 @@ These are standalone FastAPI services running in Docker containers with health c
 - **Tools:** Google Docs, Google Sheets, Tavily Search, Exa Search, Gmail
 - **Integration:** Receives structured evidence from `agent-evidence-synthesis`; outputs publication-ready manuscripts
 - **Evidence Ledger:** Maintains Google Sheets with Evidence Log, Data Quality, Compliance Audit
-- **Deployment:** Currently LangSmith-hosted (containerization planned)
+- **Deployment:** LangSmith cloud via local proxy adapter ✅ **DEPLOYED**
+  - **Execution model:** LangSmith cloud via local FastAPI proxy
+  - **Compose service:** `agent-clinical-manuscript-proxy` (FastAPI proxy to LangSmith API)
+  - **Proxy location:** `services/agents/agent-clinical-manuscript-proxy/`
+  - **Config bundle:** `services/agents/agent-clinical-manuscript/` (AGENTS.md, config.json, tools.json)
+  - **Internal URL:** `http://agent-clinical-manuscript-proxy:8000`
+  - **Invocation:** Orchestrator → proxy:8000 → LangSmith API
+  - **Task Type:** `CLINICAL_MANUSCRIPT_WRITE` (registered in orchestrator ai-router)
+  - **AGENT_ENDPOINTS_JSON:** ✅ Included as `"agent-clinical-manuscript":"http://agent-clinical-manuscript-proxy:8000"`
+  - **Authentication:** Requires `LANGSMITH_API_KEY` + `LANGSMITH_MANUSCRIPT_AGENT_ID` environment variables
+  - **Health Check:** `/health`, `/health/ready` endpoints on proxy
 - **Source:** LangSmith Agent "Clinical Manuscript Writer" (see `services/agents/agent-clinical-manuscript/`)
 
 
-`agent-results-interpretation` — Results Interpretation Agent (Imported from LangSmith, 2026-02-08)
-- **Execution model:** LangSmith cloud (no Docker service, no Dockerfile)
-- **Compose service:** None
+`agent-results-interpretation` — Results Interpretation Agent (Imported from LangSmith, 2026-02-08) ✅ **DEPLOYED**
+- **Execution model:** LangSmith cloud via local proxy adapter
+- **Compose service:** `agent-results-interpretation-proxy` (FastAPI proxy to LangSmith API)
+- **Proxy location:** `services/agents/agent-results-interpretation-proxy/`
+- **Internal URL:** `http://agent-results-interpretation-proxy:8000`
 - **Router task types:** `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` (alias) — registered in `ai-router.ts`
-- **AGENT_ENDPOINTS_JSON:** Not yet included (dispatch returns `AGENT_NOT_CONFIGURED`)
-- **Health endpoint:** N/A (cloud-hosted)
-- **Required env vars:** `LANGSMITH_API_KEY`, `LANGCHAIN_PROJECT` (optional), `GOOGLE_DOCS_API_KEY` (for reports)
+- **AGENT_ENDPOINTS_JSON:** ✅ Included as `"agent-results-interpretation":"http://agent-results-interpretation-proxy:8000"`
+- **Health endpoints:** ✅ `/health`, `/health/ready` (validates LangSmith connectivity)
+- **Required env vars:** `LANGSMITH_API_KEY`, `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID`
+- **Optional env vars:** `LANGSMITH_API_URL`, `LANGSMITH_TIMEOUT_SECONDS`, `LANGCHAIN_PROJECT`, `GOOGLE_DOCS_API_KEY`
 - **Purpose:** Multi-domain research results interpretation (clinical, social science, behavioral, survey)
 - **Architecture:** LangSmith multi-agent system with 4 sub-workers (Literature Research, Methodology Audit, Section Draft, Draft Refinement)
 - **Canonical wiring doc:** [`docs/agents/results-interpretation/wiring.md`](docs/agents/results-interpretation/wiring.md)
-- **Source:** `services/agents/agent-results-interpretation/`
+- **Environment setup:** [`docs/agents/results-interpretation/ENVIRONMENT.md`](docs/agents/results-interpretation/ENVIRONMENT.md)
+- **Source (cloud agent):** `services/agents/agent-results-interpretation/`
+- **Networks:** `backend` (orchestrator), `frontend` (LangSmith API)
 
 
 ### 1.4 Governance & Policy Agents
@@ -199,6 +233,74 @@ These are standalone FastAPI services running in Docker containers with health c
   - `LANGCHAIN_API_KEY`: For LangSmith tracing
 - **Legacy Mode:** Maintains backward compatibility with rule-based triage (`use_ai: false`)
 - **Integration:** Feeds Stage 2 Literature Pipeline and Evidence Synthesis agents
+
+**NEW:** `agent-peer-review-simulator` — Comprehensive Peer Review Simulation (Imported from LangSmith, 2026-02-08)
+- **Purpose:** Rigorous academic manuscript peer review simulation with multi-persona critiques, iterative revision cycles, and comprehensive reporting
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + 5 specialized sub-workers
+- **Main Agent (Peer Review Coordinator):**
+  - Orchestrates full peer review lifecycle: intake → critique → revision → approval
+  - Manuscript intake: pasted text, Google Docs, preprint URLs (arXiv, bioRxiv, medRxiv)
+  - Multi-cycle review iteration (up to 3 cycles recommended)
+  - Comprehensive output delivery: Google Doc reports, critique tracking spreadsheets, email distribution
+  - Default focus: Biomedical/clinical research (adaptable to any discipline)
+- **Sub-Workers:**
+  - `Critique_Worker`: Generates adversarial peer review critiques from specific reviewer personas (methodologist, statistician, ethics reviewer, domain expert). Invoked once per persona. Returns 3-5 structured critiques with severity ratings (Minor/Major/Critical), recommendations, and checklist references.
+  - `Revision_Worker`: Produces revised manuscripts and point-by-point response letters addressing all critiques. Maintains academic quality and voice.
+  - `Literature_Checker`: Verifies references, citations, novelty claims, literature coverage. Uses web search (Tavily/Exa) to validate citations, identify missing key references, assess novelty claims.
+  - `Readability_Reviewer`: Assesses writing quality, clarity, logical flow, abstract/title effectiveness, figure/table descriptions, terminology consistency.
+  - `Checklist_Auditor`: Item-by-item audit against appropriate reporting checklists (CONSORT, STROBE, PRISMA, STARD, SQUIRE, ARRIVE, CARE). Returns pass/partial/fail compliance table.
+- **Default Reviewer Personas:**
+  - **Methodologist**: Study design, statistical methods, power analysis, randomization, blinding, reproducibility
+  - **Domain Expert**: Scientific merit, novelty, relevance, accuracy of claims, literature context
+  - **Ethics Reviewer**: IRB/ethics approval, informed consent, COI, data privacy, responsible conduct
+  - **Statistician**: Statistical analyses, effect sizes, confidence intervals, p-values, multiple comparisons
+- **Reporting Checklist Support:**
+  - **CONSORT**: Randomized Controlled Trials
+  - **STROBE**: Observational Studies
+  - **PRISMA**: Systematic Reviews/Meta-analyses
+  - **STARD**: Diagnostic Accuracy Studies
+  - **SQUIRE**: Quality Improvement Studies
+  - **ARRIVE**: Animal Research
+  - **CARE**: Case Reports
+- **Workflow Phases:**
+  1. **Intake**: Manuscript reception and field/study type confirmation
+  2. **Persona Selection**: Reviewer persona configuration (default or custom)
+  3. **Critique Phase**: Parallel execution of all workers (Critique_Workers × N, Literature_Checker, Readability_Reviewer, Checklist_Auditor)
+  4. **Revision Phase**: Revision_Worker generates revised draft + response letter
+  5. **Approval Decision**: User approves or triggers another review cycle (max 3 recommended)
+  6. **Output Delivery**: Google Doc report, critique tracking spreadsheet, optional email distribution
+- **Output Artifacts:**
+  - **Chat Summary**: Immediate feedback with severity counts, top critiques, recommendations
+  - **Google Doc Report**: Executive summary, full critiques, literature audit, readability review, checklist compliance, revised manuscript, response letter, metadata
+  - **Critique Tracking Spreadsheet**: Living record with columns (Cycle | Source | Persona/Auditor | # | Severity | Issue | Recommendation | Status)
+  - **Email Delivery**: Optional distribution to co-authors
+- **Tool Dependencies:**
+  - `google_docs_read_document`, `google_docs_create_document`, `google_docs_append_text`, `google_docs_replace_text`
+  - `read_url_content` (preprint servers)
+  - `tavily_web_search` (general), `exa_web_search` (academic, use `category="research paper"`)
+  - `google_sheets_create_spreadsheet`, `google_sheets_write_range`, `google_sheets_append_rows`
+  - `gmail_send_email`
+- **Integration Points:**
+  - **Stage 13 (InternalReviewAgent)**: Enhanced review option via `use_langsmith_peer_review: true` config
+  - **Stage 11 (Iteration)**: Comprehensive feedback during refinement cycles
+  - **Standalone**: Independent invocation for externally generated manuscripts
+- **Differentiation from peer-review.service.ts:**
+  - **peer-review.service.ts**: Quick automated scoring, basic comments, in-pipeline validation, single-pass
+  - **agent-peer-review-simulator**: Deep multi-persona critiques, iterative cycles, comprehensive reports, checklist audits, literature verification, pre-submission refinement
+- **Configuration Options:**
+  - `personas`: Array of reviewer personas (default: ["methodologist", "statistician", "ethics_reviewer", "domain_expert"])
+  - `max_review_cycles`: Integer, 1-3 (default: 1)
+  - `enable_google_docs_output`: Boolean (default: false)
+  - `study_type`: String (e.g., "RCT", "observational", "systematic_review")
+- **Environment Variables:**
+  - `LANGSMITH_PEER_REVIEW_URL`: LangSmith API endpoint
+  - `LANGSMITH_PEER_REVIEW_AGENT_ID`: Agent ID from LangSmith
+  - `LANGSMITH_API_KEY`: LangSmith API key
+  - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY`: Google API credentials
+- **Status:** ✅ **Files Imported** (2026-02-08) | ⏳ **Bridge Integration Pending** | ⏳ **Stage 13 Enhancement Pending**
+- **Location:** `services/agents/agent-peer-review-simulator/`
+- **Documentation:** `README.md`, `INTEGRATION_GUIDE.md`, `AGENTS.md`, `subagents/*/AGENTS.md`
+- **LangSmith Source:** Peer Review Simulator agent configuration
 
 ---
 

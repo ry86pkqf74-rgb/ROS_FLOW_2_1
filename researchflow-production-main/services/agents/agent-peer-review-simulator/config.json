@@ -1,0 +1,6 @@
+{
+  "name": "Peer Review Simulator",
+  "description": "Simulates rigorous journal peer reviews on academic manuscripts using multiple reviewer personas (e.g., methodologist, statistician, ethics reviewer). Generates adversarial critiques with severity ratings, produces revised drafts incorporating feedback, and iterates through critique-revise loops until approval. Supports biomedical/clinical research by default and any field on request. Accepts manuscripts via chat or Google Docs, and delivers chat summaries plus detailed Google Doc reports.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}
