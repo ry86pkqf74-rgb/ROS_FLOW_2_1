@@ -39,6 +39,4 @@ agent-clinical-section-drafter
 agent-peer-review-simulator
 agent-bias-detection
 agent-dissemination-formatter
-
-# EXCLUDED AGENTS (not yet deployed):
-# agent-performance-optimizer - config-only, no proxy service (awaiting deployment integration)
+agent-performance-optimizer
