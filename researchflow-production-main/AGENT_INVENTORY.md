@@ -9,12 +9,12 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 21 (15 native + 6 LangSmith proxies)
+- **Microservice Agents (Docker):** 22 (15 native + 7 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 9 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Compliance Auditor)
-- **LangSmith Proxy Services:** 5 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection)
+- **LangSmith Multi-Agent Systems:** 10 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache)
+- **LangSmith Proxy Services:** 7 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -634,6 +634,72 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - `GOOGLE_SHEETS_API_KEY` - For metrics reading (disabled by default)
   - `GOOGLE_DOCS_API_KEY` - For report generation (disabled by default)
   - `LANGSMITH_PERFORMANCE_OPTIMIZER_TIMEOUT_SECONDS` - Request timeout (default: 300)
+
+**NEW:** `agent-journal-guidelines-cache` — Journal Guidelines Cache Agent (Imported from LangSmith, 2026-02-08) ✅ **PRODUCTION READY**
+- **Purpose:** Intelligent caching layer for academic journal submission guidelines. Eliminates redundant web searches through persistent Google Sheets cache with automatic staleness detection (30-day threshold), proactive daily refresh, and change tracking with audit trails.
+- **Architecture:** LangSmith multi-agent system with 3 specialized sub-workers (Guidelines_Researcher, Changelog_Detector, Guidelines_Comparator)
+- **Main Agent Capabilities:**
+  - Persistent cache management via Google Sheets (dual-sheet structure: Cache + Changelog)
+  - Instant retrieval for cached journals (< 100ms response)
+  - Automatic staleness detection and refresh scheduling
+  - Journal name normalization and alias matching (e.g., "NEJM" → "New England Journal of Medicine")
+  - Batch lookups with parallel processing (multiple journals at once)
+  - Side-by-side journal comparison (requirements, costs, timelines)
+  - Change detection with severity classification (critical/notable/minor)
+  - Daily scheduled refresh of stale entries with audit trail
+  - Cache management commands (stats, list, clear, force refresh)
+- **Sub-Workers:**
+  - `Guidelines_Researcher`: Fetches fresh journal submission guidelines from authoritative sources (author instructions pages, official websites). Returns structured summaries covering manuscript types, formatting requirements, submission process, review process, fees/charges, open access policies, ethical requirements.
+  - `Changelog_Detector`: Compares old vs. new guidelines during refreshes to detect and document changes. Classifies changes by severity (critical: requires manuscript changes; notable: important to know; minor: cosmetic). Returns structured changelog with impact summary.
+  - `Guidelines_Comparator`: Performs side-by-side comparison of multiple journals. Generates comparison tables across key dimensions (word limits, review timelines, APCs, citation styles, requirements). Provides recommendation notes without choosing a specific journal.
+- **Cache Architecture:**
+  - **Sheet 1 (Cache)**: journal_name, aliases, last_updated, guidelines_summary, source_urls, status (fresh/stale)
+  - **Sheet 2 (Changelog)**: journal_name, change_date, change_summary, severity
+  - **Staleness Threshold**: 30 days
+  - **Initialization**: Auto-creates spreadsheet if not provided
+- **Operational Modes:**
+  - **Mode 1 - Single Journal**: Check cache → Return immediately (if fresh) OR Refresh with change detection (if stale) OR Fetch fresh (if missing)
+  - **Mode 2 - Batch Lookup**: Process multiple journals in parallel, return cache hits immediately, fetch/refresh missing/stale
+  - **Mode 3 - Compare Journals**: Ensure all journals fresh, delegate to comparator, return analysis
+  - **Mode 4 - Scheduled Refresh**: Daily cron trigger refreshes all stale entries with change notifications
+- **Tools:** Google Sheets (create/read/write/append/clear), Web search, URL content extraction
+- **Integration:** Directly supports Dissemination Formatter agent for instant guideline lookup. Can be invoked standalone for cache management or journal comparison.
+- **Output:** Journal guidelines (cached or fresh), cache status metadata, changelogs, comparison tables, cache statistics
+- **Location:** `services/agents/agent-journal-guidelines-cache/` (config, tools, workers)
+- **Documentation:**
+  - **Main README:** `services/agents/agent-journal-guidelines-cache/README.md` ⭐ **PRIMARY REFERENCE**
+  - **Agent Prompt:** `services/agents/agent-journal-guidelines-cache/AGENTS.md`
+  - **Config:** `services/agents/agent-journal-guidelines-cache/config.json`
+  - **Tools:** `services/agents/agent-journal-guidelines-cache/tools.json`
+  - **Sub-Workers:** `services/agents/agent-journal-guidelines-cache/workers/*/AGENTS.md`
+- **LangSmith Source:** Journal Guidelines Cache Agent custom agent
+- **Communication Style:** Efficient, responsive, transparent about freshness, proactive refresh management, audit-conscious
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-journal-guidelines-cache-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `JOURNAL_GUIDELINES_CACHE` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Ready for preflight + smoke test hooks ✅
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_JOURNAL_GUIDELINES_CACHE_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `GOOGLE_SHEETS_SPREADSHEET_ID` - Pre-existing cache spreadsheet ID (auto-creates if not provided)
+  - `LANGSMITH_JOURNAL_GUIDELINES_CACHE_TIMEOUT_SECONDS` - Request timeout (default: 180)
+  - `CACHE_STALENESS_DAYS` - Cache staleness threshold (default: 30)
+- **Cache Management Commands:**
+  - `list_cached_journals` - Show all cached journals with freshness status
+  - `cache_stats` - Total, fresh, stale counts, oldest/newest entries
+  - `get_guidelines` - Retrieve guidelines for single journal
+  - `batch_lookup` - Retrieve guidelines for multiple journals
+  - `compare_journals` - Side-by-side comparison table
+  - `force_refresh` - Force refresh regardless of staleness
+  - `show_changelog` - Display guideline changes (filtered by journal or all)
+- **Quality Metrics:**
+  - Cache hit rate: Target >80%
+  - Response time (cache hits): Target <100ms
+  - Daily refresh success rate: Target >95%
+  - Stale entries after daily refresh: Target 0
 
 ---
 
