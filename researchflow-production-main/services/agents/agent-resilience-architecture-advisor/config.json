@@ -1,0 +1,6 @@
+{
+  "name": "Resilience Architecture Advisor",
+  "description": "A specialized agent for designing, documenting, and tracking retry and resilience patterns for LangGraph-based clinical research applications. It researches best practices for retry logic (exponential backoff, circuit breakers, fallback strategies), helps architect LangGraph state machines with resilience nodes, tracks resilience-related issues in Linear, and produces architecture documentation in Google Docs. Tailored for clinical research workflows where reliability and data integrity are critical.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}
