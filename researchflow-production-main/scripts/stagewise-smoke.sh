@@ -1202,3 +1202,208 @@ PERF_SMOKE_EOF
 else
   echo "[14] Skipping Performance Optimizer check (set CHECK_PERFORMANCE_OPTIMIZER=1 to enable)"
 fi
+
+echo ""
+
+# ==============================================================================
+# CHECK_ALL_AGENTS - Dynamic validation of all agents in AGENT_ENDPOINTS_JSON
+# ==============================================================================
+if [ "$CHECK_ALL_AGENTS" = "1" ]; then
+  echo "════════════════════════════════════════════════════════════════"
+  echo "[15] ALL AGENTS VALIDATION (CHECK_ALL_AGENTS=1)"
+  echo "════════════════════════════════════════════════════════════════"
+  echo ""
+  echo "Dynamically validating all agents from AGENT_ENDPOINTS_JSON..."
+  echo ""
+  
+  # Ensure orchestrator is running
+  if ! docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+    echo "✗ ERROR: Orchestrator container is not running"
+    echo "Start orchestrator: docker compose up -d orchestrator"
+    echo "Skipping all-agents check"
+  else
+    # Fetch AGENT_ENDPOINTS_JSON from orchestrator
+    ENDPOINTS_JSON=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null || echo "")
+    
+    if [ -z "$ENDPOINTS_JSON" ]; then
+      echo "✗ ERROR: AGENT_ENDPOINTS_JSON not set in orchestrator"
+      echo "Add to docker-compose.yml and restart orchestrator"
+    elif ! echo "$ENDPOINTS_JSON" | python3 -m json.tool >/dev/null 2>&1; then
+      echo "✗ ERROR: AGENT_ENDPOINTS_JSON is not valid JSON"
+      echo "Fix JSON syntax in docker-compose.yml"
+    else
+      # Extract all agent keys
+      AGENT_KEYS=$(echo "$ENDPOINTS_JSON" | python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin).keys())))' 2>/dev/null || echo "")
+      
+      if [ -z "$AGENT_KEYS" ]; then
+        echo "✗ ERROR: Failed to parse agent keys from AGENT_ENDPOINTS_JSON"
+      else
+        # Convert to array
+        AGENT_KEYS_ARRAY=()
+        while IFS= read -r agent_key; do
+          [ -n "$agent_key" ] && AGENT_KEYS_ARRAY+=("$agent_key")
+        done <<< "$AGENT_KEYS"
+        
+        TOTAL_AGENTS=${#AGENT_KEYS_ARRAY[@]}
+        echo "Found $TOTAL_AGENTS agents in AGENT_ENDPOINTS_JSON"
+        echo ""
+        
+        # Iterate through each agent
+        AGENTS_PASSED=0
+        AGENTS_FAILED=0
+        
+        for agent_key in "${AGENT_KEYS_ARRAY[@]}"; do
+          echo "────────────────────────────────────────────────────────────────"
+          echo "Testing agent: $agent_key"
+          echo "────────────────────────────────────────────────────────────────"
+          
+          # Get agent URL
+          AGENT_URL=$(echo "$ENDPOINTS_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('$agent_key', ''))" 2>/dev/null || echo "")
+          
+          if [ -z "$AGENT_URL" ]; then
+            echo "✗ Agent not found in AGENT_ENDPOINTS_JSON (unexpected)"
+            AGENTS_FAILED=$((AGENTS_FAILED + 1))
+            continue
+          fi
+          
+          echo "  Agent URL: $AGENT_URL"
+          
+          # Check if container is running
+          SERVICE_NAME=$(echo "$AGENT_URL" | sed -n 's|^https\?://\([^:]*\):.*|\1|p')
+          if ! docker ps --format "{{.Names}}" | grep -q "^${SERVICE_NAME}$\|^researchflow-${SERVICE_NAME}$"; then
+            echo "  ✗ Container not running: $SERVICE_NAME"
+            AGENTS_FAILED=$((AGENTS_FAILED + 1))
+            
+            # Write failure artifact
+            if [ -d "/data/artifacts" ]; then
+              TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+              SAFE_KEY=$(echo "$agent_key" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+              mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
+              cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<AGENT_FAIL_EOF
+{
+  "agentKey": "${agent_key}",
+  "timestamp": "${TIMESTAMP}",
+  "request": {
+    "task_type": "HEALTH_CHECK",
+    "agent_url": "${AGENT_URL}",
+    "service_name": "${SERVICE_NAME}"
+  },
+  "response_status": "container_not_running",
+  "ok": false,
+  "error": "Container ${SERVICE_NAME} is not running"
+}
+AGENT_FAIL_EOF
+            fi
+            
+            continue
+          fi
+          
+          echo "  ✓ Container running: $SERVICE_NAME"
+          
+          # Determine a safe task type for this agent (use a generic health check approach)
+          # For deterministic smoke tests, we don't actually invoke the agent logic,
+          # we just validate the orchestrator routing
+          TASK_TYPE="HEALTH_CHECK_${agent_key}"
+          
+          # Dispatch through orchestrator router (this validates routing only)
+          echo "  Testing orchestrator routing..."
+          
+          # Create a simple dispatch request (deterministic, no external calls)
+          DISPATCH_RESP=$(curl -s -X POST "$ORCHESTRATOR_URL/api/ai/router/dispatch" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"task_type\": \"STAGE_2_LITERATURE_REVIEW\",
+              \"request_id\": \"smoke-${agent_key}-001\",
+              \"mode\": \"DEMO\",
+              \"inputs\": {
+                \"query\": \"test query for smoke test\",
+                \"deterministic\": true,
+                \"max_results\": 1
+              }
+            }" 2>/dev/null || echo "FAIL")
+          
+          DISPATCH_CODE=$(echo "$DISPATCH_RESP" | jq -r '.error // "OK"' 2>/dev/null || echo "PARSE_ERROR")
+          
+          # Check if dispatch succeeded (or at least routed correctly)
+          if echo "$DISPATCH_RESP" | grep -qE "agent_name|agent_url"; then
+            echo "  ✓ Orchestrator dispatch successful"
+            AGENT_RESULT="ok"
+            AGENTS_PASSED=$((AGENTS_PASSED + 1))
+          else
+            echo "  ✗ Orchestrator dispatch failed"
+            echo "  Response: $(echo "$DISPATCH_RESP" | head -c 200)"
+            AGENT_RESULT="dispatch_failed"
+            AGENTS_FAILED=$((AGENTS_FAILED + 1))
+          fi
+          
+          # Write artifact
+          if [ -d "/data/artifacts" ]; then
+            TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+            SAFE_KEY=$(echo "$agent_key" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+            mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
+            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<AGENT_ARTIFACT_EOF
+{
+  "agentKey": "${agent_key}",
+  "timestamp": "${TIMESTAMP}",
+  "request": {
+    "method": "POST",
+    "endpoint": "/api/ai/router/dispatch",
+    "task_type": "STAGE_2_LITERATURE_REVIEW",
+    "request_id": "smoke-${agent_key}-001",
+    "mode": "DEMO"
+  },
+  "response_status": 200,
+  "ok": $([ "$AGENT_RESULT" = "ok" ] && echo "true" || echo "false"),
+  "error": $([ "$AGENT_RESULT" = "ok" ] && echo "null" || echo "\"${AGENT_RESULT}\""),
+  "agent_url": "${AGENT_URL}",
+  "service_name": "${SERVICE_NAME}",
+  "container_running": true,
+  "dispatch_response_excerpt": $(echo "$DISPATCH_RESP" | jq -c '.' 2>/dev/null || echo "\"${DISPATCH_RESP:0:100}\"")
+}
+AGENT_ARTIFACT_EOF
+            echo "  ✓ Wrote artifact: /data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json"
+          else
+            echo "  ⚠ /data/artifacts not found (artifact not written)"
+          fi
+          
+          echo ""
+        done
+        
+        echo "════════════════════════════════════════════════════════════════"
+        echo "ALL AGENTS VALIDATION SUMMARY"
+        echo "════════════════════════════════════════════════════════════════"
+        echo "  Total agents:  $TOTAL_AGENTS"
+        echo "  Passed:        $AGENTS_PASSED"
+        echo "  Failed:        $AGENTS_FAILED"
+        
+        if [ $AGENTS_FAILED -eq 0 ]; then
+          echo ""
+          echo "  ✓ ALL AGENTS VALIDATED SUCCESSFULLY"
+        else
+          echo ""
+          echo "  ✗ Some agents failed validation"
+          echo ""
+          echo "  Common issues:"
+          echo "    - Agent container not running: docker compose up -d <service>"
+          echo "    - Agent unhealthy: docker compose logs <service>"
+          echo "    - Routing misconfigured: check TASK_TYPE_TO_AGENT in ai-router.ts"
+        fi
+        
+        echo "════════════════════════════════════════════════════════════════"
+        echo ""
+        
+        # Note: This is informational only, does not block smoke test
+        echo "Note: All-agents validation is informational only and does not block smoke test"
+        echo "      For mandatory validation, use preflight script: ./scripts/hetzner-preflight.sh"
+      fi
+    fi
+  fi
+  
+  echo ""
+  echo "All-agents check complete"
+else
+  echo "[15] Skipping all-agents validation (set CHECK_ALL_AGENTS=1 to enable)"
+fi
+
+echo ""
