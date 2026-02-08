@@ -16,6 +16,8 @@ export const ALLOWED_TASK_TYPES = [
   'SECTION_WRITE_DISCUSSION',
   'CLAIM_VERIFY',
   'PERFORMANCE_OPTIMIZATION',
+  'MULTILINGUAL_LITERATURE_PROCESSING',
+  'CLINICAL_MODEL_FINE_TUNING',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -72,6 +74,14 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   PERFORMANCE_OPTIMIZATION: {
     required: [],
     optional: ['metrics_spreadsheet_id', 'metrics_data', 'analysis_focus', 'time_period'],
+  },
+  MULTILINGUAL_LITERATURE_PROCESSING: {
+    required: ['query'],
+    optional: ['language', 'languages', 'output_language', 'date_range', 'citations', 'abstracts', 'full_text', 'context', 'output_format'],
+  },
+  CLINICAL_MODEL_FINE_TUNING: {
+    required: [],
+    optional: ['training_data', 'model_config', 'hyperparameters', 'validation_split', 'mode'],
   },
 };
 

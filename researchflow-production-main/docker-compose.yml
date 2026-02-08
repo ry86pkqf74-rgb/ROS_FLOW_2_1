@@ -192,7 +192,7 @@ services:
       # NOTE: AGENT_ENDPOINTS_JSON is the SINGLE SOURCE OF TRUTH for all agent routing
       # NOTE: Keys must match TASK_TYPE_TO_AGENT mapping in ai-router.ts
       # NOTE: LangSmith-backed agents: use proxy service names as keys (e.g., agent-X-proxy, not logical names)
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-lit-triage":"http://agent-lit-triage:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-results-writer":"http://agent-results-writer:8000","agent-discussion-writer":"http://agent-discussion-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000","agent-results-interpretation-proxy":"http://agent-results-interpretation-proxy:8000","agent-clinical-manuscript-proxy":"http://agent-clinical-manuscript-proxy:8000","agent-section-drafter-proxy":"http://agent-section-drafter-proxy:8000","agent-peer-review-simulator-proxy":"http://agent-peer-review-simulator-proxy:8000","agent-bias-detection-proxy":"http://agent-bias-detection-proxy:8000","agent-dissemination-formatter-proxy":"http://agent-dissemination-formatter-proxy:8000","agent-performance-optimizer-proxy":"http://agent-performance-optimizer-proxy:8000","agent-journal-guidelines-cache-proxy":"http://agent-journal-guidelines-cache-proxy:8000","agent-compliance-auditor-proxy":"http://agent-compliance-auditor-proxy:8000","agent-artifact-auditor-proxy":"http://agent-artifact-auditor-proxy:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-lit-triage":"http://agent-lit-triage:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-results-writer":"http://agent-results-writer:8000","agent-discussion-writer":"http://agent-discussion-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000","agent-results-interpretation-proxy":"http://agent-results-interpretation-proxy:8000","agent-clinical-manuscript-proxy":"http://agent-clinical-manuscript-proxy:8000","agent-section-drafter-proxy":"http://agent-section-drafter-proxy:8000","agent-peer-review-simulator-proxy":"http://agent-peer-review-simulator-proxy:8000","agent-bias-detection-proxy":"http://agent-bias-detection-proxy:8000","agent-dissemination-formatter-proxy":"http://agent-dissemination-formatter-proxy:8000","agent-performance-optimizer-proxy":"http://agent-performance-optimizer-proxy:8000","agent-journal-guidelines-cache-proxy":"http://agent-journal-guidelines-cache-proxy:8000","agent-compliance-auditor-proxy":"http://agent-compliance-auditor-proxy:8000","agent-artifact-auditor-proxy":"http://agent-artifact-auditor-proxy:8000","agent-multilingual-literature-processor-proxy":"http://agent-multilingual-literature-processor-proxy:8000","agent-clinical-model-fine-tuner-proxy":"http://agent-clinical-model-fine-tuner-proxy:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -1380,6 +1380,84 @@ services:
       - LANGSMITH_TIMEOUT_SECONDS=${LANGSMITH_ARTIFACT_AUDITOR_TIMEOUT_SECONDS:-300}
       - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
       - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-researchflow-artifact-auditor}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend  # Internal network for orchestrator communication
+      - frontend  # External network for LangSmith API access
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Agent Multilingual Literature Processor Proxy - LangSmith Cloud Adapter
+  # ===================
+  agent-multilingual-literature-processor-proxy:
+    build:
+      context: .
+      dockerfile: services/agents/agent-multilingual-literature-processor-proxy/Dockerfile
+    container_name: researchflow-agent-multilingual-literature-processor-proxy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_AGENT_ID=${LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID:-}
+      - LANGSMITH_API_URL=${LANGSMITH_API_URL:-https://api.smith.langchain.com/api/v1}
+      - LANGSMITH_TIMEOUT_SECONDS=${LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_TIMEOUT_SECONDS:-300}
+      - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-researchflow-multilingual-literature-processor}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - PYTHONUNBUFFERED=1
+    expose:
+      - "8000"
+    networks:
+      - backend  # Internal network for orchestrator communication
+      - frontend  # External network for LangSmith API access
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Agent Clinical Model Fine-Tuner Proxy - LangSmith Cloud Adapter
+  # ===================
+  agent-clinical-model-fine-tuner-proxy:
+    build:
+      context: .
+      dockerfile: services/agents/agent-clinical-model-fine-tuner-proxy/Dockerfile
+    container_name: researchflow-agent-clinical-model-fine-tuner-proxy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_AGENT_ID=${LANGSMITH_CLINICAL_MODEL_FINE_TUNER_AGENT_ID:-}
+      - LANGSMITH_API_URL=${LANGSMITH_API_URL:-https://api.smith.langchain.com/api/v1}
+      - LANGSMITH_TIMEOUT_SECONDS=${LANGSMITH_CLINICAL_MODEL_FINE_TUNER_TIMEOUT_SECONDS:-600}
+      - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-researchflow-clinical-model-fine-tuner}
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
       - PYTHONUNBUFFERED=1
     expose:
