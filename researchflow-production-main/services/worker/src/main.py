@@ -214,8 +214,14 @@ class WorkerService:
         self.redis_client = redis.from_url(self.redis_url, decode_responses=True)
         self.http_client = httpx.AsyncClient(timeout=30.0)
         await self.redis_client.ping()
-        os.makedirs(self.artifact_path, exist_ok=True)
-        os.makedirs(self.log_path, exist_ok=True)
+        try:
+            os.makedirs(self.artifact_path, exist_ok=True)
+            os.makedirs(self.log_path, exist_ok=True)
+        except PermissionError as e:
+            raise RuntimeError(
+                f"Cannot create storage dirs (artifact_path={self.artifact_path!r}, log_path={self.log_path!r}). "
+                "Ensure /data/* paths exist and are writable; use a volume mount for /data in deployment."
+            ) from e
         self.running = True
         logger.info("worker_started")
 

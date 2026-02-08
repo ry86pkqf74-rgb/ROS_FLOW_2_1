@@ -41,6 +41,19 @@ def _parse_float(value: Optional[str], default: float) -> float:
         return default
 
 
+def _normalize_storage_dir(
+    raw: Optional[str],
+    default: str,
+    name: str,
+) -> str:
+    """Resolve artifact/log dir to absolute path; prefer /data/* over /app for deployment."""
+    value = (raw or "").strip() or default
+    path = os.path.abspath(value)
+    if path.startswith("/app"):
+        path = default
+    return path
+
+
 @dataclass
 class WorkerConfig:
     """Environment-based worker and workflow configuration."""
@@ -102,12 +115,23 @@ class WorkerConfig:
             except ValueError:
                 enabled_stages_list = None
 
+        artifacts_raw = (
+            os.getenv("ARTIFACTS_PATH")
+            or os.getenv("ARTIFACT_PATH")
+            or os.getenv("RESEARCHFLOW_ARTIFACTS_DIR")
+        )
+        artifact_path = _normalize_storage_dir(
+            artifacts_raw, "/data/artifacts", "artifact_path"
+        )
+        log_path = _normalize_storage_dir(
+            os.getenv("LOG_PATH"), "/data/logs", "log_path"
+        )
         return cls(
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             log_format=log_fmt,
             governance_mode=os.getenv("GOVERNANCE_MODE", "DEMO"),
-            artifact_path=os.getenv("ARTIFACTS_PATH") or os.getenv("ARTIFACT_PATH", "/data/artifacts"),
-            log_path=os.getenv("LOG_PATH", "/data/logs"),
+            artifact_path=artifact_path,
+            log_path=log_path,
             orchestrator_url=os.getenv("ORCHESTRATOR_URL", "http://orchestrator:3001"),
             bridge_timeout=_parse_float(os.getenv("BRIDGE_TIMEOUT"), 30.0),
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),

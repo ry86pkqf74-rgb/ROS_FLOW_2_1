@@ -175,14 +175,17 @@ class MultiFileIngestEngine:
         self.use_polars = use_polars and POLARS_AVAILABLE
         self.use_duckdb = use_duckdb and DUCKDB_AVAILABLE
 
-        # Setup artifacts directory
+        # Setup artifacts directory: align with worker config (ARTIFACTS_PATH/ARTIFACT_PATH/RESEARCHFLOW_ARTIFACTS_DIR)
         if artifacts_dir:
             self.artifacts_dir = Path(artifacts_dir)
         else:
-            self.artifacts_dir = Path(os.environ.get(
-                'RESEARCHFLOW_ARTIFACTS_DIR',
-                '/tmp/researchflow/artifacts'
-            ))
+            base = (
+                os.environ.get("ARTIFACTS_PATH")
+                or os.environ.get("ARTIFACT_PATH")
+                or os.environ.get("RESEARCHFLOW_ARTIFACTS_DIR")
+                or "/data/artifacts"
+            )
+            self.artifacts_dir = Path(base) / "ingest"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
