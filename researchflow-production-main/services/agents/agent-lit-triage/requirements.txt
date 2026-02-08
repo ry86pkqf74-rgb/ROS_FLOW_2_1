@@ -6,8 +6,8 @@ python-dotenv==1.0.1
 
 # AI/ML dependencies for LangSmith agent
 langchain==0.3.12
-langchain-core==0.3.28
-langchain-community==0.3.12
+langchain-core==0.3.81
+langchain-community==0.3.27
 langgraph==0.2.57
 langsmith==0.2.7
 

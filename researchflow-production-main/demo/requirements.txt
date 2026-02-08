@@ -2,7 +2,7 @@
 # For full functionality, install the complete ResearchFlow dependencies
 
 # Optional: HTTP client for API testing
-# aiohttp>=3.8.0
+# aiohttp>=3.13.3
 
 # Core Python libraries (usually included)
 # json (built-in)

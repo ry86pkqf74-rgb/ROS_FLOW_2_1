@@ -152,7 +152,7 @@ redis>=5.0.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
 PyMuPDF>=1.23.0
-aiohttp>=3.9.2  # Security: CVE-2024-23334 directory traversal fix
+aiohttp>=3.13.3  # Security: CVE-2024-23334 directory traversal fix
 
 # PHI Detection & Protection (HIPAA compliance)
 presidio-analyzer>=2.2.0

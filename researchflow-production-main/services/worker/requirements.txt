@@ -155,7 +155,7 @@ redis>=5.0.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
 PyMuPDF>=1.23.0
-aiohttp>=3.9.2  # Security: CVE-2024-23334 directory traversal fix
+aiohttp>=3.13.3  # Security: CVE-2024-23334 directory traversal fix
 
 # PHI Detection & Protection (HIPAA compliance)
 presidio-analyzer>=2.2.0
@@ -165,7 +165,7 @@ spacy>=3.7.0
 # LangGraph Agent Dependencies (Phase 5.5 Stream F - ROS-30)
 # Updated for langsmith compatibility
 langchain>=0.3.19
-langchain-core>=0.3.19,<0.4.0
+langchain-core>=0.3.81,<0.4.0
 langchain-anthropic>=0.3.0
 langchain-openai>=0.2.14
 langgraph>=0.2.60
@@ -176,7 +176,7 @@ anthropic==0.42.0
 composio-core==0.7.0
 composio-langchain==0.7.0
 langsmith>=0.3.45,<1.0.0  # Required by langchain-core 0.3.x
-langchain-community>=0.3.19
+langchain-community>=0.3.27
 
 # Additional LangChain Integrations (ROS-107, ROS-108)
 chromadb>=0.4.0

@@ -3,7 +3,7 @@
 
 # Core LangChain
 langchain>=0.1.0
-langchain-core>=0.1.0
+langchain-core>=0.3.81
 langchain-openai>=0.0.5
 langchain-anthropic>=0.1.0
 langgraph>=0.0.20
@@ -14,7 +14,7 @@ composio-langchain>=0.3.0
 composio-openai>=0.3.0
 
 # Async Support
-aiohttp>=3.9.2  # Security: CVE-2024-23334 fix
+aiohttp>=3.13.3  # Security: CVE-2024-23334 fix
 asyncio-throttle>=1.0.0
 
 # Data Validation
@@ -27,7 +27,7 @@ requests>=2.31.0
 
 # YAML/JSON Processing
 pyyaml>=6.0.0
-orjson>=3.9.0
+orjson>=3.11.5
 
 # Environment
 python-dotenv>=1.0.0
