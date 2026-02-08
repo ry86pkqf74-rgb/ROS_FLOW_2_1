@@ -90,24 +90,29 @@ async def health_ready():
             detail="LANGSMITH_AGENT_ID not configured (set LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID)"
         )
     
-    # Verify LangSmith API is reachable
+    # Verify LangSmith API is reachable and credentials are valid (require 2xx)
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{settings.langsmith_api_url}/info",
                 headers={"x-api-key": settings.langsmith_api_key}
             )
-            # Accept 2xx or 4xx (auth errors are config issues, not readiness issues)
-            if response.status_code < 500:
+            # Require 2xx (fail on 401/403/404/5xx)
+            if 200 <= response.status_code < 300:
                 return {
                     "status": "ready",
                     "langsmith": "reachable",
                     "agent_id_configured": bool(settings.langsmith_agent_id)
                 }
+            elif response.status_code in [401, 403]:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"LangSmith authentication failed: HTTP {response.status_code} (check LANGSMITH_API_KEY)"
+                )
             else:
                 raise HTTPException(
                     status_code=503,
-                    detail=f"LangSmith API unhealthy: HTTP {response.status_code}"
+                    detail=f"LangSmith API error: HTTP {response.status_code}"
                 )
     except httpx.RequestError as e:
         logger.error(f"LangSmith readiness check failed: {e}")
