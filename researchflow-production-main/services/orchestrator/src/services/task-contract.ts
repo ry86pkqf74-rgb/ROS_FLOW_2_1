@@ -18,6 +18,7 @@ export const ALLOWED_TASK_TYPES = [
   'PERFORMANCE_OPTIMIZATION',
   'MULTILINGUAL_LITERATURE_PROCESSING',
   'CLINICAL_MODEL_FINE_TUNING',
+  'HYPOTHESIS_REFINEMENT',
 ] as const;
 
 export type AllowedTaskType = (typeof ALLOWED_TASK_TYPES)[number];
@@ -82,6 +83,10 @@ const INPUT_REQUIREMENTS: Record<AllowedTaskType, { required: string[]; optional
   CLINICAL_MODEL_FINE_TUNING: {
     required: [],
     optional: ['training_data', 'model_config', 'hyperparameters', 'validation_split', 'mode'],
+  },
+  HYPOTHESIS_REFINEMENT: {
+    required: [],
+    optional: ['research_question', 'hypothesis', 'context', 'constraints', 'variables', 'population', 'intervention', 'comparison', 'outcomes', 'study_design', 'citations', 'output_format'],
   },
 };
 

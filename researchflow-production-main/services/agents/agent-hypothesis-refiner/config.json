@@ -1,0 +1,6 @@
+{
+  "name": "Hypothesis Refiner",
+  "description": "A clinical research hypothesis refinement agent that generates, validates, and iteratively refines research hypotheses using PICOT/SMART frameworks. It ingests data summaries, literature evidence, and gap analyses to produce evidence-grounded, feasible, and unbiased hypotheses. The agent searches for supporting/conflicting evidence from PubMed and clinical databases, scores hypotheses on feasibility, novelty, and ethical soundness, and outputs refined hypotheses in both chat and Google Docs. Designed for all medical domains with a domain specifier provided at each invocation.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}

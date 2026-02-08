@@ -350,6 +350,7 @@ router.post(
       ARTIFACT_AUDIT: 'agent-artifact-auditor-proxy',
       MULTILINGUAL_LITERATURE_PROCESSING: 'agent-multilingual-literature-processor-proxy',
       CLINICAL_MODEL_FINE_TUNING: 'agent-clinical-model-fine-tuner-proxy',
+      HYPOTHESIS_REFINEMENT: 'agent-hypothesis-refiner-proxy',
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

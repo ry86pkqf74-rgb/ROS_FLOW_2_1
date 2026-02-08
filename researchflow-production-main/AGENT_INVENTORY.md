@@ -206,6 +206,7 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 | `agent-evidence-synth` | 8000 | 🚧 Stub | Evidence synthesis (deprecated, use agent-evidence-synthesis) |
 | `agent-bias-detection` | 8000 | ✅ Production | Clinical bias detection & fairness assessment (2026-02-08) |
 | `agent-compliance-auditor` | 8000 | ✅ Production | Regulatory compliance auditing across HIPAA, IRB, EU AI Act, GDPR, FDA SaMD (2026-02-08) |
+| `agent-clinical-model-fine-tuner` | 8000 | ✅ Production | Clinical model fine-tuning with compliance tracking (2026-02-08) |
 
 **Location:** `services/agents/agent-policy-review`, etc.  
 **Environment:** `GOVERNANCE_MODE=LIVE` or `DEMO`
@@ -498,6 +499,104 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 **NEW:** `agent-artifact-auditor` — Artifact Auditor Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
 - **Purpose:** Comprehensive compliance auditing system for dissemination artifacts (manuscripts, reports, formatted research outputs) against established reporting standards (CONSORT, PRISMA, STROBE, SPIRIT, CARE, ARRIVE, TIDieR, CHEERS, MOOSE). Ensures quality, consistency, and equitable reporting across all artifacts with persistent audit logging and cross-artifact trend analysis.
 - **Architecture:** LangSmith multi-agent system with 1 coordinator + 3 specialized sub-workers
+
+**NEW:** `agent-clinical-model-fine-tuner` — Clinical Model Fine-Tuner Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
+- **Purpose:** Model fine-tuning system for clinical AI models. Optimizes domain-specific model performance through supervised fine-tuning on validated clinical datasets with compliance tracking and model versioning.
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + specialized sub-workers
+- **Main Agent Capabilities:**
+  - Multi-phase workflow: Dataset Validation → Hyperparameter Tuning → Training Execution → Model Evaluation → Deployment Preparation
+  - Training dataset intake: CSV, JSON, Google Sheets, or structured text formats
+  - Model architecture support: Clinical BERT, BioClinicalBERT, PubMedBERT, GPT-based models
+  - Hyperparameter optimization with grid search and Bayesian optimization
+  - Training monitoring with early stopping and checkpoint management
+  - Model evaluation with clinical metrics (accuracy, precision, recall, F1, AUROC)
+  - Compliance tracking with audit trail and model cards
+  - Model versioning and deployment artifacts
+- **Tool Dependencies:**
+  - Google Sheets: Dataset ingestion and results tracking
+  - Google Docs: Model card and training report generation
+  - Web search: Research best practices and hyperparameter recommendations
+- **Integration Points:**
+  - **Training Data Sources:** Stage 2 literature extraction, Stage 4 dataset validation, manual clinical annotations
+  - **Downstream Consumers:** Stage 7 statistical models, Stage 9 interpretation agents, clinical prediction agents
+  - **Standalone:** Independent model fine-tuning for externally curated datasets
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-clinical-model-fine-tuner-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `CLINICAL_MODEL_FINE_TUNING` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_CLINICAL_MODEL_FINE_TUNER_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `LANGSMITH_CLINICAL_MODEL_FINE_TUNER_TIMEOUT_SECONDS` - Request timeout (default: 600)
+  - `GOOGLE_WORKSPACE_API_KEY` - For Sheets/Docs integration
+- **Location:** `services/agents/agent-clinical-model-fine-tuner/` (config, subagents), `services/agents/agent-clinical-model-fine-tuner-proxy/` (proxy)
+- **Task Type:** `CLINICAL_MODEL_FINE_TUNING` → `agent-clinical-model-fine-tuner-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-clinical-model-fine-tuner-proxy:8000`
+- **Validation:** Preflight checks LANGSMITH_API_KEY + LANGSMITH_CLINICAL_MODEL_FINE_TUNER_AGENT_ID; smoke test validates router dispatch + proxy health (CHECK_CLINICAL_MODEL_FINE_TUNER=1)
+
+**NEW:** `agent-hypothesis-refiner` — Hypothesis Refiner Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
+- **Purpose:** Clinical research hypothesis refinement system. Generates, validates, and iteratively refines research hypotheses using PICOT (Population, Intervention, Comparison, Outcome, Timeframe) and SMART (Specific, Measurable, Achievable, Relevant, Time-bound) frameworks. Produces evidence-grounded, feasible, and unbiased hypotheses for all medical domains with evidence synthesis and ethical validation.
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + 1 evidence validation sub-worker
+- **Main Agent Capabilities:**
+  - Multi-phase workflow: Intake & Context Gathering → Generate Hypotheses (3-5 candidates) → Validate with Evidence → Refine (Iterative) → Output & Documentation
+  - Hypothesis intake: Vague statements, well-formed hypotheses, or research questions (chat or Google Docs)
+  - PICOT framework structuring: Population, Intervention, Comparison, Outcome, Timeframe
+  - SMART criteria compliance: Specific, Measurable, Achievable, Relevant, Time-bound
+  - Multi-dimensional hypothesis scoring (1-10 scale): Evidence Strength (25%), Novelty (20%), Statistical Feasibility (20%), Ethical Soundness (15%), Clinical Relevance (20%)
+  - Iterative refinement loop (up to 3 iterations) with target score ≥7
+  - Evidence-based validation via delegated evidence retrieval worker
+  - Ethical and bias assessments (population diversity, health equity, vulnerable groups)
+  - Dual-output delivery: chat summaries + formal Google Doc refinement reports
+  - Domain-agnostic design: Handles all medical specialties with domain-specific PICOT framing
+- **Sub-Workers:**
+  - `Evidence_Retrieval_Validator`: Performs deep evidence retrieval for each hypothesis candidate. Called once per hypothesis. Searches PubMed, Google Scholar, clinical registries for supporting/conflicting evidence. Returns evidence strength rating, literature citations, and gap analysis.
+- **Tool Dependencies:**
+  - Tavily Web Search: Literature search (PubMed, clinical databases)
+  - Read URL Content: Extract evidence from papers and registries
+  - Google Docs: `google_docs_create_document`, `google_docs_append_text`, `google_docs_read_document` (intake and output)
+- **Integration Points:**
+  - **Upstream Sources:** Stage 1 research question formulation, Stage 2 literature review outputs, manual hypothesis drafts
+  - **Downstream Consumers:** Stage 3 protocol design, Stage 4 study design selection, hypothesis-driven data analysis
+  - **Standalone:** Independent hypothesis refinement for externally provided research questions
+- **Hypothesis Scoring Dimensions:**
+  - **Evidence Strength (25%):** How well-supported by existing literature
+  - **Novelty (20%):** Degree of originality vs. existing research
+  - **Statistical Feasibility (20%):** Likelihood of adequate power given realistic sample sizes
+  - **Ethical Soundness (15%):** Absence of bias concerns, diverse population coverage
+  - **Clinical Relevance (20%):** Practical significance for patient outcomes or clinical practice
+- **Ethical & Bias Guidelines:**
+  - Flags underrepresentation of specific populations (age, sex, ethnicity, socioeconomic status)
+  - Health equity implications assessment
+  - No biological essentialism without evidence
+  - Conflict of interest detection in cited literature
+  - Diverse enrollment criteria by default
+  - Regulatory compliance notes (FDA, pediatric, geriatric)
+- **Supported Domains:** All medical specialties (oncology, cardiology, diabetes, neurology, rare diseases, etc.) with domain-specific adaptation
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-hypothesis-refiner-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `HYPOTHESIS_REFINEMENT` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/agent-hypothesis-refiner-proxy/wiring.md` ⭐
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_HYPOTHESIS_REFINER_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `LANGSMITH_HYPOTHESIS_REFINER_TIMEOUT_SECONDS` - Request timeout (default: 300)
+  - `TAVILY_API_KEY` - For Evidence_Retrieval_Validator sub-worker (optional)
+- **Location:** `services/agents/agent-hypothesis-refiner/` (config, subagents), `services/agents/agent-hypothesis-refiner-proxy/` (proxy)
+- **Documentation:** 
+  - **Wiring Guide:** `docs/agents/agent-hypothesis-refiner-proxy/wiring.md` ⭐
+  - **Agent Definition:** `services/agents/agent-hypothesis-refiner/AGENTS.md`
+  - **Proxy README:** `services/agents/agent-hypothesis-refiner-proxy/README.md`
+- **Task Type:** `HYPOTHESIS_REFINEMENT` → `agent-hypothesis-refiner-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-hypothesis-refiner-proxy:8000`
+- **Validation:** Preflight checks LANGSMITH_API_KEY + LANGSMITH_HYPOTHESIS_REFINER_AGENT_ID; smoke test validates router dispatch + proxy health + deterministic fixture hypothesis (CHECK_HYPOTHESIS_REFINER=1)
+
 - **Main Agent (Artifact Auditor Coordinator):**
   - Six-step workflow: Parse Artifact → Determine Standard → Retrieve Guideline Checklist → Audit via Compliance Auditor → Generate Report → Log to Tracker
   - Artifact intake: GitHub files, Google Docs, URLs, direct text input
@@ -1066,10 +1165,12 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-bias-detection-proxy": "http://agent-bias-detection-proxy:8000",
   "agent-dissemination-formatter-proxy": "http://agent-dissemination-formatter-proxy:8000",
   "agent-journal-guidelines-cache-proxy": "http://agent-journal-guidelines-cache-proxy:8000",
-  "agent-compliance-auditor-proxy": "http://agent-compliance-auditor-proxy:8000",
-  "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000",
-  "agent-multilingual-literature-processor-proxy": "http://agent-multilingual-literature-processor-proxy:8000"
-}
+      "agent-compliance-auditor-proxy": "http://agent-compliance-auditor-proxy:8000",
+    "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000",
+    "agent-clinical-model-fine-tuner-proxy": "http://agent-clinical-model-fine-tuner-proxy:8000",
+    "agent-multilingual-literature-processor-proxy": "http://agent-multilingual-literature-processor-proxy:8000",
+    "agent-hypothesis-refiner-proxy": "http://agent-hypothesis-refiner-proxy:8000"
+  }
 ```
 
 **Architecture:**
