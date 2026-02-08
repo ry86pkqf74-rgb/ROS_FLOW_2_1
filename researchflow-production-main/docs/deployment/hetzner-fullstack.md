@@ -672,9 +672,11 @@ docker compose images --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Cre
 The worker service stores generated artifacts (reports, exports, analysis results) in `/data/artifacts` inside the container. This path is mounted to a Docker volume for persistence across container restarts.
 
 **Configuration:**
-- **Environment Variable**: `ARTIFACTS_PATH=/data/artifacts` (set in docker-compose.yml)
+- **Environment variables**: `ARTIFACTS_PATH`, `ARTIFACT_PATH`, and `RESEARCHFLOW_ARTIFACTS_DIR` must be set to an **absolute path under `/data/*`** (e.g. `/data/artifacts`) in deployment runs. Do not use paths under `/app` or relative paths.
 - **Volume Mount**: `shared-data:/data` (mounted to worker container)
 - **Physical Location**: Docker volume `shared-data` (managed by Docker)
+
+**Deployment:** Avoid bind-mounting `/app` on server deployments (e.g. `./services/worker:/app` or `./services/collab:/app`). Doing so overwrites built image contents and can break permissions and artifacts; use the published GHCR images as-is with only `/data` (and optionally `/data/projects`) volume-mounted.
 
 **Key Benefits:**
 - **Durability**: Artifacts survive container restarts and updates
