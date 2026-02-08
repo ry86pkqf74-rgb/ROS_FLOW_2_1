@@ -276,6 +276,74 @@ class BaseStageAgent(ABC):
         async with self.manuscript_client as client:
             return await client.call_service(service_name, method_name, params)
     
+    async def call_agent_dispatch(
+        self,
+        task_type: str,
+        request_id: str,
+        inputs: Dict[str, Any],
+        mode: str = "DEMO",
+        workflow_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        risk_tier: str = "NON_SENSITIVE",
+        domain_id: Optional[str] = None,
+        budgets: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Call the AI router dispatch endpoint to execute an agent.
+        
+        Used for calling specialized agents (e.g., LangSmith-hosted agents)
+        from within a stage execution.
+        
+        Args:
+            task_type: Task type (e.g., 'PEER_REVIEW_SIMULATION')
+            request_id: Unique request identifier
+            inputs: Input data for the agent
+            mode: Governance mode ('DEMO' or 'LIVE')
+            workflow_id: Optional workflow ID
+            user_id: Optional user ID
+            risk_tier: Risk tier ('PHI', 'SENSITIVE', 'NON_SENSITIVE')
+            domain_id: Optional domain ID
+            budgets: Optional budget constraints
+            
+        Returns:
+            Agent response data
+            
+        Raises:
+            Exception: If agent call fails
+        """
+        import httpx
+        import os
+        
+        orchestrator_url = os.getenv("ORCHESTRATOR_URL", "http://orchestrator:3001")
+        service_token = os.getenv("WORKER_SERVICE_TOKEN", "")
+        
+        payload = {
+            "task_type": task_type,
+            "request_id": request_id,
+            "mode": mode,
+            "inputs": inputs,
+        }
+        
+        if workflow_id:
+            payload["workflow_id"] = workflow_id
+        if user_id:
+            payload["user_id"] = user_id
+        if risk_tier:
+            payload["risk_tier"] = risk_tier
+        if domain_id:
+            payload["domain_id"] = domain_id
+        if budgets:
+            payload["budgets"] = budgets
+        
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            response = await client.post(
+                f"{orchestrator_url}/api/ai/router/dispatch",
+                json=payload,
+                headers={"Authorization": f"Bearer {service_token}"}
+            )
+            response.raise_for_status()
+            return response.json()
+    
     async def generate_paragraph(
         self,
         topic: str,
