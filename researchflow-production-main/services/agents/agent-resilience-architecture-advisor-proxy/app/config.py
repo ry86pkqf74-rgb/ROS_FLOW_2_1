@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # LangSmith Configuration
     langsmith_api_key: str
     langsmith_resilience_architecture_advisor_agent_id: str
-    langsmith_api_url: str = "https://api.smith.langchain.com/v1"
+    langsmith_api_url: str = "https://api.smith.langchain.com/api/v1"
     langsmith_timeout_seconds: int = 300
     
     # Service Configuration
