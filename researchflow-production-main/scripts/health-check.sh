@@ -2,9 +2,28 @@
 # ==============================================================================
 # ResearchFlow Health Check Script
 # ==============================================================================
-# Usage: ./scripts/health-check.sh [--verbose]
+# Usage: ./scripts/health-check.sh [OPTIONS]
 #
 # Checks health of all ResearchFlow services
+#
+# Options:
+#   --verbose, -v              Show verbose output
+#   --orchestrator-url URL     Orchestrator URL (default: http://localhost:3001)
+#   --worker-url URL           Worker URL (default: http://localhost:8000)
+#   --guideline-url URL        Guideline Engine URL (default: http://localhost:8001)
+#   --collab-url URL           Collaboration Server URL (default: http://localhost:1235)
+#
+# Example usage on ROSflow2 (Hetzner):
+#   ./scripts/health-check.sh \
+#     --orchestrator-url http://rosflow2:3001 \
+#     --worker-url http://rosflow2:8000 \
+#     --guideline-url http://rosflow2:8001 \
+#     --collab-url http://rosflow2:1235
+#
+# Example with environment domain:
+#   ./scripts/health-check.sh \
+#     --orchestrator-url https://api.rosflow2.example.com \
+#     --worker-url https://worker.rosflow2.example.com
 # ==============================================================================
 
 set -e
@@ -16,18 +35,49 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# Default configuration
 VERBOSE=false
-if [ "$1" = "--verbose" ] || [ "$1" = "-v" ]; then
-    VERBOSE=true
-fi
-
-# Configuration
 ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-http://localhost:3001}"
 WORKER_URL="${WORKER_URL:-http://localhost:8000}"
 GUIDELINE_URL="${GUIDELINE_URL:-http://localhost:8001}"
 COLLAB_URL="${COLLAB_URL:-http://localhost:1235}"
 REDIS_HOST="${REDIS_HOST:-localhost}"
 REDIS_PORT="${REDIS_PORT:-6379}"
+
+# Parse command line arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --verbose|-v)
+            VERBOSE=true
+            shift
+            ;;
+        --orchestrator-url)
+            ORCHESTRATOR_URL="$2"
+            shift 2
+            ;;
+        --worker-url)
+            WORKER_URL="$2"
+            shift 2
+            ;;
+        --guideline-url)
+            GUIDELINE_URL="$2"
+            shift 2
+            ;;
+        --collab-url)
+            COLLAB_URL="$2"
+            shift 2
+            ;;
+        --help|-h)
+            sed -n '2,25p' "$0" | sed 's/^# //; s/^#//'
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 # Results tracking
 PASSED=0

@@ -322,6 +322,24 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.prod.yml ps
 ```
 
+## Remote Deployment
+
+For deploying ResearchFlow on remote servers (e.g., Hetzner VPS):
+
+- **[Hetzner Full-Stack Deployment Guide](./hetzner-fullstack.md)** - Complete guide for deploying ResearchFlow on Hetzner dedicated servers, including Docker setup, system requirements validation, health checks, and production best practices.
+
+Use the included preflight check script to validate your server before deployment:
+
+```bash
+# Run preflight checks on remote server
+ssh user@rosflow2 'cd /opt/researchflow && ./scripts/hetzner-preflight.sh'
+
+# Run health checks with custom URLs
+./scripts/health-check.sh \
+  --orchestrator-url http://rosflow2:3001 \
+  --worker-url http://rosflow2:8000
+```
+
 ## Related Documentation
 
 - [Environment Variables](../configuration/env-vars.md)

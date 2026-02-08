@@ -386,6 +386,11 @@ For detailed information, see:
   IMPLEMENTATION_GUIDE.md     Step-by-step instructions
   FILES_MANIFEST.md           File inventory
   
+For remote server deployment:
+  docs/deployment/hetzner-fullstack.md  Hetzner VPS deployment guide
+  scripts/hetzner-preflight.sh          Preflight check script
+  scripts/health-check.sh               Enhanced health check with URL flags
+  
 For Docker basics:
   https://docs.docker.com
   https://docs.docker.com/compose
