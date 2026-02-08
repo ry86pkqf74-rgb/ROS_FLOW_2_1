@@ -107,6 +107,33 @@ echo "[1] GET /api/health"
 req GET "/api/health"
 echo "Health OK: $LAST_BODY"
 
+# --- 1.5. Assert WORKER_SERVICE_TOKEN is set (required for stage 2 internal dispatch auth)
+echo "[1.5] Checking WORKER_SERVICE_TOKEN (required for stage 2 dispatch)"
+WORKER_TOKEN_VERIFIED=false
+if [ -f .env ] && grep -qE '^WORKER_SERVICE_TOKEN=.+' .env 2>/dev/null; then
+  WORKER_TOKEN_VERIFIED=true
+fi
+if [ "$WORKER_TOKEN_VERIFIED" = false ] && command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  TOKEN_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${WORKER_SERVICE_TOKEN:+SET}' 2>/dev/null || echo "")
+  if [ "$TOKEN_CHECK" = "SET" ]; then
+    WORKER_TOKEN_VERIFIED=true
+  fi
+fi
+if [ "$WORKER_TOKEN_VERIFIED" = true ]; then
+  echo "✓ WORKER_SERVICE_TOKEN is configured"
+else
+  echo "✗ WORKER_SERVICE_TOKEN is NOT set or could not be verified." >&2
+  echo "" >&2
+  echo "Stage 2 execution requires WORKER_SERVICE_TOKEN for internal dispatch (POST /api/ai/router/dispatch)." >&2
+  echo "Remediation:" >&2
+  echo "  1. Generate token: openssl rand -hex 32" >&2
+  echo "  2. Add to .env: WORKER_SERVICE_TOKEN=<generated-token>" >&2
+  echo "  3. Recreate orchestrator: docker compose up -d --force-recreate orchestrator" >&2
+  echo "" >&2
+  echo "Run this script from the server deploy directory (e.g. /opt/researchflow/.../researchflow-production-main) so .env or orchestrator env can be checked." >&2
+  fail "WORKER_SERVICE_TOKEN not configured - stage execution will fail with 403"
+fi
+
 # --- 2. Approve AI for stage 2 (cited: routes.ts app.use("/api/workflow", workflowStagesRouter); workflow-stages.ts router.post('/stages/:stageId/approve-ai', ...))
 # No requireAuth on this route; optionalAuth sets user. AUTH_HEADER recommended for session.
 echo "[2] POST /api/workflow/stages/2/approve-ai"

@@ -221,6 +221,78 @@ fi
 
 echo ""
 
+# Environment configuration checks
+print_header "Environment Configuration"
+
+# Check for .env file
+if [ -f ".env" ]; then
+    check_pass ".env file" "exists"
+    
+    # Check for WORKER_SERVICE_TOKEN
+    if grep -q "^WORKER_SERVICE_TOKEN=" .env 2>/dev/null; then
+        TOKEN_VALUE=$(grep "^WORKER_SERVICE_TOKEN=" .env | cut -d= -f2 | tr -d '"' | tr -d "'")
+        TOKEN_LEN=${#TOKEN_VALUE}
+        
+        if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_LEN" -ge 32 ]; then
+            check_pass "WORKER_SERVICE_TOKEN" "set ($TOKEN_LEN chars)"
+        elif [ -n "$TOKEN_VALUE" ]; then
+            check_warn "WORKER_SERVICE_TOKEN" "too short ($TOKEN_LEN chars, need 32+)"
+        else
+            check_fail "WORKER_SERVICE_TOKEN" "empty value"
+        fi
+    else
+        check_fail "WORKER_SERVICE_TOKEN" "not found in .env - internal auth will fail!"
+        echo ""
+        echo -e "${YELLOW}Remediation:${NC}"
+        echo "  1. Generate token: openssl rand -hex 32"
+        echo "  2. Add to .env: WORKER_SERVICE_TOKEN=<generated-token>"
+        echo "  3. Recreate services: docker compose up -d --force-recreate orchestrator worker"
+        echo ""
+    fi
+    
+    # Verify token is available in running orchestrator (if containers are up)
+    if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+        TOKEN_IN_CONTAINER=$(docker compose exec -T orchestrator sh -c 'echo ${WORKER_SERVICE_TOKEN:+SET}' 2>/dev/null || echo "")
+        if [ "$TOKEN_IN_CONTAINER" = "SET" ]; then
+            check_pass "WORKER_SERVICE_TOKEN (runtime)" "loaded in orchestrator"
+        else
+            check_fail "WORKER_SERVICE_TOKEN (runtime)" "not loaded in orchestrator - recreate container!"
+        fi
+    fi
+else
+    check_warn ".env file" "not found (using defaults only)"
+    check_fail "WORKER_SERVICE_TOKEN" ".env missing - internal auth will fail!"
+fi
+
+echo ""
+
+# Worker service token (required for internal dispatch auth; 403 on POST /api/ai/router/dispatch if missing)
+print_header "Worker Service Token (WORKER_SERVICE_TOKEN)"
+
+WORKER_TOKEN_SET=false
+if [ -f .env ] && grep -qE '^WORKER_SERVICE_TOKEN=.+' .env 2>/dev/null; then
+    WORKER_TOKEN_SET=true
+fi
+if [ "$WORKER_TOKEN_SET" = false ] && docker ps --format "{{.Names}}" 2>/dev/null | grep -q orchestrator; then
+    TOKEN_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${WORKER_SERVICE_TOKEN:+SET}' 2>/dev/null || true)
+    if [ "$TOKEN_CHECK" = "SET" ]; then
+        WORKER_TOKEN_SET=true
+    fi
+fi
+if [ "$WORKER_TOKEN_SET" = true ]; then
+    check_pass "WORKER_SERVICE_TOKEN" "set (internal dispatch auth)"
+else
+    echo ""
+    echo -e "${RED}Remediation:${NC}"
+    echo "  1. Generate a token:  openssl rand -hex 32"
+    echo "  2. Add to .env:      WORKER_SERVICE_TOKEN=<that-hex-token>"
+    echo "  3. Recreate orchestrator:  docker compose up -d --force-recreate orchestrator"
+    echo ""
+    check_fail "WORKER_SERVICE_TOKEN" "not set (required for stage 2 dispatch; add to .env and recreate orchestrator)"
+fi
+
+echo ""
+
 # Service health checks
 print_header "Service Health Checks"
 
