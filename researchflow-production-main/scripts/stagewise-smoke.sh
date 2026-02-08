@@ -863,6 +863,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
   CHECK_PEER_REVIEW=1
   CHECK_RESULTS_INTERPRETATION=1
   CHECK_COMPLIANCE_AUDITOR=1
+  CHECK_ARTIFACT_AUDITOR=1
   
   # Load mandatory agent list
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -901,6 +902,7 @@ if [ "$CHECK_ALL_AGENTS" = "1" ] || [ "$CHECK_ALL_AGENTS" = "true" ]; then
     ["agent-performance-optimizer-proxy"]="PERFORMANCE_OPTIMIZATION"
     ["agent-journal-guidelines-cache-proxy"]="JOURNAL_GUIDELINES_CACHE"
     ["agent-compliance-auditor-proxy"]="COMPLIANCE_AUDIT"
+    ["agent-artifact-auditor-proxy"]="ARTIFACT_AUDIT"
   )
   
   # Parse mandatory agents
