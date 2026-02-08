@@ -751,6 +751,106 @@
           }
         }
       }
+    },
+    "/api/dev-auth/login": {
+      "post": {
+        "summary": "Dev-only login (Playwright/CI)",
+        "operationId": "devAuthLogin",
+        "security": [],
+        "tags": ["Authentication"],
+        "parameters": [
+          {
+            "name": "X-Dev-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Dev login successful" },
+          "400": { "description": "Missing X-Dev-User-Id" },
+          "404": { "description": "Not found (ENABLE_DEV_AUTH not set)" }
+        }
+      }
+    },
+    "/api/workflow/stages/{stageId}/approve-ai": {
+      "post": {
+        "summary": "Approve AI for stage",
+        "operationId": "approveAiForStage",
+        "tags": ["Workflow"],
+        "parameters": [{ "name": "stageId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "200": { "description": "OK" }, "401": { "description": "Not authenticated" } }
+      }
+    },
+    "/api/workflow/stages/{stage}/execute": {
+      "post": {
+        "summary": "Execute workflow stage",
+        "operationId": "executeStage",
+        "tags": ["Workflow"],
+        "parameters": [{ "name": "stage", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workflow_id": { "type": "string", "format": "uuid" },
+                  "research_question": { "type": "string" },
+                  "mode": { "type": "string" },
+                  "risk_tier": { "type": "string" },
+                  "domain_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "202": { "description": "Job queued" }, "401": { "description": "Not authenticated" } }
+      }
+    },
+    "/api/workflow/stages/{stage}/jobs/{job_id}/status": {
+      "get": {
+        "summary": "Get stage job status",
+        "operationId": "getStageJobStatus",
+        "tags": ["Workflow"],
+        "parameters": [
+          { "name": "stage", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Job status" }, "401": { "description": "Not authenticated" } }
+      }
+    },
+    "/api/ai/feedback/pending/list": {
+      "get": {
+        "summary": "List pending AI feedback (ADMIN)",
+        "operationId": "listPendingFeedback",
+        "tags": ["AI Feedback"],
+        "responses": { "200": { "description": "Pending list" }, "401": { "description": "Not authenticated" }, "403": { "description": "ADMIN role required" } }
+      }
+    },
+    "/api/ai/feedback/{id}/review": {
+      "put": {
+        "summary": "Submit feedback review (ADMIN)",
+        "operationId": "reviewFeedback",
+        "tags": ["AI Feedback"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "isUsefulForTraining": { "type": "boolean" }, "reviewNotes": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Review submitted" }, "401": { "description": "Not authenticated" }, "403": { "description": "ADMIN role required" } }
+      }
+    },
+    "/api/hub/workflow-runs/{runId}/steps/{stepDbId}": {
+      "patch": {
+        "summary": "Update workflow run step",
+        "operationId": "updateWorkflowRunStep",
+        "tags": ["Hub"],
+        "parameters": [
+          { "name": "runId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "stepDbId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "outputs": { "type": "object" }, "errorMessage": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Step updated" }, "401": { "description": "Not authenticated" } }
+      }
     }
   }
 }

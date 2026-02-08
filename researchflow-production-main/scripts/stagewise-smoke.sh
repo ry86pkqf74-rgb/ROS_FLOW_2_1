@@ -7,10 +7,24 @@ set -e
 ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-http://127.0.0.1:3001}"
 CURL_OPTS=( -sS -w "\n%{http_code}" )
 AUTH_HEADER="${AUTH_HEADER:-}"
+# Skip admin-only checks (steps 5–6: pending feedback list + review). Use for staging when no ADMIN token.
+SKIP_ADMIN_CHECKS="${SKIP_ADMIN_CHECKS:-0}"
+# When set to "true", mint a dev token via POST /api/dev-auth/login (requires server ENABLE_DEV_AUTH=true).
+DEV_AUTH="${DEV_AUTH:-false}"
 
 fail() {
   echo "FAIL: $1" >&2
   exit 1
+}
+
+# Emit clearer auth errors (401/403)
+auth_error() {
+  local code="$1" url="$2"
+  if [ "$code" = "401" ]; then
+    echo "401 Unauthorized: missing or invalid token for $url. Set AUTH_HEADER or use DEV_AUTH=true (if server has ENABLE_DEV_AUTH=true)." >&2
+  elif [ "$code" = "403" ]; then
+    echo "403 Forbidden: insufficient role for $url (e.g. ADMIN required). Set SKIP_ADMIN_CHECKS=1 to skip admin-only steps." >&2
+  fi
 }
 
 # Optional: print last response body (assumes body and code were stored)
@@ -53,12 +67,14 @@ req() {
     if [ "$LAST_CODE" != "$expect_code" ]; then
       echo "Request: $method $url" >&2
       print_last
+      auth_error "$LAST_CODE" "$url"
       fail "Expected HTTP $expect_code, got $LAST_CODE"
     fi
   else
     if [ "${LAST_CODE:0:1}" != "2" ]; then
       echo "Request: $method $url" >&2
       print_last
+      auth_error "$LAST_CODE" "$url"
       fail "Unexpected HTTP $LAST_CODE"
     fi
   fi
@@ -66,6 +82,25 @@ req() {
 }
 
 echo "Using ORCHESTRATOR_URL=$ORCHESTRATOR_URL"
+
+# --- 0. Optional: auto-mint dev token when DEV_AUTH=true and AUTH_HEADER unset (server must have ENABLE_DEV_AUTH=true)
+if [ "$DEV_AUTH" = "true" ] && [ -z "$AUTH_HEADER" ]; then
+  echo "[0] POST /api/dev-auth/login (DEV_AUTH=true)"
+  _login_out=$(curl "${CURL_OPTS[@]}" -X POST -H "Content-Type: application/json" -H "X-Dev-User-Id: stagewise-smoke-dev" "${ORCHESTRATOR_URL}/api/dev-auth/login")
+  _login_body=$(echo "$_login_out" | head -n -1)
+  _login_code=$(echo "$_login_out" | tail -n 1)
+  if [ "$_login_code" = "200" ]; then
+    _token=$(echo "$_login_body" | sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ -n "$_token" ]; then
+      AUTH_HEADER="Authorization: Bearer $_token"
+      echo "Dev token minted; AUTH_HEADER set."
+    else
+      echo "Warning: dev login 200 but no accessToken in response" >&2
+    fi
+  else
+    echo "Warning: dev-auth login returned $_login_code (is ENABLE_DEV_AUTH=true on server?). Proceeding without token." >&2
+  fi
+fi
 
 # --- 1. Health (cited: index.ts app.use("/api", healthRouter); health.ts router.get("/health", ...))
 echo "[1] GET /api/health"
@@ -91,7 +126,7 @@ fi
 # Stage2ExecuteSchema: workflow_id (uuid), research_question (min 10), mode, risk_tier, domain_id, inputs optional
 echo "[3] POST /api/workflow/stages/2/execute"
 if [ -z "$AUTH_HEADER" ]; then
-  fail "AUTH_HEADER required for Stage 2 execute (requireAuth). Example: AUTH_HEADER=\"Authorization: Bearer <token>\""
+  fail "AUTH_HEADER required for Stage 2 execute (requireAuth). Set AUTH_HEADER or DEV_AUTH=true (with server ENABLE_DEV_AUTH=true)."
 fi
 EXEC_BODY='{"workflow_id":"00000000-0000-0000-0000-000000000001","research_question":"Do GLP-1 agonists improve cardiovascular outcomes in type 2 diabetes?","mode":"DEMO","risk_tier":"NON_SENSITIVE","domain_id":"clinical"}'
 req POST "/api/workflow/stages/2/execute" 202 "$EXEC_BODY"
@@ -118,9 +153,12 @@ for i in $(seq 1 "$POLL_MAX"); do
 done
 
 # --- 5. Pending AI feedback list (cited: ai-feedback.ts router.get('/pending/list', requireRole('ADMIN'), ...))
+# Optional: set SKIP_ADMIN_CHECKS=1 to skip steps 5–6 when no ADMIN token is available.
 echo "[5] GET /api/ai/feedback/pending/list"
-if [ -z "$AUTH_HEADER" ]; then
-  echo "Skipping (AUTH_HEADER required for ADMIN); set AUTH_HEADER to test."
+if [ "$SKIP_ADMIN_CHECKS" = "1" ] || [ "$SKIP_ADMIN_CHECKS" = "true" ]; then
+  echo "Skipping (SKIP_ADMIN_CHECKS=1)."
+elif [ -z "$AUTH_HEADER" ]; then
+  echo "Skipping (AUTH_HEADER required for ADMIN). Set AUTH_HEADER or DEV_AUTH=true, or SKIP_ADMIN_CHECKS=1 to skip."
 else
   _pending_out=$(curl "${CURL_OPTS[@]}" -X GET -H "$AUTH_HEADER" "${ORCHESTRATOR_URL}/api/ai/feedback/pending/list")
   _pending_body=$(echo "$_pending_out" | head -n -1)
@@ -137,7 +175,8 @@ else
       echo "[6] No pending feedback to review."
     fi
   else
-    echo "Pending list response: $_pending_code (may need ADMIN role)"
+    auth_error "$_pending_code" "/api/ai/feedback/pending/list"
+    echo "Pending list response: $_pending_code — $_pending_body"
   fi
 fi
 

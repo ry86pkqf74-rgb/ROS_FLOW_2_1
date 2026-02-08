@@ -7,6 +7,7 @@ import path from "path";
 // JWT-based authentication (replaces Replit auth)
 import { optionalAuth, devOrRequireAuth } from "./src/services/authService";
 import jwtAuthRouter from "./src/routes/auth";
+import devAuthRoutes from "./src/routes/devAuth";
 import userSettingsRouter from "./src/routes/user-settings";
 import {
   requireRole,
@@ -917,6 +918,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Mount JWT authentication routes (register, login, logout, refresh, etc.)
   app.use('/api/auth', jwtAuthRouter);
+
+  // Dev-only login for Playwright/CI (enabled when ENABLE_DEV_AUTH=true and not on Replit)
+  app.use('/api/dev-auth', devAuthRoutes);
 
   // Mount user settings routes
   app.use('/api/user', userSettingsRouter);
