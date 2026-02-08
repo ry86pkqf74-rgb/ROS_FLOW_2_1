@@ -9,10 +9,11 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 13
+- **Microservice Agents (Docker):** 14
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
+- **LangSmith Multi-Agent Systems:** 2 (Evidence Synthesis, Clinical Manuscript Writer)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -73,6 +74,27 @@ These are standalone FastAPI services running in Docker containers with health c
 **Location:** `services/agents/agent-*-writer`, `agent-verify`  
 **Shared Library:** `services/agents/shared/section_writer/`  
 **Evidence System:** All writers attach `chunk_id` and `doc_id` references
+
+**NEW:** `agent-clinical-manuscript` — Clinical Manuscript Writer (Imported from LangSmith, 2026-02-07)
+- **Purpose:** Full IMRaD format manuscript generation with multi-guideline compliance (CONSORT, SPIRIT, STROBE, PRISMA)
+- **Architecture:** LangSmith multi-agent system with 4 specialized sub-agents
+- **Main Agent Capabilities:**
+  - IMRaD section drafting (Introduction, Methods, Results, Discussion)
+  - Automated audit loop (Statistical + Compliance review)
+  - Evidence traceability system with Evidence IDs
+  - PHI protection (mandatory pre-scan)
+  - Google Docs/Sheets integration
+  - Self-revision workflow
+- **Sub-Agents:**
+  - `Literature_Research_Agent`: Medical literature search via Tavily/Exa (PubMed, ClinicalTrials.gov, Cochrane)
+  - `Statistical_Review_Agent`: Statistical accuracy validation (test appropriateness, text-table concordance)
+  - `CONSORT_SPIRIT_Compliance_Agent`: Systematic guideline evaluation (25+ checklists)
+  - `Data_Extraction_Agent`: Clinical data parsing, Table 1 generation, PHI screening
+- **Tools:** Google Docs, Google Sheets, Tavily Search, Exa Search, Gmail
+- **Integration:** Receives structured evidence from `agent-evidence-synthesis`; outputs publication-ready manuscripts
+- **Evidence Ledger:** Maintains Google Sheets with Evidence Log, Data Quality, Compliance Audit
+- **Deployment:** Currently LangSmith-hosted (containerization planned)
+- **Source:** LangSmith Agent "Clinical Manuscript Writer" (see `services/agents/agent-clinical-manuscript/`)
 
 
 ### 1.4 Governance & Policy Agents

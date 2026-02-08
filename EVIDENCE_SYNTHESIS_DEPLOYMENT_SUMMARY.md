@@ -5,6 +5,45 @@
 **Date:** 2026-02-07  
 **Status:** ✅ Ready for Production Deployment
 
+**🆕 UPDATE (2026-02-07):** Clinical Manuscript Writer Agent imported and integrated
+
+---
+
+## Recent Updates
+
+### Clinical Manuscript Writer Integration (2026-02-07)
+
+**Status:** ✅ Imported and Documented
+
+**What Was Added:**
+- **Agent Source:** LangSmith custom agent from `/Users/ros/Downloads/Clinical_Manuscript_Writer`
+- **Location:** `services/agents/agent-clinical-manuscript/`
+- **Type:** Multi-agent system with 4 specialized sub-agents
+- **Purpose:** IMRaD format manuscript generation with CONSORT/SPIRIT compliance
+
+**Files Added:**
+- ✅ `services/agents/agent-clinical-manuscript/` - Full agent directory structure
+- ✅ `services/agents/agent-clinical-manuscript/README.md` - Comprehensive documentation
+- ✅ `services/agents/agent-clinical-manuscript/AGENTS.md` - Main agent prompt
+- ✅ `services/agents/agent-clinical-manuscript/config.json` - Agent configuration
+- ✅ `services/agents/agent-clinical-manuscript/tools.json` - Tool definitions
+- ✅ `services/agents/agent-clinical-manuscript/subagents/` - 4 sub-agent directories
+
+**Documentation Updated:**
+- ✅ `AGENT_INVENTORY.md` - Added Clinical Manuscript Writer to Writing & Verification Agents
+- ✅ `CLINICAL_MANUSCRIPT_INTEGRATION_GUIDE.md` - Complete integration guide created
+
+**Workflow Integration:**
+```
+Evidence Synthesis Agent → Clinical Manuscript Writer → Publication
+(GRADE evaluation)      → (IMRaD manuscript drafting) → (Google Docs)
+```
+
+**Next Steps:**
+- ⏳ Test LangSmith API integration
+- ⏳ Add orchestrator routing for manuscript generation
+- ⏳ Create integration test script
+
 ---
 
 ## Files Changed
