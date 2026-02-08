@@ -14,7 +14,7 @@ This inventory captures ALL agents, model integrations, prompt files, and LLM ca
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
 - **LangSmith Multi-Agent Systems:** 13 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor)
-- **LangSmith Proxy Services:** 10 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor)
+- **LangSmith Proxy Services:** 13 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor, Clinical Model Fine-Tuner, Hypothesis Refiner)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 

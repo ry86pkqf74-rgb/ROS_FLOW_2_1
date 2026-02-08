@@ -98,7 +98,7 @@ async def health_ready():
                 status_code=503,
                 detail=f"LangSmith /info not ready: {response.status_code}"
             )
-except httpx.RequestError as e:
+    except httpx.RequestError as e:
         logger.error(f"LangSmith readiness check failed: {type(e).__name__}")
         raise HTTPException(
             status_code=503,

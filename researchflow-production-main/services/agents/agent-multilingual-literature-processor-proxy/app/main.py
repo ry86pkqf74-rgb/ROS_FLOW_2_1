@@ -296,9 +296,11 @@ async def run_agent_stream(request: AgentRunRequest):
                 response.raise_for_status()
                 
                 # Forward LangSmith SSE events verbatim (no double-framing)
+                # LangSmith /stream already returns SSE-formatted data: lines starting with "data: ..."
+                # We proxy chunks as-is to avoid wrapping them in additional SSE framing
                 async for chunk in response.aiter_text():
                     if chunk.strip():
-                        yield f"data: {chunk}\n\n"
+                        yield chunk
                         
         except Exception as e:
             logger.exception("Streaming error occurred")
