@@ -86,6 +86,7 @@ describe('task-contract', () => {
           // Provide required inputs for each task type
           switch (taskType) {
             case 'LIT_RETRIEVAL':
+            case 'MULTILINGUAL_LITERATURE_PROCESSING':
               inputs = { query: 'q' };
               break;
             case 'STAGE_2_LITERATURE_REVIEW':
@@ -110,6 +111,10 @@ describe('task-contract', () => {
               break;
             case 'STAGE_2_EXTRACT':
             case 'POLICY_REVIEW':
+            case 'PERFORMANCE_OPTIMIZATION':
+            case 'CLINICAL_MODEL_FINE_TUNING':
+            case 'HYPOTHESIS_REFINEMENT':
+            case 'RESILIENCE_ARCHITECTURE':
               inputs = {};
               break;
           }
