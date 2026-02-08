@@ -1,0 +1,6 @@
+{
+  "name": "Clinical Model Fine-Tuner",
+  "description": "A comprehensive clinical model fine-tuning assistant that manages the full lifecycle: data preparation, prompt engineering, fine-tuning across multiple providers (OpenAI, Azure OpenAI, self-hosted), evaluation, regression testing, and HIPAA compliance auditing. Features 6 specialized workers for data prep, evaluation, compliance auditing, benchmark research, prompt engineering, and regression testing. Tracks everything via Google Sheets (metrics), GitHub (issues and PRs), Google Docs (model cards and compliance reports), and Slack (notifications). Designed for HIPAA compliance using synthetic data, with LangSmith integration via custom MCP.",
+  "visibility_scope": "tenant",
+  "triggers_paused": false
+}
