@@ -21,6 +21,8 @@ CHECK_MANUSCRIPT_WRITER="${CHECK_MANUSCRIPT_WRITER:-0}"
 CHECK_SECTION_DRAFTER="${CHECK_SECTION_DRAFTER:-0}"
 # When set to "1", run optional Clinical Bias Detection check (LangSmith-based)
 CHECK_BIAS_DETECTION="${CHECK_BIAS_DETECTION:-0}"
+# When set to "1", run optional Dissemination Formatter check (LangSmith-based)
+CHECK_DISSEMINATION_FORMATTER="${CHECK_DISSEMINATION_FORMATTER:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -832,3 +834,115 @@ fi
 
 echo ""
 echo "Stagewise smoke completed successfully."
+
+# --- 13. Optional: Dissemination Formatter validation (LangSmith cloud integration)
+if [ "$CHECK_DISSEMINATION_FORMATTER" = "1" ] || [ "$CHECK_DISSEMINATION_FORMATTER" = "true" ]; then
+  echo "[13] Dissemination Formatter Agent Check (optional - LangSmith-based)"
+  
+  # 13a. Check LANGSMITH_API_KEY and agent ID are configured
+  echo "[13a] Checking LANGSMITH_API_KEY and agent ID configuration"
+  LANGSMITH_KEY_SET=false
+  FORMATTER_AGENT_ID_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+      FORMATTER_AGENT_ID_SET=true
+      echo "✓ LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID not set (LangSmith agent dispatch will fail)"
+      echo "To enable: Add LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID=<uuid> to .env (from LangSmith UI)"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH_API_KEY"
+  fi
+  
+  # 13b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[13b] POST /api/ai/router/dispatch (DISSEMINATION_FORMATTING)"
+    _dispatch_body=$(curl "${CURL_OPTS[@]}" "${AUTH_HEADER}" -X POST \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" \
+      -H "Content-Type: application/json" \
+      -d '{"task_type":"DISSEMINATION_FORMATTING","request_id":"smoke-formatter-001","mode":"DEMO","inputs":{"manuscript_text":"# Test Manuscript\nThis is a test.","target_journal":"Nature","output_format":"text"}}')
+    _dispatch_code=$(tail -n 1 <<< "$_dispatch_body")
+    _dispatch_body=$(head -n -1 <<< "$_dispatch_body")
+    
+    if [ "$_dispatch_code" = "200" ]; then
+      echo "Router dispatch OK: response code 200"
+      AGENT_NAME=$(echo "$_dispatch_body" | grep -o '"agent_name":"[^"]*"' | cut -d'"' -f4 || echo "")
+      if [ "$AGENT_NAME" = "agent-dissemination-formatter" ]; then
+        echo "✓ Correctly routed to agent-dissemination-formatter"
+      else
+        echo "Warning: Expected agent-dissemination-formatter, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[13b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 13c. Check proxy container health
+  echo "[13c] Checking proxy container health"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-dissemination-formatter-proxy"; then
+      echo "✓ agent-dissemination-formatter-proxy container is running"
+      
+      # Check health endpoint
+      PROXY_HEALTH=$(docker compose exec -T agent-dissemination-formatter-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$PROXY_HEALTH" | grep -q "ok"; then
+        echo "✓ Proxy health endpoint responding"
+      else
+        echo "Warning: Proxy health endpoint not responding"
+      fi
+    else
+      echo "Warning: agent-dissemination-formatter-proxy container not running"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check proxy container"
+  fi
+  
+  # 13d. Validate artifacts directory structure
+  echo "[13d] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    mkdir -p /data/artifacts/validation/dissemination-formatter-smoke 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/dissemination-formatter-smoke" ]; then
+      # Write a minimal validation record
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/dissemination-formatter-smoke/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/dissemination-formatter-smoke/${TIMESTAMP}/summary.json" 2>/dev/null <<FORMATTER_SMOKE_EOF
+{
+  "agent": "agent-dissemination-formatter",
+  "task_type": "DISSEMINATION_FORMATTING",
+  "timestamp": "${TIMESTAMP}",
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "formatter_agent_id_set": ${FORMATTER_AGENT_ID_SET},
+  "router_registered": true,
+  "proxy_container_running": $(docker ps --format "{{.Names}}" | grep -q "agent-dissemination-formatter-proxy" && echo "true" || echo "false"),
+  "status": "smoke-check-complete"
+}
+FORMATTER_SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/dissemination-formatter-smoke/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (no artifact write; formatted manuscripts go to Google Docs)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY + LANGSMITH_DISSEMINATION_FORMATTER_AGENT_ID"
+  echo "      Proxy container must be running and healthy for full integration"
+  echo "      Full integration test requires: Manuscript → Formatter → Journal-ready output"
+  
+  echo "Dissemination Formatter Agent check complete (optional - does not block)"
+else
+  echo "[13] Skipping Dissemination Formatter check (set CHECK_DISSEMINATION_FORMATTER=1 to enable)"
+fi

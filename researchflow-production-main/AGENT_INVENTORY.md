@@ -497,12 +497,13 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - **Tools:** `services/agents/agent-dissemination-formatter/tools.json`
 - **LangSmith Source:** Dissemination Formatter custom agent
 - **Communication Style:** Meticulous, precise, thorough, professional academic tone, concise but explanatory, explicit about uncertainties
-- **Next Steps:** 
-  - Create proxy service structure (`agent-dissemination-formatter-proxy/`)
-  - Add to docker-compose.yml
-  - Register task type `DISSEMINATION_FORMATTING` in ai-router
-  - Add to AGENT_ENDPOINTS_JSON
-  - Create wiring documentation
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-dissemination-formatter-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `DISSEMINATION_FORMATTING` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/dissemination-formatter/wiring.md` ⭐
 
 ---
 

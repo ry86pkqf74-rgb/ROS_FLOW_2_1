@@ -243,6 +243,7 @@ router.post(
       STATISTICAL_ANALYSIS: 'agent-results-interpretation',  // Alias for results interpretation
       PEER_REVIEW_SIMULATION: 'agent-peer-review-simulator',  // LangSmith-hosted peer review simulator (Stage 13)
       CLINICAL_BIAS_DETECTION: 'agent-bias-detection',  // LangSmith-hosted bias detection (Stage 4b/7/9/14)
+      DISSEMINATION_FORMATTING: 'agent-dissemination-formatter',  // LangSmith-hosted dissemination formatter (Stage 19)
     };
     const agent_name = TASK_TYPE_TO_AGENT[task_type];
     if (!agent_name) {

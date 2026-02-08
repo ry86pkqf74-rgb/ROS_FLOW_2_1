@@ -427,6 +427,25 @@ if docker ps >/dev/null 2>&1; then
             fi
         fi
         
+        # Dissemination Formatter Agent (LangSmith-based, proxy service)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured (same key as other LangSmith agents)
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Dissemination Formatter" "LANGSMITH_API_KEY configured"
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "DISSEMINATION_FORMATTING" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Dissemination Formatter Router" "task type registered"
+                else
+                    check_fail "Dissemination Formatter Router" "DISSEMINATION_FORMATTING not found in ai-router.ts"
+                fi
+            else
+                check_warn "Dissemination Formatter" "LANGSMITH_API_KEY not set (optional: add to .env for manuscript formatting)"
+            fi
+        fi
+        
         # Results Interpretation Agent (LangSmith-based, not containerized)
         if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
             # Check if LANGSMITH_API_KEY is configured (same key as Manuscript Writer / Section Drafter)
