@@ -9,12 +9,12 @@
 This inventory captures ALL agents, model integrations, prompt files, and LLM calls across the entire ResearchFlow codebase.
 
 **Total Counts:**
-- **Microservice Agents (Docker):** 24 (15 native + 9 LangSmith proxies)
+- **Microservice Agents (Docker):** 25 (15 native + 10 LangSmith proxies)
 - **Stage Agents (Workflow Engine):** 20
 - **Specialized Agents (Worker):** 15+
 - **LangGraph Agents:** 8
-- **LangSmith Multi-Agent Systems:** 12 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor)
-- **LangSmith Proxy Services:** 9 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor)
+- **LangSmith Multi-Agent Systems:** 13 (Evidence Synthesis, Clinical Manuscript Writer, Literature Triage, Clinical Study Section Drafter, Results Interpretation, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor)
+- **LangSmith Proxy Services:** 10 (Results Interpretation, Clinical Manuscript Writer, Clinical Section Drafter, Peer Review Simulator, Clinical Bias Detection, Dissemination Formatter, Performance Optimizer, Journal Guidelines Cache, Compliance Auditor, Artifact Auditor, Multilingual Literature Processor)
 - **Model Providers:** 6
 - **Prompt Files:** 15+
 
@@ -704,6 +704,87 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
   - `GOOGLE_DOCS_API_KEY` - For report generation (disabled by default)
   - `LANGSMITH_PERFORMANCE_OPTIMIZER_TIMEOUT_SECONDS` - Request timeout (default: 300)
 
+**NEW:** `agent-multilingual-literature-processor` — Multilingual Literature Processor Agent (Imported, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
+- **Purpose:** Discovers, translates, analyzes, and synthesizes scientific literature across multiple languages. Bridges language barriers in academic research by making non-English scientific literature accessible and actionable for global research teams.
+- **Architecture:** LangSmith cloud-hosted agent accessed via local FastAPI proxy
+- **Main Agent Capabilities:**
+  - Multilingual literature discovery (14+ languages supported)
+  - Scientific translation with terminology preservation
+  - Cross-language synthesis and comparative analysis
+  - Regional database access (CNKI, CiNii, SciELO, HAL, LIVIVO, etc.)
+  - Annotated bibliography generation with language labels
+  - Citation management and export (BibTeX, RIS)
+  - Google Docs report generation
+- **Supported Languages:**
+  - English, Chinese (Simplified/Traditional), Japanese, Spanish, French, German, Portuguese, Korean, Russian, Arabic, Italian, Dutch, Polish
+- **Search Coverage:**
+  - **Global**: PubMed, PubMed Central, Semantic Scholar, Google Scholar
+  - **Chinese**: CNKI (中国知网), Wanfang Data (万方数据)
+  - **Japanese**: CiNii, J-STAGE
+  - **Spanish/Portuguese**: SciELO, Redalyc
+  - **French**: HAL, Persée
+  - **German**: LIVIVO
+  - **Korean**: RISS
+  - **Russian**: eLibrary.ru
+- **Workflow Phases:**
+  1. **Discovery**: Multi-language search with query translation
+  2. **Translation**: Abstract and full-text translation with quality validation
+  3. **Extraction**: Structured data extraction (design, outcomes, statistics)
+  4. **Synthesis**: Cross-language integration and regional trend analysis
+  5. **Reporting**: Formal reports with annotated bibliographies
+- **Output Artifacts:**
+  - **Chat Summary**: Key findings by language, synthesis, quality notes
+  - **Google Doc Report**: Formal literature review with translations
+  - **Structured JSON**: Machine-readable output with metadata
+  - **Citation Export**: BibTeX/RIS for reference managers
+- **Quality Assurance:**
+  - Terminology consistency checking (MeSH multilingual thesaurus)
+  - Back-translation validation for critical claims
+  - Statistical value preservation
+  - Citation integrity verification
+- **Tool Dependencies:**
+  - `tavily_web_search`, `exa_web_search`: Multi-language literature discovery
+  - `read_url_content`: Full-text extraction
+  - `google_docs_*`: Report generation
+  - `google_sheets_*`: Structured data management
+  - `gmail_send_email`: Report distribution
+- **Integration Points:**
+  - **Stage 2 (Literature Review)**: Enhanced multilingual literature discovery
+  - **Evidence Synthesis**: Cross-language evidence integration
+  - **Systematic Reviews**: Non-English paper screening and extraction
+  - **Standalone**: Independent multilingual literature queries
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-multilingual-literature-processor-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `MULTILINGUAL_LITERATURE_PROCESSING` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/agent-multilingual-literature-processor-proxy/wiring.md` ⭐
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_TIMEOUT_SECONDS` - Request timeout (default: 300)
+  - `TAVILY_API_KEY` - For web search (optional)
+  - `EXA_API_KEY` - For academic search (optional)
+  - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY` - For Google Workspace integration (optional)
+- **Location:** `services/agents/agent-multilingual-literature-processor/` (config), `services/agents/agent-multilingual-literature-processor-proxy/` (proxy)
+- **Documentation:** 
+  - **Agent Definition:** `services/agents/agent-multilingual-literature-processor/AGENTS.md`
+  - **Configuration:** `services/agents/agent-multilingual-literature-processor/config.json`
+  - **Tools:** `services/agents/agent-multilingual-literature-processor/tools.json`
+  - **Proxy README:** `services/agents/agent-multilingual-literature-processor-proxy/README.md`
+  - **Wiring Guide:** `docs/agents/agent-multilingual-literature-processor-proxy/wiring.md` ⭐
+- **Task Type:** `MULTILINGUAL_LITERATURE_PROCESSING` → `agent-multilingual-literature-processor-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-multilingual-literature-processor-proxy:8000`
+- **Validation:** Preflight checks LANGSMITH_API_KEY + LANGSMITH_MULTILINGUAL_LITERATURE_PROCESSOR_AGENT_ID; smoke test validates router dispatch + proxy health + deterministic fixture (CHECK_MULTILINGUAL_LITERATURE_PROCESSOR=1)
+- **Use Cases:**
+  - Global evidence synthesis requiring non-English literature
+  - Regional practice comparison across languages
+  - Systematic reviews with multilingual inclusion criteria
+  - Citation discovery for non-English sources
+  - Translation for PRISMA reviews
+
 **NEW:** `agent-journal-guidelines-cache` — Journal Guidelines Cache Agent (Imported from LangSmith, 2026-02-08) ✅ **PRODUCTION READY**
 - **Purpose:** Intelligent caching layer for academic journal submission guidelines. Eliminates redundant web searches through persistent Google Sheets cache with automatic staleness detection (30-day threshold), proactive daily refresh, and change tracking with audit trails.
 - **Architecture:** LangSmith multi-agent system with 3 specialized sub-workers (Guidelines_Researcher, Changelog_Detector, Guidelines_Comparator)
@@ -986,7 +1067,8 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-dissemination-formatter-proxy": "http://agent-dissemination-formatter-proxy:8000",
   "agent-journal-guidelines-cache-proxy": "http://agent-journal-guidelines-cache-proxy:8000",
   "agent-compliance-auditor-proxy": "http://agent-compliance-auditor-proxy:8000",
-  "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000"
+  "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000",
+  "agent-multilingual-literature-processor-proxy": "http://agent-multilingual-literature-processor-proxy:8000"
 }
 ```
 
