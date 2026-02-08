@@ -196,6 +196,7 @@ export const envSchema = z.object({
 
   // Artifact & Cache Configuration
   ARTIFACTS_PATH: z.string().default('/data/artifacts'),
+  ARTIFACT_PATH: z.string().optional(), // Deprecated: Use ARTIFACTS_PATH instead
   CONFERENCE_CACHE_TTL: z
     .string()
     .transform(Number)
