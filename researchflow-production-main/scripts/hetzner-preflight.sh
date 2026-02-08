@@ -528,6 +528,30 @@ ARTIFACT_EOF
     if [ -z "$SERVICE_NAME" ] || [ -z "$SERVICE_PORT" ]; then
         check_fail "  $agent_key [URL Parse]" "invalid URL format: $AGENT_URL"
         AGENT_VALIDATION_FAILED=1
+        ARTIFACT_STATUS="fail"
+        ARTIFACT_ERROR="URL parse failed: expected format http://service-name:port"
+        
+        # Write failure artifact
+        TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+        mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || true
+        if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
+            cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
+{
+  "agentKey": "${agent_key}",
+  "validation_script": "hetzner-preflight.sh",
+  "timestamp": "${TIMESTAMP}",
+  "status": "${ARTIFACT_STATUS}",
+  "container_running": ${ARTIFACT_CONTAINER_RUNNING},
+  "health_endpoint": "${ARTIFACT_HEALTH_ENDPOINT}",
+  "health_response_status": "${ARTIFACT_HEALTH_STATUS}",
+  "langsmith_info_status": "${ARTIFACT_LANGSMITH_INFO_STATUS}",
+  "error": "${ARTIFACT_ERROR}",
+  "agent_url": "${AGENT_URL}",
+  "service_name": "parse_failed"
+}
+ARTIFACT_EOF
+        fi
+        
         echo "    Expected format: http://service-name:port"
         echo ""
         continue

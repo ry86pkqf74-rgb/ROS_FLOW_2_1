@@ -1003,17 +1003,17 @@ ARTIFACT_EOF
       ARTIFACT_ERROR="Router dispatch failed: HTTP $_dispatch_code"
     fi
     
-    # Write artifact
+    # Write artifact (CRITICAL: must succeed in CHECK_ALL_AGENTS=1 mode)
     TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+    ARTIFACT_WRITE_FAILED=false
+    
     mkdir -p "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" 2>/dev/null || {
-      echo "  Warning: Could not create artifact directory - /data may not be mounted"
-      if [ "$ARTIFACT_STATUS" != "pass" ]; then
-        echo "  CRITICAL: Artifact write failed in CHECK_ALL_AGENTS=1 mode"
-        AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
-      fi
+      echo "  CRITICAL: Could not create artifact directory - /data may not be mounted or insufficient permissions"
+      ARTIFACT_WRITE_FAILED=true
+      AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
     }
     
-    if [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
+    if [ "$ARTIFACT_WRITE_FAILED" = false ] && [ -d "/data/artifacts/validation/${agent_key}/${TIMESTAMP}" ]; then
       cat > "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_EOF
 {
   "agentKey": "${agent_key}",
@@ -1026,12 +1026,21 @@ ARTIFACT_EOF
   "error": $([ -n "$ARTIFACT_ERROR" ] && echo "\"$ARTIFACT_ERROR\"" || echo "null")
 }
 ARTIFACT_EOF
+      
+      # Verify write succeeded
       if [ ! -f "/data/artifacts/validation/${agent_key}/${TIMESTAMP}/summary.json" ]; then
-        echo "  Warning: Failed to write artifact summary (permissions issue)"
-        if [ "$ARTIFACT_STATUS" != "pass" ]; then
-          echo "  CRITICAL: Artifact write failed in CHECK_ALL_AGENTS=1 mode"
-          AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
-        fi
+        echo "  CRITICAL: Failed to write artifact summary (permissions issue) - treating as failure"
+        ARTIFACT_WRITE_FAILED=true
+        AGENT_TESTS_FAILED=$((AGENT_TESTS_FAILED + 1))
+      fi
+    fi
+    
+    # If artifact write failed but dispatch passed, downgrade to failure
+    if [ "$ARTIFACT_WRITE_FAILED" = true ]; then
+      if [ "$ARTIFACT_STATUS" = "pass" ]; then
+        echo "  CRITICAL: Dispatch passed but artifact write failed - treating validation as FAILED"
+        # Decrement the pass counter if we had counted it
+        AGENT_TESTS_PASSED=$((AGENT_TESTS_PASSED - 1))
       fi
     fi
     
