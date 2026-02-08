@@ -61,18 +61,23 @@ CLINICAL_SECTION_DRAFT: 'agent-clinical-section-drafter',  // LangSmith-hosted R
 
 ## Execution Model
 
-### Architecture: LangSmith Cloud-Hosted (No Containerization)
+### Architecture: LangSmith Cloud via FastAPI Proxy ✅
 
-The agent is **NOT** deployed as a Docker container. It runs on LangSmith infrastructure and is invoked via REST API.
+The agent runs on LangSmith cloud infrastructure and is accessed via a **local FastAPI proxy service**.
 
-**Key Facts:**
-- **Deployment:** LangSmith cloud (no docker-compose service)
-- **Invocation:** `https://api.smith.langchain.com/agents/run/sync`
-- **Authentication:** Requires `LANGSMITH_API_KEY` environment variable
+**Updated Architecture (2026-02-08):**
+- **Proxy Service:** `agent-section-drafter-proxy` (Docker container)
+- **Proxy Location:** `services/agents/agent-section-drafter-proxy/`
+- **Compose Service:** ✅ Added to `docker-compose.yml`
+- **Deployment:** LangSmith cloud (agent execution) + Local proxy (HTTP interface)
+- **Internal URL:** `http://agent-section-drafter-proxy:8000`
+- **Invocation:** Orchestrator → Proxy → LangSmith API
+- **Authentication:** Requires `LANGSMITH_API_KEY` + `LANGSMITH_SECTION_DRAFTER_AGENT_ID`
 - **Router Task Type:** `CLINICAL_SECTION_DRAFT`
 - **Agent Name:** `agent-clinical-section-drafter`
+- **Health Checks:** `/health`, `/health/ready` (validates LangSmith connectivity)
 
-**Similar to:** `agent-clinical-manuscript` (both are LangSmith-hosted)
+**Similar to:** `agent-clinical-manuscript-proxy`, `agent-results-interpretation-proxy` (all use proxy pattern)
 
 ---
 
@@ -85,8 +90,14 @@ Orchestrator (/api/ai/router/dispatch)
     ↓ [task_type: CLINICAL_SECTION_DRAFT]
 TASK_TYPE_TO_AGENT mapping
     ↓ [resolves to: agent-clinical-section-drafter]
+    ↓ [agent URL: http://agent-section-drafter-proxy:8000]
+FastAPI Proxy (agent-section-drafter-proxy)
+    ↓ [transform ResearchFlow → LangSmith format]
 LangSmith API (https://api.smith.langchain.com)
     ↓ [executes agent + sub-workers]
+    ↓ [returns output + metadata]
+FastAPI Proxy
+    ↓ [transform LangSmith → ResearchFlow format]
 Response (JSON: section_draft, compliance_report, citations, audit_log)
     ↓
 Artifact Writer (/data/artifacts/manuscripts/{workflow_id}/sections/)
@@ -149,14 +160,20 @@ Return to caller
 
 Add to `/opt/researchflow/.env`:
 ```bash
-# Required
+# Required (for proxy service)
 LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_SECTION_DRAFTER_AGENT_ID=<uuid-from-langsmith>
 
 # Optional (for sub-workers)
 TAVILY_API_KEY=tvly-...
 EXA_API_KEY=exa_...
 GOOGLE_DOCS_API_KEY=...
 ```
+
+**Get Agent ID:**
+1. Visit https://smith.langchain.com/
+2. Navigate to your Clinical Section Drafter agent
+3. Copy the UUID from the URL or agent settings
 
 ### Deploy Steps
 
@@ -165,13 +182,24 @@ GOOGLE_DOCS_API_KEY=...
 cd /opt/researchflow
 git pull origin chore/inventory-capture
 
-# 2. Verify environment
-./researchflow-production-main/scripts/hetzner-preflight.sh
+# 2. Verify environment (including LANGSMITH_SECTION_DRAFTER_AGENT_ID)
+cat .env | grep LANGSMITH
 
-# 3. Restart orchestrator to load new routing
+# 3. Build and start proxy service
+docker compose build agent-section-drafter-proxy
+docker compose up -d agent-section-drafter-proxy
+
+# 4. Wait for healthy
+sleep 15
+
+# 5. Verify proxy health
+docker compose ps agent-section-drafter-proxy
+docker compose exec agent-section-drafter-proxy curl -f http://localhost:8000/health
+
+# 6. Restart orchestrator to load new routing
 docker compose up -d --force-recreate orchestrator
 
-# 4. Validate wiring
+# 7. Validate wiring
 CHECK_SECTION_DRAFTER=1 ./researchflow-production-main/scripts/stagewise-smoke.sh
 ```
 
@@ -287,12 +315,13 @@ curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
 
 ## Comparison: Similar Agents
 
-| Agent | Task Type | Deployment | Container | Router Registration |
-|-------|-----------|------------|-----------|---------------------|
-| Clinical Manuscript Writer | `CLINICAL_MANUSCRIPT_WRITE` | LangSmith cloud | No | ✅ (commit 040b13f) |
-| Clinical Section Drafter | `CLINICAL_SECTION_DRAFT` | LangSmith cloud | No | ✅ (this commit) |
-| Evidence Synthesis | `EVIDENCE_SYNTHESIS` | Docker | Yes | ✅ (commit 197bfcd) |
-| Literature Triage | `LIT_TRIAGE` | Docker | Yes | ✅ (commit c1a42c1) |
+| Agent | Task Type | Deployment | Container | Proxy Service | Router Registration |
+|-------|-----------|------------|-----------|---------------|---------------------|
+| Clinical Manuscript Writer | `CLINICAL_MANUSCRIPT_WRITE` | LangSmith cloud | ✅ Proxy | `agent-clinical-manuscript-proxy` | ✅ |
+| Clinical Section Drafter | `CLINICAL_SECTION_DRAFT` | LangSmith cloud | ✅ Proxy | `agent-section-drafter-proxy` | ✅ |
+| Results Interpretation | `RESULTS_INTERPRETATION` | LangSmith cloud | ✅ Proxy | `agent-results-interpretation-proxy` | ✅ |
+| Evidence Synthesis | `EVIDENCE_SYNTHESIS` | Docker native | ✅ | N/A | ✅ (commit 197bfcd) |
+| Literature Triage | `LIT_TRIAGE` | Docker native | ✅ | N/A | ✅ (commit c1a42c1) |
 
 ---
 

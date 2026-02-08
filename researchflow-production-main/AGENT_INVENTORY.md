@@ -503,9 +503,14 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-verify": "http://agent-verify:8000",
   "agent-intro-writer": "http://agent-intro-writer:8000",
   "agent-methods-writer": "http://agent-methods-writer:8000",
-  "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000"
+  "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000",
+  "agent-results-interpretation": "http://agent-results-interpretation-proxy:8000",
+  "agent-clinical-manuscript": "http://agent-clinical-manuscript-proxy:8000",
+  "agent-clinical-section-drafter": "http://agent-section-drafter-proxy:8000"
 }
 ```
+
+**Note:** LangSmith-hosted agents use `-proxy` suffix in their service names but are accessed via their logical names (without `-proxy`) in routing.
 
 
 ---
@@ -784,14 +789,23 @@ curl http://localhost:3001/api/agent-health/agent-stage2-lit
 - `WORKER_SERVICE_TOKEN` - Inter-service authentication
 - `AGENT_ENDPOINTS_JSON` - Agent routing configuration
 
+**LangSmith Proxy Variables (for cloud-hosted agents):**
+- `LANGSMITH_API_KEY` - LangSmith API access (required for all proxies)
+- `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` - Results Interpretation agent UUID
+- `LANGSMITH_MANUSCRIPT_AGENT_ID` - Clinical Manuscript Writer agent UUID
+- `LANGSMITH_SECTION_DRAFTER_AGENT_ID` - Clinical Section Drafter agent UUID
+- `LANGSMITH_API_URL` - Default: `https://api.smith.langchain.com/api/v1`
+- `LANGSMITH_TIMEOUT_SECONDS` - Default: 180-300 (agent-specific)
+
 **Optional Variables:**
 - `GOVERNANCE_MODE` - LIVE or DEMO
 - `LOCAL_MODEL_ENABLED` - Enable Ollama
 - `PHI_SCAN_ENABLED` - PHI scanning toggle
 - `COMPOSIO_API_KEY` - Composio integration
-- `LANGSMITH_API_KEY` - LangChain tracing
+- `LANGCHAIN_PROJECT` - LangSmith project name
+- `LANGCHAIN_TRACING_V2` - Enable LangSmith tracing (true/false)
 - `EXA_API_KEY` - Exa semantic search (for agent-lit-triage)
-- `TAVILY_API_KEY` - Tavily web search (for agent-evidence-synthesis)
+- `TAVILY_API_KEY` - Tavily web search (for agent-evidence-synthesis, LangSmith agents)
 
 ---
 

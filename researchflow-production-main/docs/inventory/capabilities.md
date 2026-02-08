@@ -82,31 +82,43 @@ When `rosflow-inventory.zip` is available, compare `compose.rendered.yml` and `e
 
 ---
 
-## 6. LangSmith-Hosted Agents (No Docker Service)
+## 6. LangSmith-Hosted Agents
 
-These agents are registered as router task types but have **no** Docker Compose service.
-They are hosted on LangSmith Agent Builder and require `LANGSMITH_API_KEY`.
+These agents run their core logic on LangSmith cloud but are accessible via local proxy services.
 
 | Agent name | Router task type(s) | Compose service | AGENT_ENDPOINTS_JSON | Status |
 |------------|---------------------|-----------------|----------------------|--------|
-| `agent-results-interpretation` | `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
-| `agent-clinical-manuscript` | `CLINICAL_MANUSCRIPT_WRITE` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
-| `agent-clinical-section-drafter` | `CLINICAL_SECTION_DRAFT` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
+| `agent-results-interpretation` | `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` | ✅ `agent-results-interpretation-proxy` | ✅ Included | ✅ **DEPLOYED** |
+| `agent-clinical-manuscript` | `CLINICAL_MANUSCRIPT_WRITE` | ❌ None | ❌ Not included | ❌ Dispatch fails: `AGENT_NOT_CONFIGURED` |
+| `agent-clinical-section-drafter` | `CLINICAL_SECTION_DRAFT` | ❌ None | ❌ Not included | ❌ Dispatch fails: `AGENT_NOT_CONFIGURED` |
 
 **Required for all three:** `LANGSMITH_API_KEY` in orchestrator env.
 
-**To make dispatch work:** Either add a LangSmith proxy URL to `AGENT_ENDPOINTS_JSON`, or
-build a local adapter service per agent.
-
-### Results Interpretation Agent Details
+### Results Interpretation Agent Details (✅ **DEPLOYED**)
 
 | Property | Value |
 |----------|-------|
-| Execution model | LangSmith cloud |
+| Execution model | LangSmith cloud via local proxy |
+| Proxy service | `agent-results-interpretation-proxy` |
+| Proxy location | `services/agents/agent-results-interpretation-proxy/` |
+| Internal URL | `http://agent-results-interpretation-proxy:8000` |
 | Router task types | `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` |
-| Config | `services/agents/agent-results-interpretation/config.json` |
+| Config (cloud agent) | `services/agents/agent-results-interpretation/config.json` |
 | Sub-workers | 4 (Literature Research, Methodology Audit, Section Draft, Draft Refinement) |
 | Domain skills | `clinical-trials`, `survey-analysis` |
-| Required env | `LANGSMITH_API_KEY`, `GOOGLE_DOCS_API_KEY` (for reports) |
+| Required env | `LANGSMITH_API_KEY`, `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` |
+| Optional env | `LANGSMITH_API_URL`, `LANGSMITH_TIMEOUT_SECONDS`, `GOOGLE_DOCS_API_KEY` |
+| Health endpoints | ✅ `/health`, `/health/ready` |
+| Networks | `backend` (orchestrator), `frontend` (LangSmith API) |
 | Canonical doc | `docs/agents/results-interpretation/wiring.md` |
+| Setup guide | `docs/agents/results-interpretation/ENVIRONMENT.md` |
 | Validation | `CHECK_RESULTS_INTERPRETATION=1` in `stagewise-smoke.sh` |
+| Status | ✅ Fully deployed and integrated |
+
+### Clinical Manuscript Writer (❌ TODO)
+
+**To enable:** Build proxy service similar to `agent-results-interpretation-proxy`.
+
+### Clinical Section Drafter (❌ TODO)
+
+**To enable:** Build proxy service similar to `agent-results-interpretation-proxy`.

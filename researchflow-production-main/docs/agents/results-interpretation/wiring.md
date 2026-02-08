@@ -6,6 +6,7 @@ and routing truth.
 
 **Last verified:** 2026-02-08  
 **Branch:** `chore/inventory-capture`
+**Status:** ✅ **IMPLEMENTED** - Proxy service deployed
 
 ---
 
@@ -53,50 +54,79 @@ yet.
 1. Caller sends `POST /api/ai/router/dispatch` with
    `task_type: "RESULTS_INTERPRETATION"`.
 2. Router resolves agent name → `agent-results-interpretation`.
-3. Router looks up agent name in `AGENT_ENDPOINTS_JSON`.
-4. **Gap:** `agent-results-interpretation` is **not** present in
-   `AGENT_ENDPOINTS_JSON` today.  Dispatch returns
-   `500 AGENT_NOT_CONFIGURED`.
-
-To make dispatch succeed, add the agent to `AGENT_ENDPOINTS_JSON` in
-the orchestrator `.env`.  Because this agent runs on LangSmith (not a local
-container), the URL should point to a future LangSmith proxy endpoint or a
-local adapter service.  Until that adapter is built, the agent can only be
-invoked directly via the LangSmith API.
+3. Router looks up agent name in `AGENT_ENDPOINTS_JSON` →
+   `http://agent-results-interpretation-proxy:8000`.
+4. Proxy service transforms request and forwards to LangSmith API.
+5. LangSmith executes cloud-hosted agent and returns results.
+6. Proxy transforms response to ResearchFlow format and returns.
 
 ---
 
 ## 3. Deployment (Hetzner / Docker Compose)
 
-### Execution Model: **LangSmith Cloud (not containerised)**
+### Execution Model: **LangSmith Cloud via Local Proxy**
 
-There is **no** Docker service, **no** Dockerfile, and **no** docker-compose
-entry for this agent.  It follows the same pattern as:
-- `agent-clinical-manuscript` (Clinical Manuscript Writer)
-- `agent-clinical-section-drafter` (Clinical Section Drafter)
+The core agent logic runs on **LangSmith cloud**, but ResearchFlow includes a
+**local proxy service** (`agent-results-interpretation-proxy`) that:
+- Adapts ResearchFlow agent contract to LangSmith API format
+- Provides health checks and monitoring
+- Handles authentication and error translation
+- Maintains ResearchFlow's standard agent interface
 
 | Property | Value |
 |----------|-------|
-| Compose service | **None** |
-| Image / `${IMAGE_TAG}` | N/A |
-| Internal port | N/A |
-| Published port | N/A |
-| Healthcheck | N/A (cloud-hosted) |
-| Volumes / `/data` | N/A |
+| **Core Agent** | LangSmith cloud-hosted (no local container) |
+| **Proxy Service** | `agent-results-interpretation-proxy` |
+| Compose service | ✅ `agent-results-interpretation-proxy` |
+| Image | Built from `services/agents/agent-results-interpretation-proxy/` |
+| Internal port | 8000 |
+| Published port | None (internal only) |
+| Healthcheck | ✅ `/health`, `/health/ready` |
+| Networks | `backend` (orchestrator), `frontend` (LangSmith API) |
+| Volumes / `/data` | None (reports go to Google Docs) |
 
-### What Is Needed to Enable
+### Required Environment Variables
 
-1. **Option A — LangSmith direct:** Call the LangSmith API from a
-   dedicated dispatcher in the orchestrator (see
-   `WORKFLOW_INTEGRATION.md §2.2 LangSmith Bridge` for the planned
-   design).
-2. **Option B — Local adapter:** Create a thin FastAPI service that
-   proxies to LangSmith, add it to `docker-compose.yml`, and register
-   it in `AGENT_ENDPOINTS_JSON`.
-3. **Option C — Full containerisation:** Reimplement agent logic locally
-   with LangGraph, add Dockerfile + compose service.
+See [`ENVIRONMENT.md`](./ENVIRONMENT.md) for complete setup instructions.
 
-None of these options are implemented today.
+**Required:**
+- `LANGSMITH_API_KEY` - LangSmith API key (format: `lsv2_pt_...`)
+- `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` - Assistant UUID from LangSmith
+
+**Optional:**
+- `LANGSMITH_API_URL` - Default: `https://api.smith.langchain.com/api/v1`
+- `LANGSMITH_TIMEOUT_SECONDS` - Default: `180` (3 minutes)
+- `LANGCHAIN_PROJECT` - Default: `researchflow-results-interpretation`
+- `LANGCHAIN_TRACING_V2` - Default: `false`
+
+### Setup Instructions
+
+1. **Get LangSmith credentials:**
+   - Log in to https://smith.langchain.com/
+   - Navigate to **Agents** → **Results Interpretation Agent**
+   - Copy the **Agent ID** (UUID)
+   - Generate an **API Key** if needed
+
+2. **Add to `.env` file:**
+   ```bash
+   LANGSMITH_API_KEY=lsv2_pt_YOUR_KEY_HERE
+   LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID=YOUR_AGENT_UUID_HERE
+   ```
+
+3. **Deploy services:**
+   ```bash
+   docker compose build agent-results-interpretation-proxy
+   docker compose up -d --force-recreate orchestrator agent-results-interpretation-proxy
+   ```
+
+4. **Verify:**
+   ```bash
+   # Check proxy health
+   docker compose exec agent-results-interpretation-proxy curl -f http://localhost:8000/health
+   
+   # Check LangSmith connectivity
+   docker compose exec agent-results-interpretation-proxy curl -f http://localhost:8000/health/ready
+   ```
 
 ---
 
@@ -124,7 +154,8 @@ None of these options are implemented today.
 |----------|-------|
 | Env var | `LANGSMITH_API_KEY` |
 | Format | `lsv2_pt_...` |
-| Used by | Future LangSmith dispatcher (not yet built) |
+| Used by | `agent-results-interpretation-proxy` service |
+| Agent ID | `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` (UUID) |
 
 ---
 
@@ -191,20 +222,31 @@ writes occur.
 
 ### Preflight (hetzner-preflight.sh)
 
-Since the agent is cloud-hosted, preflight checks verify:
+Preflight checks verify:
 
-1. `LANGSMITH_API_KEY` is set in the orchestrator container.
-2. `RESULTS_INTERPRETATION` task type is present in `ai-router.ts`.
+1. `LANGSMITH_API_KEY` is set in orchestrator
+2. `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` is set in proxy
+3. `RESULTS_INTERPRETATION` task type is registered in router
+4. Proxy service is healthy and can reach LangSmith API
+5. Agent is present in `AGENT_ENDPOINTS_JSON`
 
 ```bash
-# Check LANGSMITH_API_KEY
+# Check proxy container is running
+docker compose ps agent-results-interpretation-proxy
+
+# Check proxy health
+docker compose exec -T agent-results-interpretation-proxy curl -f http://localhost:8000/health
+
+# Check LangSmith connectivity
+docker compose exec -T agent-results-interpretation-proxy curl -f http://localhost:8000/health/ready
+
+# Check LANGSMITH_API_KEY in orchestrator
 docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}'
 # Expected: SET
 
-# Check router registration
-docker compose exec -T orchestrator grep -c "RESULTS_INTERPRETATION" \
-  /app/src/routes/ai-router.ts
-# Expected: 1 (or more)
+# Check agent in AGENT_ENDPOINTS_JSON
+docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | grep results-interpretation
+# Expected: "agent-results-interpretation":"http://agent-results-interpretation-proxy:8000"
 ```
 
 ### Smoke (stagewise-smoke.sh)
@@ -231,23 +273,39 @@ running the LangSmith agent manually or through the planned dispatcher.
 
 ## 7. Common Failures + Where to Look
 
-1. **`AGENT_NOT_CONFIGURED` on dispatch** — `agent-results-interpretation`
-   is not in `AGENT_ENDPOINTS_JSON`.  This is the expected state until a
-   LangSmith proxy/adapter is built.  Check with:
-   `docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | grep results-interpretation`
+1. **Proxy container not running** — Check:
+   `docker compose ps agent-results-interpretation-proxy`
+   Fix: `docker compose up -d agent-results-interpretation-proxy`
 
-2. **`LANGSMITH_API_KEY` not set** — LangSmith integration will fail.
-   Add `LANGSMITH_API_KEY=lsv2_pt_...` to `.env` and recreate
-   orchestrator.
+2. **`503 Service Unavailable` on /health/ready** —
+   `LANGSMITH_API_KEY` or `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID` not set.
+   Check proxy logs: `docker compose logs agent-results-interpretation-proxy`
+   Add missing vars to `.env` and recreate:
+   `docker compose up -d --force-recreate agent-results-interpretation-proxy`
 
-3. **Schema mismatch** — The agent expects `results_data` (string) and
+3. **`AGENT_NOT_CONFIGURED` on dispatch** — Agent not in `AGENT_ENDPOINTS_JSON`.
+   This should not occur after deployment (it's now included).
+   Verify: `docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | grep results-interpretation`
+   Fix: Recreate orchestrator: `docker compose up -d --force-recreate orchestrator`
+
+4. **`401 Unauthorized` from LangSmith** — Invalid or expired API key.
+   Generate new key from https://smith.langchain.com/ → Settings → API Keys
+
+5. **`404 Not Found` from LangSmith** — Invalid `LANGSMITH_RESULTS_INTERPRETATION_AGENT_ID`.
+   Verify agent ID in LangSmith UI: Agents → Results Interpretation Agent
+
+6. **Schema mismatch** — The agent expects `results_data` (string) and
    `study_metadata` (object).  Sending a flat string without metadata
    will still work but produces less specific interpretation.
 
-4. **Google Docs API failure** — Agent uses `GOOGLE_DOCS_API_KEY` to
+7. **Google Docs API failure** — Agent uses `GOOGLE_DOCS_API_KEY` to
    create reports.  If not set, report creation fails but interpretation
    still returns in the response body.
 
-5. **Timeout (> 5 min)** — Full pipeline with all 4 workers can take
-   120-180s.  If the dispatcher timeout is too low, set
-   `skip_refinement: true` in the config to reduce processing time.
+8. **Timeout (> 3 min)** — Full pipeline with all 4 workers can take
+   120-180s.  Increase `LANGSMITH_TIMEOUT_SECONDS` to 300 (5 minutes) or
+   disable refinement workers in LangSmith agent config.
+
+9. **Network errors** — Proxy needs `frontend` network for LangSmith API.
+   Check: `docker network inspect researchflow-production-main_frontend`
+   Ensure proxy is connected: should show `agent-results-interpretation-proxy`
