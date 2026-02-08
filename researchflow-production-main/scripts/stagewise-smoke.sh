@@ -15,6 +15,8 @@ DEV_AUTH="${DEV_AUTH:-false}"
 CHECK_EVIDENCE_SYNTH="${CHECK_EVIDENCE_SYNTH:-0}"
 # When set to "1", run optional Literature Triage Agent check (commit c1a42c1)
 CHECK_LIT_TRIAGE="${CHECK_LIT_TRIAGE:-0}"
+# When set to "1", run optional Clinical Manuscript Writer check (commit 040b13f - LangSmith-based)
+CHECK_MANUSCRIPT_WRITER="${CHECK_MANUSCRIPT_WRITER:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -425,6 +427,70 @@ if [ "$CHECK_LIT_TRIAGE" = "1" ] || [ "$CHECK_LIT_TRIAGE" = "true" ]; then
   echo "Literature Triage Agent check complete (optional - does not block)"
 else
   echo "[9] Skipping Literature Triage Agent check (set CHECK_LIT_TRIAGE=1 to enable)"
+fi
+
+# --- 10. Optional: Clinical Manuscript Writer validation (commit 040b13f - LangSmith cloud integration)
+if [ "$CHECK_MANUSCRIPT_WRITER" = "1" ] || [ "$CHECK_MANUSCRIPT_WRITER" = "true" ]; then
+  echo "[10] Clinical Manuscript Writer Check (optional - LangSmith-based)"
+  
+  # 10a. Check LANGSMITH_API_KEY is configured
+  echo "[10a] Checking LANGSMITH_API_KEY configuration"
+  LANGSMITH_KEY_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH_API_KEY"
+  fi
+  
+  # 10b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[10b] POST /api/ai/router/dispatch (CLINICAL_MANUSCRIPT_WRITE)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"CLINICAL_MANUSCRIPT_WRITE","request_id":"smoke-test-manuscript","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-clinical-manuscript" ]; then
+        echo "✓ Correctly routed to agent-clinical-manuscript"
+      else
+        echo "Warning: Expected agent-clinical-manuscript, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[10b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 10c. Validate artifacts directory exists
+  echo "[10c] Checking artifacts directory for manuscript output"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts directory exists"
+  else
+    echo "Warning: /data/artifacts not found (manuscripts will write to Google Docs only)"
+  fi
+  
+  # Note: We cannot call LangSmith API directly in smoke test without exposing API key
+  # This is intentional - LangSmith integration tested via dispatch endpoint only
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY (not tested in smoke)"
+  echo "      Full integration test requires: Evidence Synthesis → Manuscript Writer pipeline"
+  
+  echo "Clinical Manuscript Writer check complete (optional - does not block)"
+else
+  echo "[10] Skipping Clinical Manuscript Writer check (set CHECK_MANUSCRIPT_WRITER=1 to enable)"
 fi
 
 echo ""

@@ -389,6 +389,25 @@ if docker ps >/dev/null 2>&1; then
             check_warn "Literature Triage Agent" "container not running (new agent, may not be started yet)"
         fi
         
+        # Clinical Manuscript Writer Agent (commit 040b13f - LangSmith-based, not containerized)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured (LangSmith cloud integration)
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Clinical Manuscript Writer" "LANGSMITH_API_KEY configured"
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "CLINICAL_MANUSCRIPT_WRITE" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Manuscript Writer Router" "task type registered"
+                else
+                    check_fail "Manuscript Writer Router" "CLINICAL_MANUSCRIPT_WRITE not found in ai-router.ts"
+                fi
+            else
+                check_warn "Clinical Manuscript Writer" "LANGSMITH_API_KEY not set (optional: add to .env for manuscript generation)"
+            fi
+        fi
+        
         # Other Stage 2 agents
         for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
             if docker ps --format "{{.Names}}" | grep -q "$agent"; then
