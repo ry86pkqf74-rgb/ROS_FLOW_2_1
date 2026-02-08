@@ -561,5 +561,94 @@ else
   echo "[11] Skipping Clinical Section Drafter check (set CHECK_SECTION_DRAFTER=1 to enable)"
 fi
 
+# --- 12. Optional: Results Interpretation Agent validation (LangSmith cloud integration)
+if [ "$CHECK_RESULTS_INTERPRETATION" = "1" ] || [ "$CHECK_RESULTS_INTERPRETATION" = "true" ]; then
+  echo "[12] Results Interpretation Agent Check (optional - LangSmith-based)"
+  
+  # 12a. Check LANGSMITH_API_KEY is configured
+  echo "[12a] Checking LANGSMITH_API_KEY configuration"
+  LANGSMITH_KEY_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH_API_KEY"
+  fi
+  
+  # 12b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[12b] POST /api/ai/router/dispatch (RESULTS_INTERPRETATION)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"RESULTS_INTERPRETATION","request_id":"smoke-test-results-interp","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-results-interpretation" ]; then
+        echo "✓ Correctly routed to agent-results-interpretation"
+      else
+        echo "Warning: Expected agent-results-interpretation, got $AGENT_NAME"
+      fi
+    else
+      # Expected: AGENT_NOT_CONFIGURED until AGENT_ENDPOINTS_JSON is updated
+      if echo "$_dispatch_body" | grep -q "AGENT_NOT_CONFIGURED"; then
+        echo "⚠ Dispatch returned AGENT_NOT_CONFIGURED (expected: agent-results-interpretation not in AGENT_ENDPOINTS_JSON)"
+        echo "  Task type RESULTS_INTERPRETATION is registered in router but agent URL not configured."
+        echo "  To fix: Add \"agent-results-interpretation\":\"<langsmith-proxy-url>\" to AGENT_ENDPOINTS_JSON"
+      else
+        echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+        echo "Response: $_dispatch_body"
+      fi
+    fi
+  else
+    echo "[12b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 12c. Validate artifacts directory exists
+  echo "[12c] Checking artifacts directory for results interpretation output"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts directory exists"
+    mkdir -p /data/artifacts/validation/results-interpretation-smoke 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/results-interpretation-smoke" ]; then
+      # Write a minimal validation record
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/results-interpretation-smoke/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/results-interpretation-smoke/${TIMESTAMP}/summary.json" 2>/dev/null <<SMOKE_EOF
+{
+  "agent": "agent-results-interpretation",
+  "task_type": "RESULTS_INTERPRETATION",
+  "timestamp": "${TIMESTAMP}",
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "router_registered": true,
+  "agent_endpoints_configured": false,
+  "status": "smoke-check-complete"
+}
+SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/results-interpretation-smoke/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (no artifact write; reports go to Google Docs)"
+  fi
+  
+  # Note: We cannot call LangSmith API directly in smoke test without exposing API key
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY (not tested in smoke)"
+  echo "      Agent is cloud-hosted - no local container to test directly"
+  echo "      Full integration test requires: dispatching via LangSmith dispatcher (not yet built)"
+  
+  echo "Results Interpretation Agent check complete (optional - does not block)"
+else
+  echo "[12] Skipping Results Interpretation Agent check (set CHECK_RESULTS_INTERPRETATION=1 to enable)"
+fi
+
 echo ""
 echo "Stagewise smoke completed successfully."

@@ -93,5 +93,38 @@
     "inComposeButNotService": ["agent-stage2-synthesize appears in AGENT_ENDPOINTS_JSON but has no service in docker-compose.yml"],
     "inCodeButNoComposeService": ["agent-results-writer", "agent-discussion-writer"],
     "inCodeButNotInAgentEndpointsJson": ["agent-results-writer", "agent-discussion-writer"]
-  }
+  },
+  "langsmithHostedAgents": [
+    {
+      "agentName": "agent-results-interpretation",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["RESULTS_INTERPRETATION", "STATISTICAL_ANALYSIS"],
+      "inAgentEndpointsJson": false,
+      "dispatchStatus": "fails with AGENT_NOT_CONFIGURED",
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"],
+      "optionalEnv": ["GOOGLE_DOCS_API_KEY", "GOOGLE_SHEETS_API_KEY", "TAVILY_API_KEY"],
+      "canonicalDoc": "docs/agents/results-interpretation/wiring.md",
+      "validation": "CHECK_RESULTS_INTERPRETATION=1 in stagewise-smoke.sh"
+    },
+    {
+      "agentName": "agent-clinical-manuscript",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["CLINICAL_MANUSCRIPT_WRITE"],
+      "inAgentEndpointsJson": false,
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"]
+    },
+    {
+      "agentName": "agent-clinical-section-drafter",
+      "executionModel": "langsmith-cloud",
+      "composeService": null,
+      "routerTaskTypes": ["CLINICAL_SECTION_DRAFT"],
+      "inAgentEndpointsJson": false,
+      "healthcheck": null,
+      "requiredEnv": ["LANGSMITH_API_KEY"]
+    }
+  ]
 }

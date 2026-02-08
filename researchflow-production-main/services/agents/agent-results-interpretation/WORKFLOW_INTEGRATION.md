@@ -5,6 +5,13 @@
 **Date:** 2026-02-08  
 **Status:** ✅ Imported, 🚧 Integration Pending
 
+> **Canonical wiring/deploy reference:**
+> [`docs/agents/results-interpretation/wiring.md`](../../../docs/agents/results-interpretation/wiring.md)
+>
+> For deployment truth (compose, router, auth, health, validation), always
+> consult the canonical doc above. This file contains aspirational
+> integration designs that are **not yet implemented**.
+
 ---
 
 ## Overview

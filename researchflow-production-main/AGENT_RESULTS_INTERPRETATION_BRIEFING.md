@@ -3,9 +3,16 @@
 **Agent ID:** `agent-results-interpretation`  
 **Task Type:** `RESULTS_INTERPRETATION`  
 **Source:** LangSmith Custom Agent (Imported 2026-02-08)  
-**Status:** ✅ Operational (Imported from LangSmith)  
+**Status:** ✅ Imported | 🚧 Integration Pending (no Docker service, no AGENT_ENDPOINTS_JSON entry)  
 **Integration Date:** 2026-02-08  
 **Location:** `services/agents/agent-results-interpretation/`
+
+> **Canonical wiring/deploy reference:**
+> [`docs/agents/results-interpretation/wiring.md`](researchflow-production-main/docs/agents/results-interpretation/wiring.md)
+>
+> For deployment truth (compose, router, auth, health, validation), always
+> consult the canonical doc. This briefing covers agent capabilities and
+> architecture.
 
 ---
 
@@ -242,10 +249,16 @@ Add to AI orchestration router:
 
 ## 🚀 DEPLOYMENT
 
-### Current Status: LangSmith-Hosted
+### Current Status: LangSmith-Hosted (No Docker Service)
+
 - **Platform**: LangSmith Agent Builder
 - **Endpoint**: `https://tools.langchain.com`
 - **Authentication**: Requires LangSmith API key
+- **Docker compose service**: None (not containerized)
+- **AGENT_ENDPOINTS_JSON**: Not included (dispatch returns `AGENT_NOT_CONFIGURED`)
+- **Router task types**: `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` — registered in `ai-router.ts`
+
+See [`docs/agents/results-interpretation/wiring.md`](researchflow-production-main/docs/agents/results-interpretation/wiring.md) for full deployment details.
 
 ### Environment Variables
 ```bash
@@ -258,29 +271,6 @@ LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 # Google Workspace (required for report generation)
 GOOGLE_DOCS_API_KEY=your_google_api_key
 GOOGLE_SHEETS_API_KEY=your_google_sheets_key
-```
-
-### Future Containerization (Planned)
-```yaml
-# docker-compose.yml
-services:
-  agent-results-interpretation:
-    build:
-      context: .
-      dockerfile: services/agents/agent-results-interpretation/Dockerfile
-    ports:
-      - "8016:8000"
-    environment:
-      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
-      - GOOGLE_DOCS_API_KEY=${GOOGLE_DOCS_API_KEY}
-      - GOOGLE_SHEETS_API_KEY=${GOOGLE_SHEETS_API_KEY}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - researchflow
 ```
 
 ---

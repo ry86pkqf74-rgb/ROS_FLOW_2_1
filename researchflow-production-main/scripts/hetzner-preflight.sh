@@ -427,6 +427,33 @@ if docker ps >/dev/null 2>&1; then
             fi
         fi
         
+        # Results Interpretation Agent (LangSmith-based, not containerized)
+        if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+            # Check if LANGSMITH_API_KEY is configured (same key as Manuscript Writer / Section Drafter)
+            LANGSMITH_KEY_SET=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+            if [ "$LANGSMITH_KEY_SET" = "SET" ]; then
+                check_pass "Results Interpretation Agent" "LANGSMITH_API_KEY configured"
+                
+                # Check if task type is registered in ai-router
+                ROUTER_CHECK=$(docker compose exec -T orchestrator grep -c "RESULTS_INTERPRETATION" /app/src/routes/ai-router.ts 2>/dev/null || echo "0")
+                if [ "$ROUTER_CHECK" -gt 0 ]; then
+                    check_pass "Results Interpretation Router" "task type registered"
+                else
+                    check_fail "Results Interpretation Router" "RESULTS_INTERPRETATION not found in ai-router.ts"
+                fi
+                
+                # Check if agent is in AGENT_ENDPOINTS_JSON (expected: not yet)
+                RI_IN_ENDPOINTS=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-results-interpretation" || echo "0")
+                if [ "$RI_IN_ENDPOINTS" -gt 0 ]; then
+                    check_pass "Results Interpretation Endpoints" "registered in AGENT_ENDPOINTS_JSON"
+                else
+                    check_warn "Results Interpretation Endpoints" "not in AGENT_ENDPOINTS_JSON (dispatch will fail until LangSmith proxy is configured)"
+                fi
+            else
+                check_warn "Results Interpretation Agent" "LANGSMITH_API_KEY not set (optional: add to .env for results interpretation)"
+            fi
+        fi
+        
         # Other Stage 2 agents
         for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
             if docker ps --format "{{.Names}}" | grep -q "$agent"; then

@@ -5,6 +5,12 @@
 **Source:** LangSmith Custom Agent  
 **Import Date:** 2026-02-08
 
+> **Canonical wiring/deploy reference:**
+> [`docs/agents/results-interpretation/wiring.md`](../../../docs/agents/results-interpretation/wiring.md)
+>
+> For deployment, routing, auth, validation, and common failures, see the
+> canonical doc above. This README covers agent capabilities and architecture.
+
 ---
 
 ## Overview

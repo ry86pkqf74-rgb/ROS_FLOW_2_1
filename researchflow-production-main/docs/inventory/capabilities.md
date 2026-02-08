@@ -79,3 +79,34 @@ Defined in `docker-compose.yml`; dispatch uses `AGENT_ENDPOINTS_JSON` in the orc
 - **Smoke:** `scripts/stagewise-smoke.sh` step 1.5 verifies `WORKER_SERVICE_TOKEN` before stage 2; fails with clear remediation if missing.
 
 When `rosflow-inventory.zip` is available, compare `compose.rendered.yml` and `env.redacted.by-container.txt` to confirm which env vars (including `WORKER_SERVICE_TOKEN`) are present in each container and that agent endpoints in the rendered compose match the 10 services above.
+
+---
+
+## 6. LangSmith-Hosted Agents (No Docker Service)
+
+These agents are registered as router task types but have **no** Docker Compose service.
+They are hosted on LangSmith Agent Builder and require `LANGSMITH_API_KEY`.
+
+| Agent name | Router task type(s) | Compose service | AGENT_ENDPOINTS_JSON | Status |
+|------------|---------------------|-----------------|----------------------|--------|
+| `agent-results-interpretation` | `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
+| `agent-clinical-manuscript` | `CLINICAL_MANUSCRIPT_WRITE` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
+| `agent-clinical-section-drafter` | `CLINICAL_SECTION_DRAFT` | None | Not included | Dispatch fails: `AGENT_NOT_CONFIGURED` |
+
+**Required for all three:** `LANGSMITH_API_KEY` in orchestrator env.
+
+**To make dispatch work:** Either add a LangSmith proxy URL to `AGENT_ENDPOINTS_JSON`, or
+build a local adapter service per agent.
+
+### Results Interpretation Agent Details
+
+| Property | Value |
+|----------|-------|
+| Execution model | LangSmith cloud |
+| Router task types | `RESULTS_INTERPRETATION`, `STATISTICAL_ANALYSIS` |
+| Config | `services/agents/agent-results-interpretation/config.json` |
+| Sub-workers | 4 (Literature Research, Methodology Audit, Section Draft, Draft Refinement) |
+| Domain skills | `clinical-trials`, `survey-analysis` |
+| Required env | `LANGSMITH_API_KEY`, `GOOGLE_DOCS_API_KEY` (for reports) |
+| Canonical doc | `docs/agents/results-interpretation/wiring.md` |
+| Validation | `CHECK_RESULTS_INTERPRETATION=1` in `stagewise-smoke.sh` |
