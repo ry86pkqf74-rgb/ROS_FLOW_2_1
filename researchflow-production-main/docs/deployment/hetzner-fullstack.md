@@ -183,17 +183,81 @@ IMAGE_TAG=main
 - Keep `.env` file permissions restricted: `chmod 600 .env`
 - Never commit `.env` to version control
 
-### 3. Pull Docker Images
+### 3. Set IMAGE_TAG (Production Best Practice)
+
+**Important:** Production deployments should explicitly set `IMAGE_TAG` to a specific commit SHA or release tag rather than relying on the default `main` tag.
+
+#### Recommended IMAGE_TAG Workflow
+
+**Step 1: Pick a commit SHA or release tag**
 
 ```bash
-# Log in to GitHub Container Registry if using private images
+# Option A: Use a specific commit SHA from GitHub
+# Visit: https://github.com/ry86pkqf74-rgb/ROS_FLOW_2_1/commits
+# Copy the short commit SHA (e.g., abc1234)
+
+# Option B: Use a release tag (if releases are published)
+# Visit: https://github.com/ry86pkqf74-rgb/ROS_FLOW_2_1/releases
+# Use the tag name (e.g., v1.2.3)
+
+# Example: Using commit SHA abc1234
+export IMAGE_TAG=abc1234
+
+# Or add to .env file
+echo "IMAGE_TAG=abc1234" >> .env
+```
+
+**Step 2: Pull images with the specified tag**
+
+```bash
+# Log in to GitHub Container Registry (if using private images)
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 
-# Pull all required images
+# Pull all required images with the specified IMAGE_TAG
 docker compose pull
 ```
 
-### 4. Start the Stack
+**Step 3: Verify the pulled images**
+
+```bash
+# List all images used by docker compose
+docker compose images
+
+# Inspect a specific image to verify the tag
+docker image inspect ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:abc1234
+
+# Check image creation date and labels
+docker image inspect ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:abc1234 \
+  --format '{{.Created}} {{.Config.Labels}}'
+```
+
+**Benefits of explicit IMAGE_TAG:**
+- **Reproducibility:** Exact same images across deployments
+- **Rollback:** Easy to revert to a known-good version
+- **Auditing:** Clear tracking of what version is running
+- **Safety:** Prevents unintended updates from `main` branch
+
+### 4. Run Preflight Checks
+
+Before starting the stack, run preflight checks to verify the server is ready:
+
+```bash
+# Make script executable
+chmod +x scripts/hetzner-preflight.sh
+
+# Run preflight checks
+./scripts/hetzner-preflight.sh
+```
+
+Expected output: All checks should PASS. If any checks fail, review the diagnostics and fix issues before proceeding.
+
+**Note:** The preflight script checks:
+- Docker and Docker Compose installation and versions
+- Disk space (20GB+ recommended) and memory (4GB+ available)
+- Docker containers status
+- Service health endpoints (after services are started)
+
+### 5. Start the Stack
 
 ```bash
 # Start all services in detached mode
@@ -205,7 +269,7 @@ docker compose logs -f
 # Wait for all services to become healthy (2-3 minutes)
 ```
 
-### 5. Verify Deployment
+### 6. Verify Deployment
 
 Check that all containers are running:
 
@@ -214,6 +278,31 @@ docker compose ps
 ```
 
 Expected output: All services should show "Up" status with "(healthy)" for services with health checks.
+
+#### Verify Running Image Tags
+
+Confirm that the correct IMAGE_TAG is running:
+
+```bash
+# List all running images with their tags
+docker compose images
+
+# Expected output should show your IMAGE_TAG (e.g., abc1234) for all services:
+# CONTAINER                    IMAGE                                                       TAG
+# researchflow-orchestrator-1  ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator          abc1234
+# researchflow-worker-1        ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/worker                abc1234
+# researchflow-web-1           ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/web                   abc1234
+# ...
+
+# Inspect a specific running container to see its image details
+docker inspect researchflow-orchestrator-1 --format '{{.Config.Image}}'
+
+# Check image digest for exact version tracking
+docker inspect ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:abc1234 \
+  --format '{{.RepoDigests}}'
+```
+
+**Tip:** Save the IMAGE_TAG and image digests for audit logs and rollback procedures.
 
 ---
 
@@ -485,6 +574,8 @@ curl http://178.156.139.210/health
 
 ## Maintenance Commands
 
+### Basic Operations
+
 ```bash
 # View all service logs
 docker compose logs -f
@@ -498,12 +589,69 @@ docker compose restart orchestrator
 # Stop all services
 docker compose down
 
-# Update to latest images
+# Full cleanup (removes all data - WARNING: DATA LOSS)
+docker compose down -v
+```
+
+### Updating to a New Version
+
+When updating to a new IMAGE_TAG:
+
+```bash
+# Step 1: Set new IMAGE_TAG
+export IMAGE_TAG=def5678  # Replace with new commit SHA or tag
+echo "IMAGE_TAG=def5678" >> .env
+
+# Step 2: Pull new images
 docker compose pull
+
+# Step 3: Verify pulled images
+docker compose images
+
+# Step 4: Apply changes with zero-downtime (if possible)
 docker compose up -d
 
-# Full cleanup (removes all data)
-docker compose down -v
+# Step 5: Verify all services are healthy
+./scripts/hetzner-preflight.sh
+
+# Step 6: Check logs for any issues
+docker compose logs -f --tail=100
+```
+
+### Rolling Back to a Previous Version
+
+If issues occur after an update:
+
+```bash
+# Step 1: Set IMAGE_TAG back to previous known-good version
+export IMAGE_TAG=abc1234  # Replace with previous working tag
+echo "IMAGE_TAG=abc1234" > .env.tmp && mv .env.tmp .env
+
+# Step 2: Pull previous images
+docker compose pull
+
+# Step 3: Restart with previous version
+docker compose up -d
+
+# Step 4: Verify rollback succeeded
+docker compose images
+./scripts/hetzner-preflight.sh
+```
+
+### Checking Current Running Versions
+
+```bash
+# Show all running images and tags
+docker compose images
+
+# Show detailed image information
+for service in orchestrator worker web guideline-engine collab; do
+  echo "=== $service ==="
+  docker compose ps $service --format json | jq -r '.[0].Image'
+done
+
+# Show image creation dates
+docker compose images --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}'
 ```
 
 ---

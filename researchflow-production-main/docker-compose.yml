@@ -10,6 +10,28 @@
 #
 # Phase 4: worker, orchestrator, redis, postgres used by E2E/CI.
 # For production, use: docker-compose -f docker-compose.prod.yml up -d
+#
+# ============================================
+# IMAGE TAG CONFIGURATION (Production)
+# ============================================
+# Production deployments should explicitly set IMAGE_TAG to a specific
+# commit SHA or release tag, rather than relying on the default "main" tag.
+#
+# Images are pulled from GitHub Container Registry (ghcr.io).
+# NO local builds are required on the server.
+#
+# Recommended workflow:
+#   1. Pick a commit SHA or release tag (e.g., abc1234 or v1.2.3)
+#   2. Set IMAGE_TAG in your .env file:
+#      export IMAGE_TAG=abc1234
+#   3. Pull and deploy:
+#      docker compose pull && docker compose up -d
+#   4. Verify running images:
+#      docker compose images
+#      docker image inspect ghcr.io/ry86pkqf74-rgb/ros_flow_2_1/orchestrator:abc1234
+#
+# Default: IMAGE_TAG=main (latest from main branch)
+# ============================================
 
 services:
   # ===================

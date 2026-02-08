@@ -8,11 +8,11 @@
 # Validates Docker, system resources, and service health.
 #
 # Options:
-#   --orchestrator-url URL     Orchestrator URL (default: http://localhost:3001)
-#   --worker-url URL           Worker URL (default: http://localhost:8000)
-#   --guideline-url URL        Guideline Engine URL (default: http://localhost:8001)
-#   --collab-url URL           Collaboration Server URL (default: http://localhost:1235)
-#   --web-url URL              Web Frontend URL (default: http://localhost:5173)
+#   --orchestrator-url URL     Orchestrator URL (default: http://127.0.0.1:3001)
+#   --worker-url URL           Worker URL (default: http://127.0.0.1:8000)
+#   --guideline-url URL        Guideline Engine URL (default: http://127.0.0.1:8001)
+#   --collab-url URL           Collaboration Server URL (default: http://127.0.0.1:1235)
+#   --web-url URL              Web Frontend URL (default: http://127.0.0.1)
 #
 # Example usage on ROSflow2 (Hetzner):
 #   # From local machine to remote server
@@ -28,7 +28,7 @@
 #     --web-url https://rosflow2.example.com
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -37,12 +37,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Default configuration
-ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-http://localhost:3001}"
-WORKER_URL="${WORKER_URL:-http://localhost:8000}"
-GUIDELINE_URL="${GUIDELINE_URL:-http://localhost:8001}"
-COLLAB_URL="${COLLAB_URL:-http://localhost:1235}"
-WEB_URL="${WEB_URL:-http://localhost:5173}"
+# Default configuration (server-local endpoints)
+ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-http://127.0.0.1:3001}"
+WORKER_URL="${WORKER_URL:-http://127.0.0.1:8000}"
+GUIDELINE_URL="${GUIDELINE_URL:-http://127.0.0.1:8001}"
+COLLAB_URL="${COLLAB_URL:-http://127.0.0.1:1235}"
+WEB_URL="${WEB_URL:-http://127.0.0.1}"
 
 # Parse command line arguments
 while [ $# -gt 0 ]; do
@@ -237,11 +237,13 @@ if ! command -v curl >/dev/null 2>&1; then
 else
     echo "Testing service endpoints..."
     echo ""
-    check_service "Orchestrator" "$ORCHESTRATOR_URL" "/api/health"
     check_service "Web Frontend" "$WEB_URL" "/health"
+    check_service "Orchestrator Health" "$ORCHESTRATOR_URL" "/api/health"
     check_service "Worker" "$WORKER_URL" "/health"
     check_service "Guideline Engine" "$GUIDELINE_URL" "/health"
     check_service "Collab Server" "$COLLAB_URL" "/health"
+    check_service "Workflows API" "$ORCHESTRATOR_URL" "/api/workflows"
+    check_service "Export Manifest" "$ORCHESTRATOR_URL" "/api/export/manifest"
 fi
 
 echo ""
