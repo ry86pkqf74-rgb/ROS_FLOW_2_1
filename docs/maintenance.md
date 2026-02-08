@@ -90,12 +90,36 @@ git pull
 # Update environment if needed
 nano .env
 
-# Restart services
+# Restart services with pinned IMAGE_TAG
+export IMAGE_TAG=abc1234  # Use specific commit SHA or release tag
 docker compose pull && docker compose up -d
 
 # Verify health
 ./scripts/health-check.sh
 ```
+
+### Preflight Checks
+
+Before deploying or after updates, run preflight checks to verify system readiness:
+
+```bash
+# Run preflight checks (from researchflow-production-main directory)
+./scripts/hetzner-preflight.sh
+
+# Expected output: System info, Docker versions, resource checks, health endpoints
+# All checks should show ✓ PASS (warnings are acceptable)
+```
+
+**What the preflight script checks:**
+- Docker and Docker Compose installation and versions
+- Available disk space (20GB+ recommended) and memory (4GB+)
+- Running container status
+- Service health endpoints: `/health` and API routes
+- Container image versions (via `docker compose images`)
+
+**Exit codes:**
+- `0`: All checks passed (or passed with warnings)
+- `1`: Critical failures detected - fix before deploying
 
 For complete setup instructions, firewall configuration, troubleshooting, and health check details:
 

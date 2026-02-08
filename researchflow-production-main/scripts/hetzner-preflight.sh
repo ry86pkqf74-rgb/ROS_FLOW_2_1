@@ -203,6 +203,15 @@ if docker ps >/dev/null 2>&1; then
     # Check if compose project is running
     if docker ps --format "{{.Names}}" | grep -q "researchflow"; then
         check_pass "ResearchFlow containers" "running"
+        
+        # Show image tags for running services
+        echo ""
+        echo "Container images and tags:"
+        if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose images 2>/dev/null || true
+        elif docker compose version >/dev/null 2>&1; then
+            docker compose images 2>/dev/null || true
+        fi
     else
         check_warn "ResearchFlow containers" "no containers found (not started yet?)"
     fi
