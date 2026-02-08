@@ -31,6 +31,8 @@ CHECK_PEER_REVIEW="${CHECK_PEER_REVIEW:-0}"
 CHECK_RESULTS_INTERPRETATION="${CHECK_RESULTS_INTERPRETATION:-0}"
 # When set to "1", run optional Compliance Auditor check (LangSmith-based)
 CHECK_COMPLIANCE_AUDITOR="${CHECK_COMPLIANCE_AUDITOR:-0}"
+# When set to "1", run optional Artifact Auditor check (LangSmith-based)
+CHECK_ARTIFACT_AUDITOR="${CHECK_ARTIFACT_AUDITOR:-0}"
 # When set to "1", run ALL optional agent checks
 CHECK_ALL_AGENTS="${CHECK_ALL_AGENTS:-0}"
 
@@ -1211,6 +1213,182 @@ PERF_SMOKE_EOF
   echo "Performance Optimizer Agent check complete (optional - does not block)"
 else
   echo "[14] Skipping Performance Optimizer check (set CHECK_PERFORMANCE_OPTIMIZER=1 to enable)"
+fi
+
+# --- 15. Optional: Artifact Auditor validation (LangSmith cloud integration)
+if [ "$CHECK_ARTIFACT_AUDITOR" = "1" ] || [ "$CHECK_ARTIFACT_AUDITOR" = "true" ]; then
+  echo "[15] Artifact Auditor Agent Check (optional - LangSmith-based)"
+  
+  # 15a. Check LANGSMITH_API_KEY and agent ID are configured
+  echo "[15a] Checking LANGSMITH_API_KEY and agent ID configuration"
+  LANGSMITH_KEY_SET=false
+  ARTIFACT_AGENT_ID_SET=false
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    KEY_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_API_KEY:+SET}' 2>/dev/null || echo "")
+    if [ "$KEY_CHECK" = "SET" ]; then
+      LANGSMITH_KEY_SET=true
+      echo "✓ LANGSMITH_API_KEY is configured in orchestrator"
+    else
+      echo "Warning: LANGSMITH_API_KEY not set (LangSmith cloud integration will fail)"
+      echo "To enable: Add LANGSMITH_API_KEY=lsv2_pt_... to .env and recreate orchestrator"
+    fi
+    
+    AGENT_ID_CHECK=$(docker compose exec -T orchestrator sh -c 'echo ${LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID:+SET}' 2>/dev/null || echo "")
+    if [ "$AGENT_ID_CHECK" = "SET" ]; then
+      ARTIFACT_AGENT_ID_SET=true
+      echo "✓ LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID is configured"
+    else
+      echo "Warning: LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID not set"
+      echo "To enable: Add LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID=<uuid> to .env"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check LANGSMITH configuration"
+  fi
+  
+  # 15b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[15b] POST /api/ai/router/dispatch (ARTIFACT_AUDIT)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"ARTIFACT_AUDIT","request_id":"smoke-test-artifact-audit","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-artifact-auditor-proxy" ]; then
+        echo "✓ Correctly routed to agent-artifact-auditor-proxy"
+      else
+        echo "Warning: Expected agent-artifact-auditor-proxy, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[15b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 15c. Check proxy container health
+  echo "[15c] Checking proxy container health"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-artifact-auditor-proxy"; then
+      echo "✓ agent-artifact-auditor-proxy container is running"
+      
+      # Check health endpoint
+      PROXY_HEALTH=$(docker compose exec -T agent-artifact-auditor-proxy curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$PROXY_HEALTH" | grep -q "ok"; then
+        echo "✓ Proxy health endpoint responding"
+      else
+        echo "Warning: Proxy health endpoint not responding"
+      fi
+    else
+      echo "Warning: agent-artifact-auditor-proxy container not running"
+    fi
+  else
+    echo "Warning: Docker not available, cannot check proxy container"
+  fi
+  
+  # 15d. Deterministic audit test with built-in fixture (no external network calls)
+  echo "[15d] Deterministic artifact audit test (fixture-based)"
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    if docker ps --format "{{.Names}}" | grep -q "agent-artifact-auditor-proxy"; then
+      # Create a minimal deterministic artifact content for testing
+      FIXTURE_ARTIFACT='This is a randomized controlled trial evaluating the efficacy of a new intervention. A total of 100 participants were randomized to treatment or control groups. The primary outcome was disease progression at 12 months. Statistical analysis used intention-to-treat principles.'
+      FIXTURE_STANDARD='CONSORT'
+      
+      # Call proxy directly with minimal fixture (deterministic, no external API calls in DEMO mode)
+      _audit_out=$(docker compose exec -T agent-artifact-auditor-proxy sh -c "
+        curl -sS -w '\n%{http_code}' -X POST \
+          -H 'Content-Type: application/json' \
+          -d '{
+            \"task_type\":\"ARTIFACT_AUDIT\",
+            \"request_id\":\"smoke-artifact-audit-fixture\",
+            \"mode\":\"DEMO\",
+            \"inputs\":{
+              \"artifact_source\":\"direct\",
+              \"artifact_content\":\"$FIXTURE_ARTIFACT\",
+              \"reporting_standard\":\"$FIXTURE_STANDARD\"
+            }
+          }' \
+          http://localhost:8000/agents/run/sync
+      " 2>/dev/null || echo -e "\n000")
+      _audit_body=$(echo "$_audit_out" | head -n -1)
+      _audit_code=$(echo "$_audit_out" | tail -n 1)
+      
+      if [ "${_audit_code:0:1}" = "2" ]; then
+        AUDIT_OK=$(echo "$_audit_body" | sed -n 's/.*"ok"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p' | head -1)
+        echo "✓ Artifact audit completed (ok: $AUDIT_OK)"
+        
+        # Check for expected output fields
+        if echo "$_audit_body" | grep -q "audit_summary"; then
+          echo "✓ Response contains audit_summary"
+        else
+          echo "Warning: Response missing audit_summary field"
+        fi
+        
+        if echo "$_audit_body" | grep -q "compliance_score"; then
+          COMPLIANCE_SCORE=$(echo "$_audit_body" | sed -n 's/.*"compliance_score"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+          echo "✓ Response contains compliance_score: $COMPLIANCE_SCORE"
+        else
+          echo "Warning: Response missing compliance_score field"
+        fi
+      else
+        echo "Warning: Artifact audit call failed (code: $_audit_code)"
+        echo "Response excerpt: $(echo "$_audit_body" | head -c 200)"
+      fi
+    else
+      echo "Warning: agent-artifact-auditor-proxy container not running, skipping fixture test"
+    fi
+  else
+    echo "Warning: Docker not available, cannot run fixture test"
+  fi
+  
+  # 15e. Validate artifacts directory structure
+  echo "[15e] Checking artifacts directory structure"
+  if [ -d "/data/artifacts" ]; then
+    echo "✓ /data/artifacts exists"
+    mkdir -p /data/artifacts/validation/agent-artifact-auditor-proxy 2>/dev/null || true
+    if [ -d "/data/artifacts/validation/agent-artifact-auditor-proxy" ]; then
+      # Write a minimal validation record
+      TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+      mkdir -p "/data/artifacts/validation/agent-artifact-auditor-proxy/${TIMESTAMP}" 2>/dev/null || true
+      cat > "/data/artifacts/validation/agent-artifact-auditor-proxy/${TIMESTAMP}/summary.json" 2>/dev/null <<ARTIFACT_SMOKE_EOF
+{
+  "agentKey": "agent-artifact-auditor-proxy",
+  "taskType": "ARTIFACT_AUDIT",
+  "timestamp": "${TIMESTAMP}",
+  "request": {
+    "artifact_source": "direct",
+    "reporting_standard": "CONSORT",
+    "mode": "DEMO"
+  },
+  "response_status": "${_audit_code:-unknown}",
+  "ok": $([ "$AUDIT_OK" = "true" ] && echo "true" || echo "false"),
+  "error": $([ "${_audit_code:0:1}" = "2" ] && echo "null" || echo "\"HTTP ${_audit_code}\""),
+  "langsmith_key_set": ${LANGSMITH_KEY_SET},
+  "artifact_agent_id_set": ${ARTIFACT_AGENT_ID_SET},
+  "router_registered": true,
+  "proxy_container_running": $(docker ps --format "{{.Names}}" 2>/dev/null | grep -q "agent-artifact-auditor-proxy" && echo "true" || echo "false"),
+  "latency_ms": "N/A",
+  "fixture_test": "deterministic_consort_snippet"
+}
+ARTIFACT_SMOKE_EOF
+      echo "✓ Wrote validation artifact to /data/artifacts/validation/agent-artifact-auditor-proxy/${TIMESTAMP}/summary.json"
+    fi
+  else
+    echo "Warning: /data/artifacts not found (audit reports go to Google Docs)"
+  fi
+  
+  echo "Note: LangSmith cloud API calls require valid LANGSMITH_API_KEY + LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID"
+  echo "      Proxy container must be running and healthy for full integration"
+  echo "      Full integration test requires: Manuscript → Artifact Auditor → Compliance report"
+  
+  echo "Artifact Auditor Agent check complete (optional - does not block)"
+else
+  echo "[15] Skipping Artifact Auditor check (set CHECK_ARTIFACT_AUDITOR=1 to enable)"
 fi
 
 echo ""

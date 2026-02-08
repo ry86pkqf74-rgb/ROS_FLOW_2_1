@@ -495,6 +495,65 @@ All agents expose the same contract: `/health`, `/health/ready`, `/agents/run/sy
 - **Communication Style:** Precise & quantitative, direct about findings, actionable recommendations, clinical terminology with explanations, patient equity focus, compliance-aware
 - **Validation:** Preflight checks LANGSMITH_API_KEY + agent ID + task type registration; smoke test validates router dispatch + proxy health (CHECK_BIAS_DETECTION=1)
 
+**NEW:** `agent-artifact-auditor` — Artifact Auditor Agent (Imported from LangSmith, 2026-02-08) ✅ **WIRED FOR PRODUCTION**
+- **Purpose:** Comprehensive compliance auditing system for dissemination artifacts (manuscripts, reports, formatted research outputs) against established reporting standards (CONSORT, PRISMA, STROBE, SPIRIT, CARE, ARRIVE, TIDieR, CHEERS, MOOSE). Ensures quality, consistency, and equitable reporting across all artifacts with persistent audit logging and cross-artifact trend analysis.
+- **Architecture:** LangSmith multi-agent system with 1 coordinator + 3 specialized sub-workers
+- **Main Agent (Artifact Auditor Coordinator):**
+  - Six-step workflow: Parse Artifact → Determine Standard → Retrieve Guideline Checklist → Audit via Compliance Auditor → Generate Report → Log to Tracker
+  - Artifact intake: GitHub files, Google Docs, URLs, direct text input
+  - Multi-standard support (9 major standards) with automatic inference and user override
+  - Item-by-item compliance checking with severity classification (CRITICAL/MAJOR/MINOR)
+  - Equity & inclusivity gap detection (demographics, subgroups, limitations)
+  - Dual-output delivery: chat summaries + formal Google Doc reports
+  - Persistent audit logging via Google Sheets for trend analysis
+  - Batch audit support for multi-artifact compliance monitoring
+- **Sub-Workers:**
+  - `Guideline_Researcher`: Retrieves and structures latest official checklists for any reporting standard. Always called first before auditing. Returns structured checklist with item numbers, descriptions, required/recommended status.
+  - `Compliance_Auditor`: Performs deep item-by-item audit of artifact against checklist. Called once per artifact. Returns detailed compliance findings with severity ratings and actionable recommendations.
+  - `Cross_Artifact_Tracker`: Analyzes audit findings across multiple past audits for trends and recurring gaps. Triggered when user requests trend analysis or compliance summary.
+- **Supported Reporting Standards (9):**
+  - CONSORT (25 items): Randomized controlled trials
+  - PRISMA (27 items): Systematic reviews / meta-analyses
+  - STROBE (22 items): Observational studies
+  - SPIRIT (33 items): Clinical trial protocols
+  - CARE (13 items): Case reports
+  - ARRIVE (21 items): Animal research
+  - TIDieR (12 items): Intervention descriptions
+  - CHEERS (24 items): Health economic evaluations
+  - MOOSE (35 items): Meta-analyses of observational studies
+- **Tool Dependencies:**
+  - GitHub: `github_get_file`, `github_list_directory`, `github_get_pull_request`
+  - Google Docs: `google_docs_read_document`, `google_docs_create_document`, `google_docs_append_text`
+  - Google Sheets: `google_sheets_create_spreadsheet`, `google_sheets_append_rows` (audit tracker)
+  - Web: `read_url_content`, `tavily_web_search` (guideline research)
+- **Integration Points:**
+  - Stage 19 (DisseminationAgent): Pre-submission quality gate
+  - Stage 13 (InternalReviewAgent): Compliance checking during internal review
+  - Standalone: Independent artifact audits for externally generated outputs
+- **Deployment:** ✅ **WIRED FOR PRODUCTION** (2026-02-08)
+  - Proxy service: `agent-artifact-auditor-proxy/` ✅
+  - Docker Compose: Service registered ✅
+  - Router: `ARTIFACT_AUDIT` task type ✅
+  - Endpoints: Added to AGENT_ENDPOINTS_JSON ✅
+  - Validation: Preflight + smoke test hooks ✅
+  - **Wiring Guide:** `docs/agents/agent-artifact-auditor-proxy/wiring.md` ⭐
+- **Environment Variables (Required):**
+  - `LANGSMITH_API_KEY` - LangSmith API authentication
+  - `LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID` - Agent UUID from LangSmith
+- **Environment Variables (Optional):**
+  - `LANGSMITH_ARTIFACT_AUDITOR_TIMEOUT_SECONDS` - Request timeout (default: 300)
+  - `GITHUB_TOKEN` - For GitHub artifact retrieval
+  - `GOOGLE_DOCS_API_KEY`, `GOOGLE_SHEETS_API_KEY` - For Google Workspace integration
+- **Location:** `services/agents/agent-artifact-auditor/` (config, subagents), `services/agents/agent-artifact-auditor-proxy/` (proxy)
+- **Documentation:** 
+  - **Agent Briefing:** `AGENT_ARTIFACT_AUDITOR_BRIEFING.md` ⭐
+  - **Wiring Guide:** `docs/agents/agent-artifact-auditor-proxy/wiring.md` ⭐
+  - **Agent Definition:** `services/agents/agent-artifact-auditor/AGENTS.md`
+  - **Proxy README:** `services/agents/agent-artifact-auditor-proxy/README.md`
+- **Task Type:** `ARTIFACT_AUDIT` → `agent-artifact-auditor-proxy` ✅ **REGISTERED** in orchestrator ai-router
+- **Internal URL:** `http://agent-artifact-auditor-proxy:8000`
+- **Validation:** Preflight checks LANGSMITH_API_KEY + LANGSMITH_ARTIFACT_AUDITOR_AGENT_ID; smoke test validates router dispatch + proxy health + deterministic fixture audit (CHECK_ARTIFACT_AUDITOR=1)
+
 **NEW:** `agent-dissemination-formatter` — Dissemination Formatter Agent (Imported from LangSmith, 2026-02-08) ✅ **IMPORTED**
 - **Purpose:** Publication formatting agent that converts academic manuscripts into journal-specific, submission-ready formats. Handles LaTeX/Word formatting, citation style conversion, reference verification, cover letter drafting, and reviewer response formatting.
 - **Architecture:** LangSmith multi-agent system with 1 main agent + 5 specialized worker subagents
@@ -919,13 +978,15 @@ System prompts for conversational AI agent in frontend chat interface.
   "agent-results-writer": "http://agent-results-writer:8000",
   "agent-discussion-writer": "http://agent-discussion-writer:8000",
   "agent-evidence-synthesis": "http://agent-evidence-synthesis:8000",
-  "agent-results-interpretation": "http://agent-results-interpretation-proxy:8000",
-  "agent-clinical-manuscript": "http://agent-clinical-manuscript-proxy:8000",
-  "agent-clinical-section-drafter": "http://agent-section-drafter-proxy:8000",
-  "agent-peer-review-simulator": "http://agent-peer-review-simulator-proxy:8000",
-  "agent-bias-detection": "http://agent-bias-detection-proxy:8000",
-  "agent-dissemination-formatter": "http://agent-dissemination-formatter-proxy:8000",
-  "agent-compliance-auditor": "http://agent-compliance-auditor-proxy:8000"
+  "agent-results-interpretation-proxy": "http://agent-results-interpretation-proxy:8000",
+  "agent-clinical-manuscript-proxy": "http://agent-clinical-manuscript-proxy:8000",
+  "agent-section-drafter-proxy": "http://agent-section-drafter-proxy:8000",
+  "agent-peer-review-simulator-proxy": "http://agent-peer-review-simulator-proxy:8000",
+  "agent-bias-detection-proxy": "http://agent-bias-detection-proxy:8000",
+  "agent-dissemination-formatter-proxy": "http://agent-dissemination-formatter-proxy:8000",
+  "agent-journal-guidelines-cache-proxy": "http://agent-journal-guidelines-cache-proxy:8000",
+  "agent-compliance-auditor-proxy": "http://agent-compliance-auditor-proxy:8000",
+  "agent-artifact-auditor-proxy": "http://agent-artifact-auditor-proxy:8000"
 }
 ```
 
