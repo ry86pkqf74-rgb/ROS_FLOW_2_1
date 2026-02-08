@@ -364,6 +364,31 @@ if docker ps >/dev/null 2>&1; then
             check_warn "Evidence Synthesis Agent" "container not running (new agent, may not be started yet)"
         fi
         
+        # Literature Triage Agent (commit c1a42c1)
+        if docker ps --format "{{.Names}}" | grep -q "agent-lit-triage"; then
+            check_pass "Literature Triage Agent" "container running"
+            
+            # Health check via docker exec (internal network)
+            LIT_TRIAGE_HEALTH=$(docker compose exec -T agent-lit-triage curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+            if echo "$LIT_TRIAGE_HEALTH" | grep -q "ok"; then
+                check_pass "Literature Triage Health" "HTTP 200"
+            else
+                check_warn "Literature Triage Health" "health endpoint not responding"
+            fi
+            
+            # Check router registration
+            if docker ps --format "{{.Names}}" | grep -q "orchestrator"; then
+                AGENT_REGISTERED=$(docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' 2>/dev/null | grep -c "agent-lit-triage" || echo "0")
+                if [ "$AGENT_REGISTERED" -gt 0 ]; then
+                    check_pass "Literature Triage Router" "registered in AGENT_ENDPOINTS_JSON"
+                else
+                    check_fail "Literature Triage Router" "not found in AGENT_ENDPOINTS_JSON"
+                fi
+            fi
+        else
+            check_warn "Literature Triage Agent" "container not running (new agent, may not be started yet)"
+        fi
+        
         # Other Stage 2 agents
         for agent in "agent-stage2-lit" "agent-stage2-screen" "agent-stage2-extract"; do
             if docker ps --format "{{.Names}}" | grep -q "$agent"; then

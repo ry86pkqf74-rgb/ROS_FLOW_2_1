@@ -187,7 +187,7 @@ services:
       - INFERENCE_POLICY=cloud
       - ORCHESTRATOR_INTERNAL_URL=http://orchestrator:3001
       - WORKER_SERVICE_TOKEN=${WORKER_SERVICE_TOKEN}
-      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000"}'
+      - 'AGENT_ENDPOINTS_JSON={"agent-stage2-lit":"http://agent-stage2-lit:8000","agent-stage2-screen":"http://agent-stage2-screen:8000","agent-stage2-extract":"http://agent-stage2-extract:8000","agent-stage2-synthesize":"http://agent-stage2-synthesize:8000","agent-lit-retrieval":"http://agent-lit-retrieval:8000","agent-lit-triage":"http://agent-lit-triage:8000","agent-policy-review":"http://agent-policy-review:8000","agent-rag-ingest":"http://agent-rag-ingest:8000","agent-rag-retrieve":"http://agent-rag-retrieve:8000","agent-verify":"http://agent-verify:8000","agent-intro-writer":"http://agent-intro-writer:8000","agent-methods-writer":"http://agent-methods-writer:8000","agent-evidence-synthesis":"http://agent-evidence-synthesis:8000"}'
       - VECTOR_BACKEND=chroma
       - CHROMADB_URL=http://chromadb:8000
       - CHROMADB_AUTH_TOKEN=${CHROMADB_AUTH_TOKEN:-dev-token-change-in-production}
@@ -883,6 +883,43 @@ services:
         reservations:
           cpus: '0.5'
           memory: 1G
+
+  # ===================
+  # Agent Literature Triage - AI-powered literature discovery, ranking, and prioritization
+  # ===================
+  agent-lit-triage:
+    build:
+      context: .
+      dockerfile: services/agents/agent-lit-triage/Dockerfile
+    container_name: researchflow-agent-lit-triage
+    restart: unless-stopped
+    environment:
+      - EXA_API_KEY=${EXA_API_KEY:-}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-researchflow-lit-triage}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - GOVERNANCE_MODE=${GOVERNANCE_MODE:-DEMO}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${AGENT_LOG_LEVEL:-INFO}
+    expose:
+      - "8000"
+    networks:
+      - backend
+      - frontend  # For external API access (Exa semantic search)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
 
   # ===================
   # Vector Database for RAG (Phase 2)

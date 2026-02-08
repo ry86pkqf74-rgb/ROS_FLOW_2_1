@@ -227,6 +227,7 @@ router.post(
       STAGE2_EXTRACT: 'agent-stage2-extract',
       STAGE2_SYNTHESIZE: 'agent-stage2-synthesize',
       LIT_RETRIEVAL: 'agent-lit-retrieval',
+      LIT_TRIAGE: 'agent-lit-triage',
       POLICY_REVIEW: 'agent-policy-review',
       RAG_INGEST: 'agent-rag-ingest',
       RAG_RETRIEVE: 'agent-rag-retrieve',

@@ -13,6 +13,8 @@ SKIP_ADMIN_CHECKS="${SKIP_ADMIN_CHECKS:-0}"
 DEV_AUTH="${DEV_AUTH:-false}"
 # When set to "1", run optional Evidence Synthesis Agent check (commit 197bfcd)
 CHECK_EVIDENCE_SYNTH="${CHECK_EVIDENCE_SYNTH:-0}"
+# When set to "1", run optional Literature Triage Agent check (commit c1a42c1)
+CHECK_LIT_TRIAGE="${CHECK_LIT_TRIAGE:-0}"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -300,6 +302,129 @@ if [ "$CHECK_EVIDENCE_SYNTH" = "1" ] || [ "$CHECK_EVIDENCE_SYNTH" = "true" ]; th
   echo "Evidence Synthesis Agent check complete (optional - does not block)"
 else
   echo "[8] Skipping Evidence Synthesis Agent check (set CHECK_EVIDENCE_SYNTH=1 to enable)"
+fi
+
+# --- 9. Optional: Literature Triage Agent validation (commit c1a42c1)
+if [ "$CHECK_LIT_TRIAGE" = "1" ] || [ "$CHECK_LIT_TRIAGE" = "true" ]; then
+  echo "[9] Literature Triage Agent Check (optional)"
+  
+  # 9a. Health check
+  echo "[9a] GET agent-lit-triage /health"
+  _triage_health_out=$(curl "${CURL_OPTS[@]}" -X GET "http://127.0.0.1:8000/health" 2>/dev/null || echo -e "\n000")
+  _triage_health_code=$(echo "$_triage_health_out" | tail -n 1)
+  if [ "${_triage_health_code:0:1}" = "2" ]; then
+    echo "Literature Triage Agent health OK"
+  else
+    echo "Warning: Literature Triage Agent health check failed (code: $_triage_health_code)"
+    echo "Attempting via docker exec (internal network)..."
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+      _docker_health=$(docker compose exec -T agent-lit-triage curl -f http://localhost:8000/health 2>/dev/null || echo "FAIL")
+      if echo "$_docker_health" | grep -q "ok"; then
+        echo "✓ Health check passed via docker exec (agent is internal-only)"
+      else
+        echo "Warning: Health check failed via docker exec too"
+      fi
+    fi
+    echo "This is optional - continuing smoke test."
+  fi
+  
+  # 9b. Router dispatch test
+  if [ -n "$AUTH_HEADER" ]; then
+    echo "[9b] POST /api/ai/router/dispatch (LIT_TRIAGE)"
+    _dispatch_out=$(curl "${CURL_OPTS[@]}" -X POST -H "$AUTH_HEADER" -H "Content-Type: application/json" \
+      -d '{"task_type":"LIT_TRIAGE","request_id":"smoke-test-triage","mode":"DEMO"}' \
+      "${ORCHESTRATOR_URL}/api/ai/router/dispatch" 2>/dev/null || echo -e "\n000")
+    _dispatch_body=$(echo "$_dispatch_out" | head -n -1)
+    _dispatch_code=$(echo "$_dispatch_out" | tail -n 1)
+    
+    if [ "${_dispatch_code:0:1}" = "2" ]; then
+      AGENT_NAME=$(echo "$_dispatch_body" | sed -n 's/.*"agent_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+      echo "Router dispatch OK: routed to $AGENT_NAME"
+      
+      if [ "$AGENT_NAME" = "agent-lit-triage" ]; then
+        echo "✓ Correctly routed to agent-lit-triage"
+      else
+        echo "Warning: Expected agent-lit-triage, got $AGENT_NAME"
+      fi
+    else
+      echo "Warning: Router dispatch failed (code: $_dispatch_code)"
+      echo "Response: $_dispatch_body"
+    fi
+  else
+    echo "[9b] Skipping router dispatch (AUTH_HEADER not set)"
+  fi
+  
+  # 9c. Direct agent call with minimal fixture (via docker exec if agent is internal-only)
+  echo "[9c] POST /agents/run/sync (direct agent call)"
+  TRIAGE_PAYLOAD='{
+    "task_type":"LIT_TRIAGE",
+    "request_id":"smoke-test-direct",
+    "mode":"DEMO",
+    "inputs":{
+      "query":"cancer immunotherapy checkpoint inhibitors",
+      "date_range_days":730,
+      "min_results":3
+    }
+  }'
+  
+  # Try direct curl first
+  _agent_out=$(curl "${CURL_OPTS[@]}" -X POST -H "Content-Type: application/json" \
+    -d "$TRIAGE_PAYLOAD" \
+    "http://127.0.0.1:8000/agents/run/sync" 2>/dev/null || echo -e "\n000")
+  _agent_code=$(echo "$_agent_out" | tail -n 1)
+  
+  # If direct curl fails, try via docker exec
+  if [ "$_agent_code" = "000" ] || [ "${_agent_code:0:1}" != "2" ]; then
+    echo "Direct curl failed, attempting via docker exec..."
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+      _agent_out=$(docker compose exec -T agent-lit-triage sh -c "
+        curl -sS -w '\n%{http_code}' -X POST \
+          -H 'Content-Type: application/json' \
+          -d '$TRIAGE_PAYLOAD' \
+          http://localhost:8000/agents/run/sync
+      " 2>/dev/null || echo -e "\n000")
+      _agent_code=$(echo "$_agent_out" | tail -n 1)
+    fi
+  fi
+  
+  _agent_body=$(echo "$_agent_out" | head -n -1)
+  
+  if [ "${_agent_code:0:1}" = "2" ]; then
+    AGENT_OK=$(echo "$_agent_body" | sed -n 's/.*"ok"[[:space:]]*:[[:space:]]*\([^,}]*\).*/\1/p' | head -1)
+    echo "Direct agent call completed (ok: $AGENT_OK)"
+    
+    # Check for expected output fields
+    if echo "$_agent_body" | grep -q "papers"; then
+      echo "✓ Response contains papers field"
+    else
+      echo "Warning: Response missing papers field"
+    fi
+    
+    if echo "$_agent_body" | grep -q "stats"; then
+      echo "✓ Response contains stats field"
+    else
+      echo "Warning: Response missing stats field"
+    fi
+    
+    # Check for tier counts
+    if echo "$_agent_body" | grep -q "tier1_count"; then
+      TIER1=$(echo "$_agent_body" | sed -n 's/.*"tier1_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
+      echo "✓ Tier 1 (Must Read) papers: $TIER1"
+    fi
+    
+    if echo "$_agent_body" | grep -q "ranked"; then
+      RANKED=$(echo "$_agent_body" | sed -n 's/.*"ranked"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
+      echo "✓ Total ranked papers: $RANKED"
+    fi
+  else
+    echo "Warning: Direct agent call failed (code: $_agent_code)"
+    echo "Response: $_agent_body"
+    echo "This may be expected if EXA_API_KEY is not configured (agent will mock results)"
+  fi
+  
+  echo "Literature Triage Agent check complete (optional - does not block)"
+else
+  echo "[9] Skipping Literature Triage Agent check (set CHECK_LIT_TRIAGE=1 to enable)"
 fi
 
 echo ""
