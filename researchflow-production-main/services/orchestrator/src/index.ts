@@ -648,12 +648,13 @@ try {
 }
 
 // Phase 4B: Mount PHI-safe event WebSocket server when WEBSOCKET_EVENTS_ENABLED=true (safe for prod rollout; default off).
+// Phase 4B path is owned by websocket/server.ts and must remain distinct from /ws (legacy webSocketManager).
 let phase4bEventWsEnabled = false;
 if (process.env.WEBSOCKET_EVENTS_ENABLED === 'true') {
   try {
     phase4bEventServer.initialize(httpServer);
     phase4bEventWsEnabled = true;
-    logger.info('Phase 4B PHI-safe event WebSocket server enabled', { path: '/ws' });
+    logger.info('Phase 4B PHI-safe event WebSocket server enabled', { pathFromModule: 'websocket/server.ts' });
   } catch (error) {
     logger.logError('Failed to initialize Phase 4B event WebSocket server', error as Error);
   }
