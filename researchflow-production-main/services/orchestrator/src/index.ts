@@ -173,6 +173,8 @@ import variableSelectionRoutes from './routes/variable-selection';
 import { optionalAuth } from './services/authService';
 import { createLogger } from './utils/logger';
 import { webSocketManager } from './websocket/manager';
+// Phase 4B: PHI-safe event WebSocket server. Gate: WEBSOCKET_EVENTS_ENABLED=true (default off for prod rollout).
+import { websocketServer as phase4bEventServer } from './websocket/server';
 
 // Load environment variables
 dotenv.config();
@@ -645,6 +647,18 @@ try {
   logger.info('Continuing without WebSocket event system...');
 }
 
+// Phase 4B: Mount PHI-safe event WebSocket server when WEBSOCKET_EVENTS_ENABLED=true (safe for prod rollout; default off).
+let phase4bEventWsEnabled = false;
+if (process.env.WEBSOCKET_EVENTS_ENABLED === 'true') {
+  try {
+    phase4bEventServer.initialize(httpServer);
+    phase4bEventWsEnabled = true;
+    logger.info('Phase 4B PHI-safe event WebSocket server enabled', { path: '/ws' });
+  } catch (error) {
+    logger.logError('Failed to initialize Phase 4B event WebSocket server', error as Error);
+  }
+}
+
 /**
  * Proxy LangGraph agent progress WebSockets to the internal worker service.
  * Keeps worker private while allowing the web frontend to connect via orchestrator.
@@ -822,6 +836,11 @@ const shutdown = async () => {
 
   // Shutdown WebSocket event manager
   webSocketManager.shutdown();
+
+  // Shutdown Phase 4B PHI-safe event WebSocket server if it was enabled
+  if (phase4bEventWsEnabled) {
+    phase4bEventServer.shutdown();
+  }
 
   // Close HTTP server
   httpServer.close(() => {
