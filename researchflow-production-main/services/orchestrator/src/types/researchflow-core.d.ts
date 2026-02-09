@@ -29,6 +29,11 @@ declare module '@researchflow/core/schema' {
   export const chatMessages: any;
   export const shares: any;
   export const papers: any;
+  export const workflows: any;
+  export const workflowVersions: any;
+  export const workflowTemplates: any;
+  export const workflowPolicies: any;
+  export const workflowRunCheckpoints: any;
   
   // Additional table exports for orchestrator
   export const researchProjects: any;
