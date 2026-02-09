@@ -63,6 +63,7 @@ import consentRoutes from './routes/consent';
 import commentsRoutes from './routes/comments';
 import submissionsRoutes from './routes/submissions';
 import manuscriptBranchesRoutes, { manuscriptBranchingRoutes } from './routes/manuscript-branches';
+import commitsRoutes from './routes/commits.routes';
 import manuscriptsRoutes from './routes/manuscripts';  // Canonical manuscript CRUD (Track M)
 // Audit Improvements: New modular routes
 import authRoutes from './routes/auth';
@@ -444,6 +445,7 @@ app.use('/api/ros/conference', conferenceRoutes);
 app.use('/api/ros/comments', commentsRoutes);  // Inline comments with PHI scanning
 app.use('/api/ros/submissions', submissionsRoutes);  // Journal/conference submissions
 app.use('/api/ros/manuscripts', manuscriptBranchesRoutes);  // Manuscript branching & merging
+app.use('/api/ros', commitsRoutes);  // Commit endpoints: list, diff, rollback-as-commit
 app.use('/api/manuscripts', manuscriptsRoutes);  // Canonical manuscript CRUD (Track M Phase M1)
 app.use('/api/manuscripts', manuscriptBranchingRoutes);  // Git-like manuscript versioning + AI refinement
 app.use('/api/orcid', orcidRoutes);
