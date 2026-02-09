@@ -1,8 +1,8 @@
 """
-Worker-side client to send audit events to the orchestrator internal audit ingest endpoint.
+Worker-side client to send audit events to the orchestrator internal audit endpoint.
 
 Expected orchestrator contract:
-- POST to {ORCHESTRATOR_BASE_URL}/api/internal/audit/ingest (or equivalent internal route)
+- POST /internal/audit/events (exact endpoint: {ORCHESTRATOR_BASE_URL}/internal/audit/events)
 - Header: x-internal-api-key: {INTERNAL_API_KEY}
 - Body: JSON object with audit event fields. If present, 'dedupe_key' is sent unchanged
   for idempotency (orchestrator may use it to deduplicate).
@@ -85,12 +85,12 @@ def minimize_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _ingest_url(base: str) -> str:
-    return f"{base}/api/internal/audit/ingest"
+    return f"{base.rstrip('/')}/internal/audit/events"
 
 
 def emit_audit_event(event: dict[str, Any]) -> dict[str, Any] | None:
     """
-    Send an audit event to the orchestrator internal ingest endpoint.
+    Send an audit event to the orchestrator internal audit endpoint (POST /internal/audit/events).
 
     - Reads ORCHESTRATOR_BASE_URL, INTERNAL_API_KEY; optional ORCHESTRATOR_AUDIT_TIMEOUT_SECS (default 5).
     - Uses retries with exponential backoff (3 attempts) for 5xx and network errors.
