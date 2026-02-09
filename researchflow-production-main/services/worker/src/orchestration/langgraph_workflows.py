@@ -5,6 +5,7 @@ Implements stateful, multi-step research workflows with LLM orchestration.
 
 import os
 import logging
+import uuid
 from typing import TypedDict, Optional, List, Dict, Any, Annotated
 from datetime import datetime
 
@@ -37,6 +38,10 @@ class WorkflowState(TypedDict):
     stage: str
     error: Optional[str]
     metadata: Dict[str, Any]
+    run_id: str
+    trace_id: str
+    manuscript_id: Optional[str]
+    branch_id: Optional[str]
 
 
 class ResearchWorkflow:
@@ -227,6 +232,12 @@ Generate high-quality outputs for each step."""
         if self.graph is None:
             raise RuntimeError("Workflow graph not built - LangGraph may not be installed")
         
+        config = config or {}
+        run_id = config.get("run_id") or uuid.uuid4().hex
+        trace_id = config.get("trace_id") or run_id
+        manuscript_id = config.get("manuscript_id")
+        branch_id = config.get("branch_id")
+        
         initial_state: WorkflowState = {
             "task": task,
             "plan": None,
@@ -235,10 +246,14 @@ Generate high-quality outputs for each step."""
             "phi_detected": False,
             "stage": "started",
             "error": None,
-            "metadata": {"started_at": datetime.now().isoformat()}
+            "metadata": {"started_at": datetime.now().isoformat()},
+            "run_id": run_id,
+            "trace_id": trace_id,
+            "manuscript_id": manuscript_id,
+            "branch_id": branch_id,
         }
         
-        thread_config = {"configurable": {"thread_id": config.get("thread_id", "default")}} if config else {"configurable": {"thread_id": "default"}}
+        thread_config = {"configurable": {"thread_id": config.get("thread_id", "default")}}
         
         result = self.graph.invoke(initial_state, thread_config)
         return result
