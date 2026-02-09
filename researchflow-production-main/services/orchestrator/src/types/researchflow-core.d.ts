@@ -14,6 +14,7 @@ declare module '@researchflow/core/schema' {
   export const organizations: any;
   export const projects: any;
   export const artifacts: any;
+  export const topics: any;
   export const runs: any;
   export const stages: any;
   export const sessions: any;
@@ -29,6 +30,8 @@ declare module '@researchflow/core/schema' {
   export const chatMessages: any;
   export const shares: any;
   export const papers: any;
+  export type Topic = any;
+  export type InsertTopic = any;
 }
 
 declare module '@researchflow/core/types' {
@@ -104,6 +107,11 @@ declare module '@researchflow/phi-engine' {
   export class PHIEngine {
     scan(text: string): Promise<any>;
     redact(text: string): Promise<string>;
+  }
+  export class RegexPhiScanner {
+    scan(text: string): any;
+    redact(text: string): string;
+    hasPhi(text: string): boolean;
   }
 }
 
