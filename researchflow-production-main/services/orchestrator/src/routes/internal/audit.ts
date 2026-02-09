@@ -80,6 +80,11 @@ function validateBody(body: any): { ok: true; value: IngestAuditEventBody } | { 
 
 const router = Router();
 
+// GET /internal/audit/ping
+router.get('/ping', (_req: Request, res: Response) => {
+  res.json({ ok: true, audit_ingest_enabled: Boolean(process.env.INTERNAL_API_KEY) });
+});
+
 // POST /internal/audit/events
 router.post('/events', async (req: Request, res: Response) => {
   const internalKey = process.env.INTERNAL_API_KEY;
