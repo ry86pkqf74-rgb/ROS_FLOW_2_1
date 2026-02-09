@@ -124,7 +124,11 @@ async function resolveStreamId(tx: DbClient, streamType: string, streamKey: stri
   return selectResult.rows[0].stream_id;
 }
 
-async function appendLedgerEvent(
+/**
+ * Single path for edit-session audit: routes all state-transition audit
+ * through the ledger service (appendAuditEvent) with stream resolution and dedupe.
+ */
+async function routeEditSessionAuditThroughLedger(
   tx: DbClient,
   input: {
     stream_type: string;
@@ -143,17 +147,7 @@ async function appendLedgerEvent(
 ): Promise<void> {
   const streamId = await resolveStreamId(tx, input.stream_type, input.stream_key);
 
-  if (input.dedupe_key) {
-    const dupeResult = await tx.query(
-      `SELECT id FROM audit_events
-       WHERE stream_id = $1 AND payload_json->>'dedupe_key' = $2
-       LIMIT 1`,
-      [streamId, input.dedupe_key],
-    );
-    if (dupeResult.rows.length > 0) {
-      return;
-    }
-  }
+  // NOTE: dedupe must be enforced under the stream lock in appendAuditEvent; do not add pre-lock checks here.
 
   const payload = input.dedupe_key
     ? { ...(input.payload ?? {}), dedupe_key: input.dedupe_key }
@@ -170,7 +164,6 @@ async function appendLedgerEvent(
     service: input.service,
     beforeHash: input.before_hash ?? null,
     afterHash: input.after_hash ?? null,
-    hipaaMode: false,
   });
 }
 
@@ -200,7 +193,7 @@ export async function createEditSession(params: {
     const session = mapRow(result.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendLedgerEvent(tx, {
+    await routeEditSessionAuditThroughLedger(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(session.id),
       actor_type: 'USER',
@@ -248,7 +241,7 @@ export async function submitEditSession(sessionId: string, submittedBy?: string 
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendLedgerEvent(tx, {
+    await routeEditSessionAuditThroughLedger(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -296,7 +289,7 @@ export async function approveEditSession(sessionId: string, approvedBy?: string 
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendLedgerEvent(tx, {
+    await routeEditSessionAuditThroughLedger(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -349,7 +342,7 @@ export async function rejectEditSession(
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendLedgerEvent(tx, {
+    await routeEditSessionAuditThroughLedger(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -400,7 +393,7 @@ export async function mergeEditSession(sessionId: string, mergedBy?: string | nu
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendLedgerEvent(tx, {
+    await routeEditSessionAuditThroughLedger(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
