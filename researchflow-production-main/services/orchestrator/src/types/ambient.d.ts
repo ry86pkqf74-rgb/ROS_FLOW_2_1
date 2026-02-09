@@ -73,6 +73,7 @@ declare module 'ws' {
     readyState: number;
     send(data: any, cb?: any): void;
     close(code?: number, reason?: string): void;
+    ping(data?: any, mask?: boolean, cb?: any): void;
     terminate(): void;
   }
   export class WebSocketServer extends EventEmitter {
