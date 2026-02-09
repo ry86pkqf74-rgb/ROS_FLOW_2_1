@@ -78,8 +78,8 @@ for t in "${TASKS[@]}"; do
   dispatch_code="$(echo "$dispatch_resp" | tail -n 2 | head -n 1)"
   dispatch_json="$(echo "$dispatch_resp" | sed '$d' | sed '$d')"
   
-  agent_name="$(echo "$dispatch_json" | sed -n 's/.*\"agent_name\"[ ]*:[ ]*\"\\([^\"]*\\)\".*/\\1/p' | head -n 1)"
-  agent_url="$(echo "$dispatch_json" | sed -n 's/.*\"agent_url\"[ ]*:[ ]*\"\\([^\"]*\\)\".*/\\1/p' | head -n 1)"
+  agent_name="$(echo "$dispatch_json" | sed -n 's/.*"agent_name"[ ]*:[ ]*"\([^"]*\)".*/\1/p' | head -n 1)"
+  agent_url="$(echo "$dispatch_json" | sed -n 's/.*"agent_url"[ ]*:[ ]*"\([^"]*\)".*/\1/p' | head -n 1)"
   
   if [ "$dispatch_code" != "200" ] || [ -z "$agent_url" ]; then
     err="$(echo "$dispatch_json" | tr '\n' ' ' | head -c 220)"
