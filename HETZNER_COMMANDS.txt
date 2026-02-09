@@ -1,0 +1,62 @@
+# ============================================================================
+# COPY-PASTE THESE COMMANDS INTO YOUR HETZNER SSH SESSION
+# ============================================================================
+
+# 1. SSH into Hetzner (replace with your actual IP)
+ssh root@<YOUR_HETZNER_IP>
+
+# 2. Navigate to project
+cd /opt/researchflow/ROS_FLOW_2_1
+
+# 3. Pull latest code (includes execution sweep script)
+git pull origin main
+
+# 4. Set your worker service token (REQUIRED - replace with actual token)
+export WORKER_SERVICE_TOKEN="<YOUR_ACTUAL_TOKEN_HERE>"
+
+# 5. Navigate to deployment directory
+cd researchflow-production-main
+
+# 6. Copy script into orchestrator container
+docker compose cp hetzner-execution-sweep-all.sh orchestrator:/tmp/
+
+# 7. Execute the sweep (takes 5-10 minutes for 31 tasks)
+docker compose exec orchestrator sh -lc '
+  export ORCHESTRATOR_URL="http://orchestrator:3001"
+  export WORKER_SERVICE_TOKEN="'"$WORKER_SERVICE_TOKEN"'"
+  export MODE="DEMO"
+  export RISK_TIER="NON_SENSITIVE"
+  export TIMEOUT_SECS="120"
+  
+  chmod +x /tmp/hetzner-execution-sweep-all.sh
+  /tmp/hetzner-execution-sweep-all.sh
+'
+
+# ============================================================================
+# EXPECTED OUTPUT
+# ============================================================================
+# You should see:
+# - Progress line for each of 31 task types
+# - Final summary: "Saved results: /tmp/execution_sweep_<timestamp>.tsv"
+# - "Failures:" section (should be empty if 31/31 pass)
+#
+# TARGET: 31/31 PASS ✅
+# ============================================================================
+
+# ============================================================================
+# IF FAILURES OCCUR
+# ============================================================================
+# Check logs for failing agents:
+# docker compose logs --tail 200 artifact-auditor
+# docker compose logs --tail 200 claim-verifier
+# docker compose logs --tail 200 <failing-agent-name>
+#
+# Check orchestrator logs:
+# docker compose logs --tail 200 orchestrator | grep -i error
+#
+# Test individual dispatch:
+# curl -X POST http://127.0.0.1:3001/api/ai/router/dispatch \
+#   -H "Authorization: Bearer $WORKER_SERVICE_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{"task_type":"ARTIFACT_AUDIT","request_id":"test-001","mode":"DEMO","risk_tier":"NON_SENSITIVE","inputs":{},"budgets":{}}'
+# ============================================================================
