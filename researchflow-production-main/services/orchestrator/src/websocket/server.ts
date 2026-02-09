@@ -48,7 +48,9 @@ interface ClientConnection {
 }
 
 /**
- * WebSocket server configuration
+ * WebSocket server configuration.
+ * Default path is /ws/events so this event-broadcast server can coexist with the
+ * existing collaboration WebSocket server that uses /ws.
  */
 interface WebSocketServerConfig {
   path?: string;
@@ -71,7 +73,7 @@ export class WebSocketEventServer {
 
   constructor(config: WebSocketServerConfig = {}) {
     this.config = {
-      path: config.path || '/ws',
+      path: config.path || '/ws/events',
       heartbeatIntervalMs: config.heartbeatIntervalMs || 30000, // 30 seconds
       heartbeatTimeoutMs: config.heartbeatTimeoutMs || 60000, // 60 seconds
       maxConnections: config.maxConnections || 10000,
