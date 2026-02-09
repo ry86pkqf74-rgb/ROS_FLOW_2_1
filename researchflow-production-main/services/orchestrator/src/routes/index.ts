@@ -1,7 +1,10 @@
 /**
- * Routes barrel: re-exports internal router for mounting at /internal.
- * Mount in app with: app.use('/internal', internalRoutes) in src/index.ts.
+ * Routes barrel: public API router (mount at /api in app if desired).
+ * Internal routes are mounted from ./routes/internal in src/index.ts:
+ *   import internalRoutes from './routes/internal';
+ *   app.use('/internal', internalRoutes);
  */
-import internalRoutes from './internal';
+import { Router } from 'express';
 
-export default internalRoutes;
+const router = Router();
+export default router;

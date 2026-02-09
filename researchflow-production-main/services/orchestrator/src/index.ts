@@ -113,7 +113,7 @@ import phaseChatRoutes from './routes/phaseChatRoutes';
 import guidelinesProxyRoutes from './routes/guidelines-proxy.routes';
 // Planning Hub: Notion-like pages, databases, tasks, goals, and projections
 import hubRoutes from './routes/hub';
-import internalRoutes from './routes';
+import internalRoutes from './routes/internal';
 // Cumulative Workflow: Stage data flow between 20 research stages
 import cumulativeDataRoutes from './routes/cumulative-data';
 // Multi-File Ingestion: Multi-file/multi-sheet data merging with ID detection
