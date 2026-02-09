@@ -35,7 +35,6 @@ import * as z from 'zod';
 
 import { requireRole, logAuditEvent } from '../middleware/rbac';
 import * as workflowService from '../services/workflowService';
-import { asInt, asString } from '../utils/httpCoerce';
 
 
 const router = Router();
@@ -168,8 +167,7 @@ router.post('/templates/seed', requireRole('ADMIN'), async (req: Request, res: R
 // GET /api/workflows/templates/:key - Get specific template
 router.get('/templates/:key', async (req: Request, res: Response) => {
   try {
-    const templateKey = asString(req.params.key);
-    const template = await workflowService.getTemplate(templateKey);
+    const template = await workflowService.getTemplate(req.params.key);
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -184,8 +182,7 @@ router.get('/templates/:key', async (req: Request, res: Response) => {
 router.get('/:id', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -212,19 +209,18 @@ router.put('/:id', requireRole('STEWARD'), async (req: Request, res: Response) =
     }
 
     // Check workflow exists and user has access
-    const workflowId = asString(req.params.id);
-    const existing = await workflowService.getWorkflow(workflowId, orgId);
+    const existing = await workflowService.getWorkflow(req.params.id, orgId);
     if (!existing) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    const workflow = await workflowService.updateWorkflow(workflowId, parsed.data);
+    const workflow = await workflowService.updateWorkflow(req.params.id, parsed.data);
 
     await logAuditEvent({
       eventType: 'WORKFLOW_UPDATED',
       userId,
       resourceType: 'workflow',
-      resourceId: workflowId,
+      resourceId: req.params.id,
       action: 'UPDATE',
       details: parsed.data,
     });
@@ -242,19 +238,18 @@ router.delete('/:id', requireRole('STEWARD'), async (req: Request, res: Response
     const { id: userId, orgId } = getUserFromRequest(req);
 
     // Check workflow exists and user has access
-    const workflowId = asString(req.params.id);
-    const existing = await workflowService.getWorkflow(workflowId, orgId);
+    const existing = await workflowService.getWorkflow(req.params.id, orgId);
     if (!existing) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    await workflowService.deleteWorkflow(workflowId);
+    await workflowService.deleteWorkflow(req.params.id);
 
     await logAuditEvent({
       eventType: 'WORKFLOW_DELETED',
       userId,
       resourceType: 'workflow',
-      resourceId: workflowId,
+      resourceId: req.params.id,
       action: 'DELETE',
       details: { name: existing.name },
     });
@@ -281,8 +276,7 @@ router.post('/:id/versions', requireRole('STEWARD'), async (req: Request, res: R
     }
 
     // Check workflow exists and user has access
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
@@ -321,8 +315,7 @@ router.post('/:id/versions', requireRole('STEWARD'), async (req: Request, res: R
 router.get('/:id/versions', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -340,8 +333,7 @@ router.get('/:id/versions', requireRole('VIEWER'), async (req: Request, res: Res
 router.get('/:id/versions/latest', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -363,15 +355,14 @@ router.get('/:id/versions/latest', requireRole('VIEWER'), async (req: Request, r
 router.get('/:id/versions/:version', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    const versionNum = asInt(req.params.version, Number.NaN);
-    if (Number.isNaN(versionNum)) {
+    const versionNum = parseInt(req.params.version);
+    if (isNaN(versionNum)) {
       return res.status(400).json({ error: 'Invalid version number' });
     }
 
@@ -395,8 +386,7 @@ router.get('/:id/versions/:version', requireRole('VIEWER'), async (req: Request,
 router.post('/:id/publish', requireRole('STEWARD'), async (req: Request, res: Response) => {
   try {
     const { id: userId, orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -430,8 +420,7 @@ router.post('/:id/publish', requireRole('STEWARD'), async (req: Request, res: Re
 router.post('/:id/archive', requireRole('STEWARD'), async (req: Request, res: Response) => {
   try {
     const { id: userId, orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -459,8 +448,7 @@ router.post('/:id/archive', requireRole('STEWARD'), async (req: Request, res: Re
 router.post('/:id/duplicate', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
     const { id: userId, orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -522,8 +510,7 @@ router.post('/:id/duplicate', requireRole('RESEARCHER'), async (req: Request, re
 router.get('/:id/policy', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
 
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -547,8 +534,7 @@ router.post('/:id/policy', requireRole('STEWARD'), async (req: Request, res: Res
       return res.status(400).json({ error: 'Invalid policy', details: parsed.error.issues });
     }
 
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
@@ -581,8 +567,7 @@ router.post('/:id/execute', requireRole('RESEARCHER'), async (req: Request, res:
     const { id: userId, orgId } = getUserFromRequest(req);
     const { inputs } = req.body;
 
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
@@ -641,8 +626,7 @@ router.post('/:id/execute', requireRole('RESEARCHER'), async (req: Request, res:
 router.get('/:id/executions', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
     
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -661,8 +645,7 @@ router.get('/:id/executions', requireRole('VIEWER'), async (req: Request, res: R
 router.get('/:id/executions/:executionId', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
     const { orgId } = getUserFromRequest(req);
-    const workflowId = asString(req.params.id);
-    const workflow = await workflowService.getWorkflow(workflowId, orgId);
+    const workflow = await workflowService.getWorkflow(req.params.id, orgId);
     
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });

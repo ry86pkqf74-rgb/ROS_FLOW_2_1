@@ -8,40 +8,10 @@
  * the declare namespace pattern.
  */
 
+import * as express from 'express';
 import * as core from 'express-serve-static-core';
-import bodyParser = require('body-parser');
-import serveStatic = require('serve-static');
-
-declare function express(): core.Express;
-
-declare namespace express {
-  const json: typeof bodyParser.json;
-  const raw: typeof bodyParser.raw;
-  const text: typeof bodyParser.text;
-  const urlencoded: typeof bodyParser.urlencoded;
-  const static: serveStatic.RequestHandlerConstructor<core.Response>;
-
-  const application: core.Application;
-  const request: core.Request;
-  const response: core.Response;
-
-  function Router(options?: core.RouterOptions): core.Router;
-}
 
 declare module 'express' {
-  export default express;
-  export { express };
-
-  export const Router: typeof express.Router;
-  export const json: typeof express.json;
-  export const raw: typeof express.raw;
-  export const text: typeof express.text;
-  export const urlencoded: typeof express.urlencoded;
-  export const static: typeof express.static;
-  export const application: typeof express.application;
-  export const request: typeof express.request;
-  export const response: typeof express.response;
-
   // Re-export types that are in the namespace as module-level exports
   export type Request<
     P = core.ParamsDictionary,
@@ -73,7 +43,7 @@ declare module 'express' {
     Locals extends Record<string, any> = Record<string, any>
   > = core.ErrorRequestHandler<P, ResBody, ReqBody, ReqQuery, Locals>;
 
+  export type Router = core.Router;
   export type Application = core.Application;
   export type Express = core.Express;
-  export type Router = core.Router;
 }
