@@ -11,11 +11,12 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { pool, query } from '../../../db';
+import { query } from '../../../db';
+import { dbAvailable } from '../helpers/dbAvailable';
 
-const hasDb = !!pool;
+const hasDb = await dbAvailable();
 
-describe('018_manuscript_branch_commits', { skip: !hasDb ? 'DATABASE_URL not set' : false }, () => {
+describe('018_manuscript_branch_commits', { skip: !hasDb ? 'DB unavailable or unreachable' : false }, () => {
   let testBranchId: string;
   const testManuscriptId = randomUUID();
 
