@@ -11,6 +11,7 @@ import { appendEvent, type DbClient } from './audit.service';
 
 const STREAM_TYPE_MANUSCRIPT = 'MANUSCRIPT';
 const SERVICE_ORCHESTRATOR = 'orchestrator';
+const REDACTED_NOTE = '[REDACTED]';
 
 export type EditSessionStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'merged';
 
@@ -66,6 +67,17 @@ function sessionStateHash(s: EditSession): string {
     merged_at: s.merged_at?.toISOString() ?? null,
   });
   return crypto.createHash('sha256').update(canonical).digest('hex').substring(0, 16);
+}
+
+function redactNote(reason?: string | null): {
+  storedReason: string | null;
+  noteLength: number;
+  noteRedacted: boolean;
+} {
+  if (!reason) return { storedReason: null, noteLength: 0, noteRedacted: false };
+  const trimmed = reason.trim();
+  if (!trimmed) return { storedReason: null, noteLength: 0, noteRedacted: false };
+  return { storedReason: REDACTED_NOTE, noteLength: trimmed.length, noteRedacted: true };
 }
 
 async function runWithTransaction<T>(fn: (tx: DbClient) => Promise<T>): Promise<T> {
@@ -231,9 +243,11 @@ export async function rejectEditSession(
 
     const beforeHash = sessionStateHash(mapRow(row));
 
+    const redacted = redactNote(opts.reason);
+
     await tx.query(
       `UPDATE edit_sessions SET status = 'rejected', rejected_at = NOW(), rejected_by = $1, rejection_reason = $2, updated_at = NOW() WHERE id = $3`,
-      [opts.rejectedBy ?? null, opts.reason ?? null, sessionId]
+      [opts.rejectedBy ?? null, redacted.storedReason, sessionId]
     );
     const updated = await tx.query('SELECT * FROM edit_sessions WHERE id = $1', [sessionId]);
     const session = mapRow(updated.rows[0]);
@@ -250,7 +264,12 @@ export async function rejectEditSession(
       resource_id: sessionId,
       before_hash: beforeHash,
       after_hash: afterHash,
-      payload: { branch_id: row.branch_id, status: 'rejected', reason_length: (opts.reason ?? '').length },
+      payload: {
+        branch_id: row.branch_id,
+        status: 'rejected',
+        note_length: redacted.noteLength,
+        note_redacted: redacted.noteRedacted,
+      },
       dedupe_key: `edit_session:${sessionId}:reject`,
     });
 
