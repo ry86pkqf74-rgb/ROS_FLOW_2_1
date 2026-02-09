@@ -7,12 +7,19 @@ human-in-the-loop, and improvement loop support.
 
 All LLM calls route through the orchestrator's AI Router for PHI compliance.
 
+Node-level audit events (NODE_STARTED, NODE_FINISHED, NODE_FAILED) are emitted
+via the orchestrator audit client when orchestrator env is configured.
+
 See: Linear ROS-64 (Phase A: Foundation)
 """
 
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, Any, Dict, List
+import hashlib
+import json
 import logging
+import socket
+import time
 import uuid
 from datetime import datetime
 
@@ -30,6 +37,99 @@ from .state import (
 )
 
 logger = logging.getLogger(__name__)
+
+# -----------------------------------------------------------------------------
+# Node-level audit emission (defensive: no crash if orchestrator env missing)
+# -----------------------------------------------------------------------------
+
+def _get_actor_id() -> str:
+    """Worker identity for audit: hostname or WORKER_ID env."""
+    import os
+    return os.environ.get("WORKER_ID", "").strip() or socket.gethostname() or "worker"
+
+
+def _state_minimal(state: AgentState) -> Dict[str, Any]:
+    """Minimal state for hashing; no raw content (no messages, current_output)."""
+    return {
+        "run_id": state.get("run_id"),
+        "thread_id": state.get("thread_id"),
+        "agent_id": state.get("agent_id"),
+        "project_id": state.get("project_id"),
+        "current_stage": state.get("current_stage"),
+        "iteration": state.get("iteration"),
+    }
+
+
+def _content_hash(obj: Any) -> str:
+    """SHA256 of canonical JSON representation (minimized, no raw content)."""
+    try:
+        canonical = json.dumps(obj, sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+    except Exception:
+        return ""
+
+
+def _safe_emit_audit(event: Dict[str, Any]) -> None:
+    """Emit audit event to orchestrator; on missing config or failure, log at debug only."""
+    try:
+        from ...clients.orchestrator_audit_client import emit_audit_event
+        emit_audit_event(event)
+    except ValueError as e:
+        logger.debug("Audit emit skipped (config missing): %s", e)
+    except Exception as e:
+        logger.debug("Audit emit failed: %s", e)
+
+
+def _emit_node_audit(
+    state: AgentState,
+    node_id: str,
+    action: str,
+    attempt: int,
+    *,
+    started_at_ms: Optional[int] = None,
+    duration_ms: Optional[int] = None,
+    error_class: Optional[str] = None,
+    error_message: Optional[str] = None,
+    input_hash: Optional[str] = None,
+    output_hash: Optional[str] = None,
+) -> None:
+    """Emit a node-level audit event (NODE_STARTED, NODE_FINISHED, NODE_FAILED)."""
+    run_id = state.get("run_id") or ""
+    trace_id = state.get("trace_id") or run_id
+    stream_key = run_id
+    dedupe_key = f"{run_id}:{node_id}:{action}:{attempt}"
+    payload: Dict[str, Any] = {
+        "node_name": node_id,
+        "attempt": attempt,
+    }
+    if started_at_ms is not None:
+        payload["started_at_ms"] = started_at_ms
+    if duration_ms is not None:
+        payload["duration_ms"] = duration_ms
+    if error_class:
+        payload["error_class"] = error_class
+    if error_message is not None:
+        payload["error_message"] = (error_message or "")[:500]
+    if input_hash:
+        payload["input_hash"] = input_hash
+    if output_hash:
+        payload["output_hash"] = output_hash
+    event = {
+        "stream_type": "RUN",
+        "stream_key": stream_key,
+        "run_id": run_id,
+        "trace_id": trace_id,
+        "node_id": node_id,
+        "action": action,
+        "actor_type": "WORKER",
+        "actor_id": _get_actor_id(),
+        "service": "worker",
+        "resource_type": "LANGGRAPH_NODE",
+        "resource_id": node_id,
+        "payload_json": payload,
+        "dedupe_key": dedupe_key,
+    }
+    _safe_emit_audit(event)
 
 
 class LangGraphBaseAgent(ABC):
@@ -244,69 +344,101 @@ class LangGraphBaseAgent(ABC):
         Returns:
             State updates with gate_status and gate_result
         """
-        criteria = self.get_quality_criteria()
-        output = state.get('current_output', '')
+        node_id = "quality_gate"
+        attempt = 0
+        started_at_ms = int(time.time() * 1000)
+        input_hash = _content_hash(_state_minimal(state))
+        _emit_node_audit(
+            state, node_id, "NODE_STARTED", attempt,
+            started_at_ms=started_at_ms, input_hash=input_hash,
+        )
+        try:
+            criteria = self.get_quality_criteria()
+            output = state.get('current_output', '')
 
-        # Evaluate each criterion
-        criteria_met = []
-        criteria_failed = []
-        total_score = 0.0
-        max_score = len(criteria)
+            # Evaluate each criterion
+            criteria_met = []
+            criteria_failed = []
+            total_score = 0.0
+            max_score = len(criteria)
 
-        for criterion, threshold in criteria.items():
-            passed, score = self._evaluate_criterion(criterion, threshold, output, state)
-            if passed:
-                criteria_met.append(criterion)
-                total_score += score
-            else:
-                criteria_failed.append(criterion)
+            for criterion, threshold in criteria.items():
+                passed, score = self._evaluate_criterion(criterion, threshold, output, state)
+                if passed:
+                    criteria_met.append(criterion)
+                    total_score += score
+                else:
+                    criteria_failed.append(criterion)
 
-        # Calculate final score
-        final_score = total_score / max_score if max_score > 0 else 0.0
+            # Calculate final score
+            final_score = total_score / max_score if max_score > 0 else 0.0
 
-        # Determine gate status
-        if final_score >= 0.8:
-            gate_status: GateStatus = 'passed'
-            needs_human = False
-        elif final_score >= 0.5:
-            gate_status = 'needs_human'
-            needs_human = True
-        else:
-            gate_status = 'failed'
-            needs_human = False
-
-        # In LIVE mode, require human review for certain criteria
-        if state.get('governance_mode') == 'LIVE' and self.agent_id in ['irb', 'manuscript']:
-            needs_human = True
-            if gate_status == 'passed':
+            # Determine gate status
+            if final_score >= 0.8:
+                gate_status: GateStatus = 'passed'
+                needs_human = False
+            elif final_score >= 0.5:
                 gate_status = 'needs_human'
+                needs_human = True
+            else:
+                gate_status = 'failed'
+                needs_human = False
 
-        gate_result = QualityGateResult(
-            passed=gate_status == 'passed',
-            score=final_score,
-            criteria_met=criteria_met,
-            criteria_failed=criteria_failed,
-            reason=f"Score: {final_score:.2f}, {len(criteria_met)}/{len(criteria)} criteria met",
-            needs_human_review=needs_human,
-        )
+            # In LIVE mode, require human review for certain criteria
+            if state.get('governance_mode') == 'LIVE' and self.agent_id in ['irb', 'manuscript']:
+                needs_human = True
+                if gate_status == 'passed':
+                    gate_status = 'needs_human'
 
-        logger.info(
-            f"Quality gate evaluated: {gate_status}",
-            extra={
-                'agent_id': state.get('agent_id'),
-                'run_id': state.get('run_id'),
-                'score': final_score,
-                'criteria_met': criteria_met,
-                'criteria_failed': criteria_failed,
+            gate_result = QualityGateResult(
+                passed=gate_status == 'passed',
+                score=final_score,
+                criteria_met=criteria_met,
+                criteria_failed=criteria_failed,
+                reason=f"Score: {final_score:.2f}, {len(criteria_met)}/{len(criteria)} criteria met",
+                needs_human_review=needs_human,
+            )
+
+            logger.info(
+                f"Quality gate evaluated: {gate_status}",
+                extra={
+                    'agent_id': state.get('agent_id'),
+                    'run_id': state.get('run_id'),
+                    'score': final_score,
+                    'criteria_met': criteria_met,
+                    'criteria_failed': criteria_failed,
+                }
+            )
+
+            result = {
+                'gate_status': gate_status,
+                'gate_score': final_score,
+                'gate_result': gate_result,
+                'awaiting_approval': needs_human,
             }
-        )
-
-        return {
-            'gate_status': gate_status,
-            'gate_score': final_score,
-            'gate_result': gate_result,
-            'awaiting_approval': needs_human,
-        }
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            output_minimal = {
+                "gate_status": gate_status,
+                "score": final_score,
+                "criteria_met_count": len(criteria_met),
+                "criteria_failed_count": len(criteria_failed),
+            }
+            _emit_node_audit(
+                state, node_id, "NODE_FINISHED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash, output_hash=_content_hash(output_minimal),
+            )
+            return result
+        except Exception as e:
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            _emit_node_audit(
+                state, node_id, "NODE_FAILED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
+            raise
 
     def _evaluate_criterion(
         self,
@@ -358,22 +490,49 @@ class LangGraphBaseAgent(ABC):
         Returns:
             State updates for human review
         """
-        approval_request_id = str(uuid.uuid4())
-
-        logger.info(
-            f"Human review requested",
-            extra={
-                'agent_id': state.get('agent_id'),
-                'run_id': state.get('run_id'),
-                'approval_request_id': approval_request_id,
-                'governance_mode': state.get('governance_mode'),
-            }
+        node_id = "human_review"
+        attempt = 0
+        started_at_ms = int(time.time() * 1000)
+        input_hash = _content_hash(_state_minimal(state))
+        _emit_node_audit(
+            state, node_id, "NODE_STARTED", attempt,
+            started_at_ms=started_at_ms, input_hash=input_hash,
         )
+        try:
+            approval_request_id = str(uuid.uuid4())
 
-        return {
-            'awaiting_approval': True,
-            'approval_request_id': approval_request_id,
-        }
+            logger.info(
+                f"Human review requested",
+                extra={
+                    'agent_id': state.get('agent_id'),
+                    'run_id': state.get('run_id'),
+                    'approval_request_id': approval_request_id,
+                    'governance_mode': state.get('governance_mode'),
+                }
+            )
+
+            result = {
+                'awaiting_approval': True,
+                'approval_request_id': approval_request_id,
+            }
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            output_minimal = {"approval_request_id": approval_request_id}
+            _emit_node_audit(
+                state, node_id, "NODE_FINISHED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash, output_hash=_content_hash(output_minimal),
+            )
+            return result
+        except Exception as e:
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            _emit_node_audit(
+                state, node_id, "NODE_FAILED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
+            raise
 
     def save_version_node(self, state: AgentState) -> Dict[str, Any]:
         """
@@ -385,23 +544,51 @@ class LangGraphBaseAgent(ABC):
         Returns:
             State updates with new version in previous_versions
         """
-        version = VersionSnapshot(
-            version_id=f"v{len(state.get('previous_versions', [])) + 1}",
-            timestamp=datetime.utcnow().isoformat(),
-            output=state.get('current_output', ''),
-            quality_score=state.get('gate_score', 0.0),
-            improvement_request=state.get('feedback'),
-            changes=[],  # Populated by diff service
+        node_id = "save_version"
+        attempt = 0
+        started_at_ms = int(time.time() * 1000)
+        input_hash = _content_hash(_state_minimal(state))
+        _emit_node_audit(
+            state, node_id, "NODE_STARTED", attempt,
+            started_at_ms=started_at_ms, input_hash=input_hash,
         )
+        try:
+            version = VersionSnapshot(
+                version_id=f"v{len(state.get('previous_versions', [])) + 1}",
+                timestamp=datetime.utcnow().isoformat(),
+                output=state.get('current_output', ''),
+                quality_score=state.get('gate_score', 0.0),
+                improvement_request=state.get('feedback'),
+                changes=[],  # Populated by diff service
+            )
 
-        previous_versions = state.get('previous_versions', []).copy()
-        previous_versions.append(version)
+            previous_versions = state.get('previous_versions', []).copy()
+            previous_versions.append(version)
+            new_iteration = state.get('iteration', 0) + 1
 
-        return {
-            'previous_versions': previous_versions,
-            'iteration': state.get('iteration', 0) + 1,
-            'feedback': None,  # Clear feedback after saving
-        }
+            result = {
+                'previous_versions': previous_versions,
+                'iteration': new_iteration,
+                'feedback': None,  # Clear feedback after saving
+            }
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            output_minimal = {"version_id": version["version_id"], "iteration": new_iteration}
+            _emit_node_audit(
+                state, node_id, "NODE_FINISHED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash, output_hash=_content_hash(output_minimal),
+            )
+            return result
+        except Exception as e:
+            duration_ms = int(time.time() * 1000) - started_at_ms
+            _emit_node_audit(
+                state, node_id, "NODE_FAILED", attempt,
+                started_at_ms=started_at_ms, duration_ms=duration_ms,
+                input_hash=input_hash,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
+            raise
 
     # =========================================================================
     # Routing Functions
