@@ -1878,7 +1878,7 @@ export const insertManuscriptYjsUpdateSchema = createInsertSchema(manuscriptYjsU
 export type ManuscriptYjsUpdate = InferSelectModel<typeof manuscriptYjsUpdates>;
 export type InsertManuscriptYjsUpdate = z.infer<typeof insertManuscriptYjsUpdateSchema>;
 
-// Manuscript branch commits (append-only commit log per branch; migration 018)
+// Manuscript branch commits (append-only commit log per branch; migration 018; diff fields 019)
 export const manuscriptBranchCommits = pgTable("manuscript_branch_commits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   branchId: varchar("branch_id", { length: 36 }).notNull(),
@@ -1889,6 +1889,10 @@ export const manuscriptBranchCommits = pgTable("manuscript_branch_commits", {
   contentHash: varchar("content_hash", { length: 64 }),
   createdBy: varchar("created_by", { length: 36 }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  // Optional stored diff (migration 019): diff_strategy=stored without recomputation; PHI-min.
+  diffUnified: text("diff_unified"),
+  diffSummaryJson: jsonb("diff_summary_json"),
+  diffStrategy: text("diff_strategy"), // 'computed' | 'stored' | null
 });
 
 export const insertManuscriptBranchCommitSchema = createInsertSchema(manuscriptBranchCommits).omit({ id: true, createdAt: true } as any);
