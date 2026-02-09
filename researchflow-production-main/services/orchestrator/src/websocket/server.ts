@@ -59,8 +59,13 @@ interface WebSocketServerConfig {
   maxConnections?: number;
 }
 
+/** Default path for PHI-safe events; must not collide with existing /ws (event-bus manager). */
+const DEFAULT_EVENTS_PATH = '/ws/events';
+
 /**
  * WebSocket Server Class
+ * PHI-safe protocol events only. Mount on /ws/events (or WEBSOCKET_EVENTS_PATH) to avoid
+ * colliding with any WebSocket server on /ws.
  */
 export class WebSocketEventServer {
   private wss: WebSocketServer | null = null;
@@ -73,12 +78,14 @@ export class WebSocketEventServer {
   private readonly config: Required<WebSocketServerConfig>;
 
   constructor(config: WebSocketServerConfig = {}) {
-    this.config = {
-      path: config.path || '/ws/events',
+    const path =
+      config.path ?? (process.env.WEBSOCKET_EVENTS_PATH || DEFAULT_EVENTS_PATH);
+        this.config = {
+      path,
       heartbeatIntervalMs: config.heartbeatIntervalMs || 30000, // 30 seconds
       heartbeatTimeoutMs: config.heartbeatTimeoutMs || 60000, // 60 seconds
       maxConnections: config.maxConnections || 10000,
-    };
+        };
   }
 
   /**
@@ -86,13 +93,16 @@ export class WebSocketEventServer {
    */
   public initialize(httpServer: HttpServer): void {
     if (this.wss) {
-      console.warn('[WebSocketEventServer] Already initialized');
+      console.warn(
+        '[WebSocketEventServer] PHI-safe event WebSocket already initialized, path=%s',
+        this.config.path
+      );
       return;
     }
 
     this.httpServer = httpServer;
 
-    // Create WebSocket server
+    // Create WebSocket server on /ws/events (never /ws) to avoid collision with event-bus WS
     this.wss = new WebSocketServer({
       server: httpServer,
       path: this.config.path,
@@ -113,7 +123,9 @@ export class WebSocketEventServer {
 
     const hipaaStatus = isHipaaMode() ? ' (HIPAA mode enabled)' : '';
     console.log(
-      `[WebSocketEventServer] Initialized at ${this.config.path}${hipaaStatus}`
+      '[WebSocketEventServer] PHI-safe event WebSocket listening path=%s owner=WebSocketEventServer%s',
+      this.config.path,
+      hipaaStatus
     );
   }
 
@@ -526,7 +538,10 @@ export class WebSocketEventServer {
   public shutdown(): void {
     this.isShuttingDown = true;
 
-    console.log('[WebSocketEventServer] Shutting down...');
+    console.log(
+      '[WebSocketEventServer] Shutting down PHI-safe event WebSocket path=%s',
+      this.config.path
+    );
 
     // Unsubscribe from EventBus to avoid leaks
     if (this.eventBusUnsubscribe) {
@@ -550,7 +565,10 @@ export class WebSocketEventServer {
     // Close WebSocket server
     if (this.wss) {
       this.wss.close(() => {
-        console.log('[WebSocketEventServer] Server closed');
+        console.log(
+          '[WebSocketEventServer] PHI-safe event WebSocket closed path=%s',
+          this.config.path
+        );
       });
       this.wss = null;
     }
