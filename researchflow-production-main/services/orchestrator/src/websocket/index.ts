@@ -10,6 +10,12 @@
 // Event types and schemas
 export * from './events';
 
+// Protocol types (PHI-safe)
+export * from './protocol';
+
+// WebSocket server (isolated, PHI-safe)
+export { websocketServer, WebSocketEventServer } from './server';
+
 // Connection manager
 export { webSocketManager, default as WebSocketManager } from './manager';
 
