@@ -196,7 +196,8 @@ router.get(
 /**
  * POST /api/ros/branches/:branchId/rollback
  * Rollback as a new commit: create a new revision with content from target commit (immutable history).
- * Emits audit event via branch-persistence createRevision.
+ * Appends ROLLBACK_REQUESTED audit event (MANUSCRIPT stream) in same transaction as validation read.
+ * Then createRevision emits REVISION CREATE as before.
  */
 router.post(
   '/branches/:branchId/rollback',
@@ -211,36 +212,78 @@ router.post(
       }
       const { target_commit_id, message } = parsed.data;
 
-      const branchCheck = await dbQuery(
-        'SELECT id FROM manuscript_branches WHERE id = $1',
-        [branchId]
-      );
-      if (branchCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'Branch not found' });
+      if (!pool) {
+        return res.status(503).json({ error: 'Database unavailable' });
       }
 
-      const commitRow = await dbQuery(
-        `SELECT id, revision_id FROM manuscript_branch_commits
-         WHERE branch_id = $1 AND id = $2`,
-        [branchId, target_commit_id]
-      );
-      if (commitRow.rows.length === 0) {
-        return res.status(404).json({ error: 'Target commit not found for this branch' });
-      }
-      const revisionId = commitRow.rows[0].revision_id;
-      if (!revisionId) {
-        return res.status(400).json({ error: 'Target commit has no linked revision' });
-      }
+      let contentObj: Record<string, unknown>;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
 
-      const revResult = await dbQuery(
-        'SELECT content FROM manuscript_revisions WHERE id = $1',
-        [revisionId]
-      );
-      if (revResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Revision not found' });
+        const branchRow = await client.query(
+          'SELECT id, manuscript_id FROM manuscript_branches WHERE id = $1',
+          [branchId]
+        );
+        if (branchRow.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Branch not found' });
+        }
+        const manuscriptId: string = branchRow.rows[0].manuscript_id ?? branchId;
+
+        const commitRow = await client.query(
+          `SELECT id, revision_id, content_hash FROM manuscript_branch_commits
+           WHERE branch_id = $1 AND id = $2`,
+          [branchId, target_commit_id]
+        );
+        if (commitRow.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Target commit not found for this branch' });
+        }
+        const revisionId = commitRow.rows[0].revision_id;
+        const contentHash = commitRow.rows[0].content_hash ?? null;
+        if (!revisionId) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Target commit has no linked revision' });
+        }
+
+        const revResult = await client.query(
+          'SELECT content FROM manuscript_revisions WHERE id = $1',
+          [revisionId]
+        );
+        if (revResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Revision not found' });
+        }
+        const content = revResult.rows[0].content;
+        contentObj = typeof content === 'string' ? JSON.parse(content) : content;
+
+        await appendEvent(client, {
+          stream_type: 'MANUSCRIPT',
+          stream_key: manuscriptId,
+          actor_type: 'USER',
+          actor_id: userId,
+          service: 'orchestrator',
+          action: 'ROLLBACK_REQUESTED',
+          resource_type: 'COMMIT_ROLLBACK',
+          resource_id: target_commit_id,
+          payload: {
+            branch_id: branchId,
+            target_commit_id,
+            content_hash: contentHash,
+          },
+          dedupe_key: `rollback:${branchId}:${target_commit_id}`,
+        });
+
+        await client.query('COMMIT');
+      } finally {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          // Ignore; connection may already be committed or closed
+        }
+        client.release();
       }
-      const content = revResult.rows[0].content;
-      const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
 
       const revision = await branchPersistenceService.createRevision({
         branchId,
