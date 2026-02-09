@@ -783,8 +783,6 @@ ${codeToEdit}
   ): Promise<void> {
     try {
       const logEntry: AIUsageLogEntry = {
-        timestamp: new Date().toISOString(),
-        tool: 'mercury-coder',
         provider: 'inception-labs',
         model: result.model,
         taskType: (options?.taskType as AITaskType) ?? 'code',
@@ -793,11 +791,15 @@ ${codeToEdit}
         totalTokens: result.usage.totalTokens,
         latencyMs: result.metrics.latencyMs,
         estimatedCostUsd: result.usage.estimatedCostUsd,
+        status: 'success',
         researchId: options?.researchId,
         userId: options?.userId,
         sessionId: options?.sessionId,
         agentId: options?.agentId,
+        tier: options?.tier,
+        stageId: options?.phaseId,
         metadata: {
+          tool: 'mercury-coder',
           endpoint: result.endpoint,
           realtime: result.realtime,
           tokensPerSecond: result.metrics.tokensPerSecond,

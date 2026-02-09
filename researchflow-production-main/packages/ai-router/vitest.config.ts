@@ -51,11 +51,8 @@ export default defineConfig({
     // Bail on first failure
     bail: 0,
 
-    // Include source maps
-    sourcemap: true,
-
     // Reporter
-    reporter: ['default', 'html'],
+    reporters: ['default', 'html'],
     outputFile: {
       html: './test-report.html',
     },

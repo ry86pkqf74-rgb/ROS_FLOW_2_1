@@ -248,6 +248,7 @@ function resolveCost(
 const NANO_PROVIDER = resolveProvider('NANO', MERCURY_ENABLED ? 'mercury' : 'anthropic');
 const MINI_PROVIDER = resolveProvider('MINI', 'anthropic');
 const FRONTIER_PROVIDER = resolveProvider('FRONTIER', 'anthropic');
+const CUSTOM_PROVIDER = resolveProvider('CUSTOM', FRONTIER_PROVIDER);
 
 /**
  * Model configurations by tier
@@ -280,6 +281,13 @@ export const MODEL_CONFIGS: Record<ModelTier, ModelConfig> = {
     maxTokens: 8192,
     temperature: 0.5,
     costPerMToken: resolveCost(FRONTIER_PROVIDER, { input: 15.00, output: 75.00 }),
+  },
+  CUSTOM: {
+    provider: CUSTOM_PROVIDER,
+    model: resolveModel('CUSTOM', CUSTOM_PROVIDER, 'claude-opus-4-5-20251101'),
+    maxTokens: 8192,
+    temperature: 0.5,
+    costPerMToken: resolveCost(CUSTOM_PROVIDER, { input: 15.00, output: 75.00 }),
   },
 };
 
