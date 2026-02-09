@@ -17,6 +17,7 @@ import { chatAgentService, ChatAgentError } from '../services/chat-agent';
 import type { AgentType } from '../services/chat-agent';
 import { executeAction } from '../services/chat-agent/action-executor';
 import { attachCostEnvelope } from '../utils/cost-envelope';
+import { asString } from '../utils/httpCoerce';
 
 const router = Router();
 
@@ -35,8 +36,8 @@ const SendMessageSchema = z.object({
 
 // Helper to extract governance mode from headers
 function getGovernanceMode(req: Request): 'DEMO' | 'LIVE' {
-  const mode = req.headers['x-app-mode'] as string;
-  return mode?.toUpperCase() === 'LIVE' ? 'LIVE' : 'DEMO';
+  const mode = asString(req.headers['x-app-mode']);
+  return mode.toUpperCase() === 'LIVE' ? 'LIVE' : 'DEMO';
 }
 
 // Helper to get user ID (mock for now)
@@ -52,7 +53,9 @@ router.post(
   '/:agentType/:artifactType/:artifactId/sessions',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { agentType, artifactType, artifactId } = req.params;
+      const agentType = asString(req.params.agentType);
+      const artifactType = asString(req.params.artifactType);
+      const artifactId = asString(req.params.artifactId);
 
       // Validate agent type
       const validatedAgentType = AgentTypeSchema.parse(agentType);
@@ -96,7 +99,7 @@ router.get(
   '/sessions/:sessionId/messages',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asString(req.params.sessionId);
 
       const messages = await chatRepository.getSessionMessages(sessionId);
 
@@ -132,7 +135,7 @@ router.get(
   '/sessions/:sessionId',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asString(req.params.sessionId);
 
       const session = await chatRepository.getSessionById(sessionId);
 
@@ -170,7 +173,9 @@ router.post(
   '/:agentType/:artifactType/:artifactId/message',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { agentType, artifactType, artifactId } = req.params;
+      const agentType = asString(req.params.agentType);
+      const artifactType = asString(req.params.artifactType);
+      const artifactId = asString(req.params.artifactId);
 
       // Validate
       const validatedAgentType = AgentTypeSchema.parse(agentType) as AgentType;
@@ -255,7 +260,7 @@ router.post(
   '/actions/:actionId/approve',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { actionId } = req.params;
+      const actionId = asString(req.params.actionId);
 
       // Get current action
       const action = await chatRepository.getActionById(actionId);
@@ -296,7 +301,7 @@ router.post(
   '/actions/:actionId/execute',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { actionId } = req.params;
+      const actionId = asString(req.params.actionId);
       const { artifactContent, artifactMetadata } = req.body || {};
 
       // Artifact context is required for execution
@@ -346,7 +351,7 @@ router.post(
   '/actions/:actionId/reject',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { actionId } = req.params;
+      const actionId = asString(req.params.actionId);
       const { reason } = req.body || {};
 
       // Get current action
@@ -387,7 +392,8 @@ router.get(
   '/:artifactType/:artifactId/pending-actions',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { artifactType, artifactId } = req.params;
+      const artifactType = asString(req.params.artifactType);
+      const artifactId = asString(req.params.artifactId);
 
       const actions = await chatRepository.getPendingActions(artifactType, artifactId);
 

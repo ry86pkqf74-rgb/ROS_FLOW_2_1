@@ -20,6 +20,7 @@ import * as z from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
 import { logAction } from '../services/audit-service';
+import { asInt, asOptionalString, asString } from '../utils/httpCoerce';
 
 const router = Router();
 
@@ -137,7 +138,9 @@ router.post(
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { agentType, artifactType, artifactId } = req.params;
+    const agentType = asString(req.params.agentType);
+    const artifactType = asString(req.params.artifactType);
+    const artifactId = asString(req.params.artifactId);
 
     // Validate agent type
     const validAgents: AgentType[] = ['dataprep', 'analysis', 'quality', 'irb', 'manuscript'];
@@ -264,7 +267,9 @@ router.get(
   '/:agentType/:artifactType/:artifactId/sessions',
   requirePermission('READ'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { agentType, artifactType, artifactId } = req.params;
+    const agentType = asString(req.params.agentType);
+    const artifactType = asString(req.params.artifactType);
+    const artifactId = asString(req.params.artifactId);
     const sessionKey = `${agentType}:${artifactType}:${artifactId}`;
     const session = chatSessions.get(sessionKey);
 
@@ -292,12 +297,11 @@ router.get(
   '/sessions/:sessionId/messages',
   requirePermission('READ'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { sessionId } = req.params;
-    const { limit = '50', offset = '0' } = req.query;
+    const sessionId = asString(req.params.sessionId);
+    const limitNum = asInt(req.query.limit, 50);
+    const offsetNum = asInt(req.query.offset, 0);
 
     const messages = sessionMessages.get(sessionId) || [];
-    const limitNum = parseInt(limit as string, 10);
-    const offsetNum = parseInt(offset as string, 10);
 
     const paginatedMessages = messages.slice(offsetNum, offsetNum + limitNum);
 
@@ -320,7 +324,7 @@ router.post(
   requirePermission('APPROVE'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { actionId } = req.params;
+    const actionId = asString(req.params.actionId);
 
     const validation = ApproveActionSchema.safeParse(req.body);
     if (!validation.success) {
@@ -362,7 +366,7 @@ router.get(
   '/stream/:sessionId',
   requirePermission('READ'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { sessionId } = req.params;
+    const sessionId = asString(req.params.sessionId);
 
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -406,7 +410,7 @@ router.post(
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { runId } = req.params;
+    const runId = asString(req.params.runId);
 
     const validation = ImprovementRequestSchema.safeParse(req.body);
     if (!validation.success) {
@@ -454,7 +458,7 @@ router.post(
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { runId } = req.params;
+    const runId = asString(req.params.runId);
 
     const validation = RevertRequestSchema.safeParse(req.body);
     if (!validation.success) {
@@ -497,8 +501,8 @@ router.get(
   '/runs/:runId/versions',
   requirePermission('READ'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { runId } = req.params;
-    const { limit = '10' } = req.query;
+    const runId = asString(req.params.runId);
+    const limit = asInt(req.query.limit, 10);
 
     // In production, call improvement service
     // const versions = await improvementService.getVersionHistory(runId, parseInt(limit));
@@ -521,8 +525,9 @@ router.get(
   '/runs/:runId/diff',
   requirePermission('READ'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { runId } = req.params;
-    const { from, to } = req.query;
+    const runId = asString(req.params.runId);
+    const from = asOptionalString(req.query.from);
+    const to = asOptionalString(req.query.to);
 
     if (!from || !to) {
       return res.status(400).json({
