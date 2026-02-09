@@ -29,9 +29,20 @@ jobs:
   lint-typecheck-test:
     name: Lint, typecheck & test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: researchflow-production-main
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: researchflow_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: researchflow_test
+        options: >-
+          --health-cmd "pg_isready -U researchflow_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -54,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('researchflow-production-main/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
@@ -71,5 +82,34 @@ jobs:
         run: pnpm run typecheck
         continue-on-error: true
 
+      - name: Create prerequisite tables for migrations
+        run: |
+          PGPASSWORD=test_password psql -h localhost -U researchflow_test -d researchflow_test -c "
+            CREATE TABLE IF NOT EXISTS manuscript_branches (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              manuscript_id UUID NOT NULL,
+              branch_name VARCHAR(100) NOT NULL,
+              parent_branch VARCHAR(100) DEFAULT 'main',
+              status VARCHAR(20) DEFAULT 'active',
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW(),
+              UNIQUE(manuscript_id, branch_name)
+            );
+          "
+
+      - name: Run migration 020_edit_sessions
+        run: node services/orchestrator/scripts/run-migration-020.mjs
+        env:
+          DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test
+
       - name: Unit tests
         run: pnpm run test:unit
+        env:
+          DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test
+
+      - name: DB-backed tests
+        run: |
+          pnpm vitest run services/orchestrator/src/services/__tests__/edit-session.service.test.ts
+          pnpm vitest run src/__tests__/migrations/020_edit_sessions.test.ts
+        env:
+          DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test
