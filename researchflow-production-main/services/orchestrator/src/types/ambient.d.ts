@@ -155,31 +155,11 @@ declare module '@replit/vite-plugin-dev-banner' {
 }
 
 // ioredis
-declare module 'ioredis' {
-  export default class Redis {
-    constructor(url?: string, options?: any);
-    get(key: string): Promise<string | null>;
-    set(key: string, value: string, ...args: any[]): Promise<any>;
-    del(key: string): Promise<number>;
-    publish(channel: string, message: string): Promise<number>;
-    subscribe(channel: string): Promise<void>;
-    on(event: string, handler: any): this;
-    quit(): Promise<void>;
-    // List operations
-    llen(key: string): Promise<number>;
-    lrange(key: string, start: number, stop: number): Promise<string[]>;
-    rpush(key: string, ...values: string[]): Promise<number>;
-    ltrim(key: string, start: number, stop: number): Promise<string>;
-    expire(key: string, seconds: number): Promise<number>;
-    pipeline(): RedisPipeline;
-  }
-  export interface RedisPipeline {
-    rpush(key: string, ...values: string[]): this;
-    ltrim(key: string, start: number, stop: number): this;
-    expire(key: string, seconds: number): this;
-    exec(): Promise<Array<[Error | null, any]>>;
-  }
-}
+// NOTE: Do not provide an ambient `declare module 'ioredis'` stub here.
+// ioredis ships its own type definitions; stubbing it overrides the real module
+// types globally (via this file being included in the workspace tsconfig),
+// which breaks Redis Streams methods like xadd/xgroup/xreadgroup/xack in
+// `packages/core/src/services/insightsBus.ts`.
 
 // Anthropic
 declare module '@anthropic-ai/sdk' {
