@@ -28,6 +28,7 @@ import {
   isHipaaMode,
   sanitizePayloadForHipaa,
 } from './protocol';
+import { subscribe as subscribeToEventBus } from './event-bus';
 
 /**
  * Client connection metadata
@@ -65,6 +66,7 @@ export class WebSocketEventServer {
   private clients: Map<string, ClientConnection> = new Map();
   private httpServer: HttpServer | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private eventBusUnsubscribe: (() => void) | null = null;
   private isShuttingDown = false;
 
   private readonly config: Required<WebSocketServerConfig>;
@@ -102,6 +104,11 @@ export class WebSocketEventServer {
 
     // Start heartbeat monitoring
     this.startHeartbeat();
+
+    // Subscribe to EventBus and broadcast protocol events to clients (validate + sanitize in broadcast())
+    this.eventBusUnsubscribe = subscribeToEventBus((event) => {
+      this.broadcast(event);
+    });
 
     const hipaaStatus = isHipaaMode() ? ' (HIPAA mode enabled)' : '';
     console.log(
@@ -519,6 +526,12 @@ export class WebSocketEventServer {
     this.isShuttingDown = true;
 
     console.log('[WebSocketEventServer] Shutting down...');
+
+    // Unsubscribe from EventBus to avoid leaks
+    if (this.eventBusUnsubscribe) {
+      this.eventBusUnsubscribe();
+      this.eventBusUnsubscribe = null;
+    }
 
     // Stop heartbeat
     if (this.heartbeatInterval) {
