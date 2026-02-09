@@ -8,31 +8,33 @@ describe("WebSocket Server Smoke Test", () => {
   let wsServer: WebSocketEventServer;
   let baseUrl: string;
 
-  beforeEach((context) => {
-    return new Promise<void>((resolve) => {
+  beforeEach(() => {
+    return new Promise<void>((resolve, reject) => {
       // Create a dummy HTTP server
       httpServer = createServer((req, res) => {
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end("Test server");
       });
 
-      // Listen on random available port
+      // Listen on random available port (never use port 0 for connections)
       httpServer.listen(0, () => {
         const address = httpServer.address();
-        const port = typeof address === "object" && address ? address.port : 0;
-        baseUrl = `ws://localhost:${port}`;
+        if (typeof address !== "object" || !address || typeof address.port !== "number" || address.port <= 0) {
+          reject(new Error("Failed to resolve listening port"));
+          return;
+        }
+        baseUrl = `ws://localhost:${address.port}`;
         resolve();
       });
     });
   });
 
-  afterEach(() => {
-    // Ensure cleanup
+  afterEach(async () => {
     if (wsServer) {
       wsServer.shutdown();
     }
     if (httpServer) {
-      httpServer.close();
+      await new Promise<void>((res, rej) => httpServer.close((err) => (err ? rej(err) : res())));
     }
   });
 
