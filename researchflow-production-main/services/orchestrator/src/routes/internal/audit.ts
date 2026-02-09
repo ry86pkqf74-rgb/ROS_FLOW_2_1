@@ -1,9 +1,9 @@
-import { createHash, randomUUID, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 
-import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 
-import { db } from '../../../db.js';
+import { pool } from '../../../db.js';
+import * as AuditService from '../../services/audit.service';
 
 type StreamType = 'GLOBAL' | 'RUN' | 'MANUSCRIPT';
 
@@ -24,23 +24,6 @@ type IngestAuditEventBody = {
   payload_json?: Record<string, unknown>;
   dedupe_key?: string;
 };
-
-function stableStringify(value: unknown): string {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'string') return JSON.stringify(value);
-  if (typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    const keys = Object.keys(obj).sort();
-    return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
-  }
-  return JSON.stringify(String(value));
-}
-
-function sha256Hex(input: string): string {
-  return createHash('sha256').update(input).digest('hex');
-}
 
 function safeEq(a: string, b: string): boolean {
   const aBuf = Buffer.from(a);
@@ -105,124 +88,58 @@ router.post('/events', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!db) {
+  if (!pool) {
     res.status(500).json({ ok: false, error: 'database not initialized' });
     return;
   }
 
   const body = validated.value;
-  const createdAtIso = new Date().toISOString();
-
-  const payloadObj: Record<string, unknown> = { ...(body.payload_json ?? {}) };
-  if (body.dedupe_key) payloadObj.dedupe_key = body.dedupe_key;
-
-  const payloadHash = sha256Hex(stableStringify(payloadObj));
+  const appMode = String(process.env.APP_MODE || '').toLowerCase();
+  const hipaaMode =
+    appMode === 'hipaa' ||
+    String(process.env.HIPAA_MODE || '').toLowerCase() === 'true' ||
+    String(process.env.HIPAA_MODE || '').toLowerCase() === '1';
 
   try {
-    const result = await (db as any).transaction(async (tx: any) => {
-      await tx.execute(sql`
-        INSERT INTO audit_event_streams (stream_type, stream_key)
-        VALUES (${body.stream_type}, ${body.stream_key})
-        ON CONFLICT (stream_type, stream_key) DO NOTHING
-      `);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const row = await AuditService.appendEvent(
+        client,
+        {
+          stream_type: body.stream_type,
+          stream_key: body.stream_key,
+          run_id: body.run_id ?? null,
+          trace_id: body.trace_id ?? null,
+          node_id: body.node_id ?? null,
+          actor_type: body.actor_type,
+          actor_id: body.actor_id ?? null,
+          service: body.service,
+          action: body.action,
+          resource_type: body.resource_type,
+          resource_id: body.resource_id,
+          before_hash: body.before_hash ?? null,
+          after_hash: body.after_hash ?? null,
+          payload: body.payload_json ?? {},
+          dedupe_key: body.dedupe_key,
+        },
+        { hipaaMode },
+      );
+      await client.query('COMMIT');
 
-      const streamRows = await tx.execute(sql`
-        SELECT stream_id
-        FROM audit_event_streams
-        WHERE stream_type = ${body.stream_type}
-          AND stream_key = ${body.stream_key}
-        FOR UPDATE
-      `);
-      const streamId = streamRows?.rows?.[0]?.stream_id as string | undefined;
-      if (!streamId) {
-        throw new Error('failed to resolve stream_id');
-      }
-
-      if (body.dedupe_key) {
-        const existing = await tx.execute(sql`
-          SELECT id, stream_id, seq, event_hash
-          FROM audit_events
-          WHERE stream_id = ${streamId}
-            AND payload_json->>'dedupe_key' = ${body.dedupe_key}
-          ORDER BY seq DESC
-          LIMIT 1
-        `);
-        const row = existing?.rows?.[0];
-        if (row?.id) {
-          return {
-            audit_event_id: row.id as string,
-            stream_id: row.stream_id as string,
-            seq: Number(row.seq),
-            event_hash: row.event_hash as string,
-          };
-        }
-      }
-
-      const last = await tx.execute(sql`
-        SELECT seq, event_hash
-        FROM audit_events
-        WHERE stream_id = ${streamId}
-        ORDER BY seq DESC
-        LIMIT 1
-        FOR UPDATE
-      `);
-      const lastSeq = last?.rows?.[0]?.seq as number | string | undefined;
-      const prevEventHash = (last?.rows?.[0]?.event_hash as string | undefined) ?? null;
-      const nextSeq = (lastSeq ? Number(lastSeq) : 0) + 1;
-
-      const auditEventId = randomUUID();
-
-      const eventHashInput = [
-        streamId,
-        String(nextSeq),
-        createdAtIso,
-        body.run_id ?? 'null',
-        body.trace_id ?? 'null',
-        body.node_id ?? 'null',
-        body.actor_type,
-        body.actor_id ?? 'null',
-        body.service,
-        body.action,
-        body.resource_type,
-        body.resource_id,
-        body.before_hash ?? 'null',
-        body.after_hash ?? 'null',
-        payloadHash,
-        prevEventHash ?? 'null',
-      ].join('|');
-      const eventHash = sha256Hex(eventHashInput);
-
-      await tx.execute(sql`
-        INSERT INTO audit_events (
-          id, stream_id, seq, created_at,
-          run_id, trace_id, node_id,
-          actor_type, actor_id,
-          service, action,
-          resource_type, resource_id,
-          before_hash, after_hash,
-          payload_json, payload_hash,
-          prev_event_hash, event_hash
-        ) VALUES (
-          ${auditEventId}, ${streamId}, ${nextSeq}, ${createdAtIso}::timestamptz,
-          ${body.run_id ?? null}, ${body.trace_id ?? null}, ${body.node_id ?? null},
-          ${body.actor_type}, ${body.actor_id ?? null},
-          ${body.service}, ${body.action},
-          ${body.resource_type}, ${body.resource_id},
-          ${body.before_hash ?? null}, ${body.after_hash ?? null},
-          ${JSON.stringify(payloadObj)}::jsonb, ${payloadHash},
-          ${prevEventHash}, ${eventHash}
-        )
-      `);
-
-      return {
-        audit_event_id: auditEventId as string,
-        stream_id: streamId,
-        seq: nextSeq,
-        event_hash: eventHash,
-      };
-    });
-
-    res.json({ ok: true, ...result });
+      res.json({
+        ok: true,
+        audit_event_id: row.id,
+        stream_id: row.stream_id,
+        seq: Number(row.seq),
+        event_hash: row.event_hash,
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message ?? 'internal error' });
   }
