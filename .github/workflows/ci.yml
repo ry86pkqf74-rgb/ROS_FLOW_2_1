@@ -82,23 +82,21 @@ jobs:
         run: pnpm run typecheck
         continue-on-error: true
 
-      - name: Create prerequisite tables for migrations
+      - name: Apply orchestrator DB migrations in order
         run: |
-          PGPASSWORD=test_password psql -h localhost -U researchflow_test -d researchflow_test -c "
-            CREATE TABLE IF NOT EXISTS manuscript_branches (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              manuscript_id UUID NOT NULL,
-              branch_name VARCHAR(100) NOT NULL,
-              parent_branch VARCHAR(100) DEFAULT 'main',
-              status VARCHAR(20) DEFAULT 'active',
-              created_at TIMESTAMPTZ DEFAULT NOW(),
-              updated_at TIMESTAMPTZ DEFAULT NOW(),
-              UNIQUE(manuscript_id, branch_name)
-            );
-          "
-
-      - name: Run migration 020_edit_sessions
-        run: node services/orchestrator/scripts/run-migration-020.mjs
+          MIG_DIR="services/orchestrator/migrations"
+          if [[ ! -d "$MIG_DIR" ]]; then
+            MIG_DIR="researchflow-production-main/services/orchestrator/migrations"
+          fi
+          if [[ ! -d "$MIG_DIR" ]]; then
+            echo "::error::Migrations directory not found (tried services/orchestrator/migrations and researchflow-production-main/...)"
+            exit 1
+          fi
+          export PGPASSWORD=test_password
+          for f in $(ls -1 "$MIG_DIR"/*.sql 2>/dev/null | sort -V); do
+            echo "Applying migration: $f"
+            psql -h localhost -U researchflow_test -d researchflow_test -v ON_ERROR_STOP=1 -f "$f" || exit 1
+          done
         env:
           DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test
 
