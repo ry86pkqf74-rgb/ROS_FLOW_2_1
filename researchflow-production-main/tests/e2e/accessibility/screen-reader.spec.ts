@@ -17,14 +17,14 @@ import {
   getImagesWithoutAlt,
 } from './helpers';
 
-const MAJOR_PAGES = [
+const MAJOR_PAGES: ReadonlyArray<{ path: string; name: string; auth?: boolean }> = [
   { path: '/', name: 'Home' },
   { path: '/demo', name: 'Demo' },
   { path: '/login', name: 'Login' },
   { path: '/workflow', name: 'Workflow', auth: true },
   { path: '/dashboard', name: 'Dashboard', auth: true },
   { path: '/governance', name: 'Governance', auth: true },
-] as const;
+];
 
 test.describe('Screen reader and ARIA', () => {
   test.beforeEach(async ({ page }) => {

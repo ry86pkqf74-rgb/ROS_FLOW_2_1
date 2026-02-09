@@ -29,6 +29,53 @@ declare module '@researchflow/core/schema' {
   export const chatMessages: any;
   export const shares: any;
   export const papers: any;
+  
+  // Additional table exports for orchestrator
+  export const researchProjects: any;
+  export const userRoles: any;
+  export const approvalGates: any;  // separate table from approvals (both exist in schema)
+  export const approvalAuditEntries: any;
+  export const phiIncidents: any;
+  export const handoffPacks: any;
+  export const conversations: any;
+  export const messages: any;
+  export const artifactVersions: any;
+  export const artifactComparisons: any;
+  export const fileUploads: any;
+  export const researchSessions: any;
+  
+  // Type exports
+  export type Topic = any;
+  export type InsertTopic = any;
+  export type UpsertUser = any;
+  export type Artifact = any;
+  export type InsertArtifact = any;
+  export type ArtifactVersion = any;
+  export type InsertArtifactVersion = any;
+  export type ArtifactComparison = any;
+  export type InsertArtifactComparison = any;
+  export type ResearchProject = any;
+  export type InsertResearchProject = any;
+  export type UserRoleRecord = any;
+  export type InsertUserRole = any;
+  export type ApprovalGateRecord = any;
+  export type InsertApprovalGate = any;
+  export type ApprovalAuditEntryRecord = any;
+  export type InsertApprovalAuditEntry = any;
+  export type AuditLog = any;
+  export type InsertAuditLog = any;
+  export type PhiIncident = any;
+  export type InsertPhiIncident = any;
+  export type HandoffPackRecord = any;
+  export type InsertHandoffPack = any;
+  export type Conversation = any;
+  export type InsertConversation = any;
+  export type Message = any;
+  export type InsertMessage = any;
+  export type FileUpload = any;
+  export type InsertFileUpload = any;
+  export type ResearchSession = any;
+  export type InsertResearchSession = any;
 }
 
 declare module '@researchflow/core/types' {

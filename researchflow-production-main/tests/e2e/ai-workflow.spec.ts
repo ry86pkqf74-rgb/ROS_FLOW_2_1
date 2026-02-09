@@ -58,6 +58,7 @@ async function waitForWebSocketMessage(
       try {
         const parsed = JSON.parse(data);
         if (predicate(parsed)) {
+          // @ts-expect-error - Playwright WebSocket event typing may lag runtime API
           ws.off('framereceived', messageHandler);
           clearTimeout(timer);
           resolve(parsed);
@@ -67,6 +68,7 @@ async function waitForWebSocketMessage(
       }
     };
 
+    // @ts-expect-error - Playwright WebSocket event typing may lag runtime API
     ws.on('framereceived', messageHandler);
   });
 }

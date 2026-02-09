@@ -17,7 +17,7 @@ import { assertNoCriticalOrSeriousViolations, getViolationSummary, A11Y_THRESHOL
 
 const REPORTS_DIR = path.join(process.cwd(), 'tests', 'e2e', 'accessibility', 'reports');
 
-const MAJOR_PAGES = [
+const MAJOR_PAGES: ReadonlyArray<{ path: string; name: string; auth?: boolean }> = [
   { path: '/', name: 'Home' },
   { path: '/demo', name: 'Demo landing' },
   { path: '/login', name: 'Login' },
@@ -27,7 +27,7 @@ const MAJOR_PAGES = [
   { path: '/governance', name: 'Governance', auth: true },
   { path: '/manuscripts/new', name: 'Manuscript new', auth: true },
   { path: '/project/demo-project/compliance', name: 'Compliance', auth: true },
-] as const;
+];
 
 const VIEWPORTS = [
   { width: 1280, height: 720, name: 'desktop' },

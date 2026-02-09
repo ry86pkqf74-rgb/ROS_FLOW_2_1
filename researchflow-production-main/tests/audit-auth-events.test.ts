@@ -162,12 +162,17 @@ describe('Audit Logging for Authentication Events', () => {
   });
 
   describe('getRequestMetadata', () => {
-    let mockRequest: Partial<Request>;
+    interface MockRequest {
+      headers?: Record<string, string | string[]>;
+      socket?: { remoteAddress?: string };
+      ip?: string;
+    }
+    let mockRequest: MockRequest;
 
     beforeEach(() => {
       mockRequest = {
         headers: {},
-        socket: { remoteAddress: '127.0.0.1' } as any,
+        socket: { remoteAddress: '127.0.0.1' },
         ip: '127.0.0.1'
       };
     });

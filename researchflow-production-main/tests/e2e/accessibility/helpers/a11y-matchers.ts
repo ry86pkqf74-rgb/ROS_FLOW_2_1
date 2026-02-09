@@ -3,6 +3,7 @@
  * Wraps axe results and DOM checks for WCAG 2.1 AA compliance.
  */
 
+import type { Result as AxeResult } from 'axe-core';
 import { expect } from '@playwright/test';
 
 export type AxeImpact = 'critical' | 'serious' | 'moderate' | 'minor';
@@ -18,9 +19,9 @@ export interface AxeViolation {
 
 export interface AxeResults {
   violations: AxeViolation[];
-  passes: unknown[];
-  incomplete: unknown[];
-  inapplicable: unknown[];
+  passes: AxeResult[];
+  incomplete: AxeResult[];
+  inapplicable: AxeResult[];
 }
 
 /** Thresholds: 0 critical, 0 serious per WCAG 2.1 AA */
