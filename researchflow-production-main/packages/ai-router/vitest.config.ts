@@ -36,10 +36,12 @@ export default defineConfig({
         'node_modules/',
         'src/__tests__/',
       ],
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80,
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
 
     // Test timeout (30 seconds)

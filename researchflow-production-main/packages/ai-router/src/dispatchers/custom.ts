@@ -32,10 +32,12 @@ interface AgentInput {
   query: string;
   context?: Record<string, unknown>;
   options?: Record<string, unknown>;
+  workflowStage?: number;
 }
 
 interface AgentOutput {
   content: string;
+  citations?: unknown[];
   metadata?: Record<string, unknown>;
   success: boolean;
 }
@@ -553,7 +555,7 @@ export class CustomDispatcher {
   }
 
   getAgentRegistry(): Record<CustomAgentType, CustomAgentRegistry> {
-    return Object.fromEntries(this.agentRegistry);
+    return Object.fromEntries(this.agentRegistry) as Record<CustomAgentType, CustomAgentRegistry>;
   }
 
   getMetrics() {
@@ -602,8 +604,4 @@ export function createCustomDispatcher(config?: {
   return new CustomDispatcher(config);
 }
 
-export type {
-  CustomAgentRegistry,
-  DispatchDecision,
-  CustomDispatchContext,
-};
+// removed: duplicate re-exports — these interfaces are already exported above

@@ -11,6 +11,10 @@ permissions:
   contents: read
   pull-requests: read
 
+defaults:
+  run:
+    working-directory: researchflow-production-main
+
 jobs:
   gitleaks:
     name: Secret scan (gitleaks)
@@ -65,7 +69,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('researchflow-production-main/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 

@@ -159,7 +159,9 @@ export class FeatureFlagManager {
   private flags: Map<FeatureFlagKey, FeatureFlagConfig>;
 
   constructor(customFlags?: Record<FeatureFlagKey, FeatureFlagConfig>) {
-    this.flags = new Map(Object.entries(customFlags || FEATURE_FLAGS));
+    this.flags = new Map(
+      Object.entries(customFlags || FEATURE_FLAGS) as Array<[FeatureFlagKey, FeatureFlagConfig]>
+    );
   }
 
   private getConsistentHash(userId: string, flagKey: FeatureFlagKey): number {
@@ -190,11 +192,11 @@ export class FeatureFlagManager {
   }
 
   evaluateFlags(flagKeys: FeatureFlagKey[], userContext: UserContext): Record<FeatureFlagKey, FeatureFlagEvaluationResult> {
-    const results: Record<FeatureFlagKey, FeatureFlagEvaluationResult> = {};
+    const results: Partial<Record<FeatureFlagKey, FeatureFlagEvaluationResult>> = {};
     for (const flagKey of flagKeys) {
       results[flagKey] = this.evaluateFlag(flagKey, userContext);
     }
-    return results;
+    return results as Record<FeatureFlagKey, FeatureFlagEvaluationResult>;
   }
 
   getABTestVariant(testName: string, userId: string): 'a' | 'b' | 'control' | null {

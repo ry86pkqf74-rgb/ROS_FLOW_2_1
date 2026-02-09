@@ -327,4 +327,5 @@ All commands accept optional JSON parameters for customization:
 - Command-specific params (see examples above)
 `;
 
-export { AgentCommand, CursorConfig };
+// removed: conflicts with existing exports
+// export { AgentCommand, CursorConfig };
