@@ -8,7 +8,7 @@ import * as z from "zod";
 import { users, sessions } from "./auth";
 import type { User as AuthUser } from "./auth";
 export { users, sessions };
-export type { UpsertUser } from "./auth";
+export type { UpsertUser, User } from "./auth";
 // Note: We export AuthUser renamed to avoid conflicts with User from roles.ts
 export type { AuthUser };
 
