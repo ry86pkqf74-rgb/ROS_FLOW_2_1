@@ -83,20 +83,7 @@ jobs:
         continue-on-error: true
 
       - name: Apply orchestrator DB migrations in order
-        run: |
-          MIG_DIR="services/orchestrator/migrations"
-          if [[ ! -d "$MIG_DIR" ]]; then
-            MIG_DIR="researchflow-production-main/services/orchestrator/migrations"
-          fi
-          if [[ ! -d "$MIG_DIR" ]]; then
-            echo "::error::Migrations directory not found (tried services/orchestrator/migrations and researchflow-production-main/...)"
-            exit 1
-          fi
-          export PGPASSWORD=test_password
-          for f in $(ls -1 "$MIG_DIR"/*.sql 2>/dev/null | sort -V); do
-            echo "Applying migration: $f"
-            psql -h localhost -U researchflow_test -d researchflow_test -v ON_ERROR_STOP=1 -f "$f" || exit 1
-          done
+        run: node researchflow-production-main/services/orchestrator/scripts/ci-migrate.mjs
         env:
           DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test
 
