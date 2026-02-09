@@ -19,6 +19,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { CollaborationWebSocketServer } from './collaboration/websocket-server';
 import { mockAuthMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { serviceAuthMiddleware } from './middleware/service-auth';
 import { configureSecurityHeaders, cspViolationReporter, createSecurityHeadersMiddleware, initializeSecurityHeadersLogging } from './middleware/securityHeaders.js';
 import aiAgentProxyRoutes from './routes/ai-agent-proxy';
 import aiBridgeRoutes from './routes/ai-bridge';
@@ -314,6 +315,9 @@ app.use('/static', (req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Service token auth (must run before security headers and rate limiters)
+app.use(serviceAuthMiddleware);
 
 // Security Headers Middleware (SEC-005 Fix - APPLIED)
 app.use(createSecurityHeadersMiddleware());
