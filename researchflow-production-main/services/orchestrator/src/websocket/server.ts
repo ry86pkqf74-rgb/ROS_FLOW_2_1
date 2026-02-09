@@ -73,7 +73,7 @@ export class WebSocketEventServer {
 
   constructor(config: WebSocketServerConfig = {}) {
     this.config = {
-      path: config.path || '/ws',
+      path: config.path || '/ws/events',
       heartbeatIntervalMs: config.heartbeatIntervalMs || 30000, // 30 seconds
       heartbeatTimeoutMs: config.heartbeatTimeoutMs || 60000, // 60 seconds
       maxConnections: config.maxConnections || 10000,
