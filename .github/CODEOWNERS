@@ -1,0 +1,6 @@
+# Paths that require code owner review before merge.
+# Replace @researchflow/maintainers with your org's team or user.
+
+researchflow-production-main/services/orchestrator/ @researchflow/maintainers
+researchflow-production-main/services/worker/ @researchflow/maintainers
+researchflow-production-main/services/orchestrator/migrations/ @researchflow/maintainers
