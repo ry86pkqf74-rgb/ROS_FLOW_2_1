@@ -24,14 +24,14 @@
 
 import { createHash } from 'crypto';
 
-import { sql, eq, desc, and } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 import * as z from 'zod';
 
-import { db } from '../../db';
+import { db, pool } from '../../db';
 import { requireRole } from '../middleware/rbac';
-import { createAuditEntry } from '../services/auditService';
+import { appendEvent, type DbClient } from '../services/audit.service';
 import { scanForPhi } from '../services/phi-protection';
 
 const router = Router();
@@ -131,6 +131,37 @@ function serializeSectionsToText(
     .join('\n\n');
 }
 
+const STREAM_TYPE_MANUSCRIPT = 'MANUSCRIPT';
+const SERVICE_ORCHESTRATOR = 'orchestrator';
+
+function getHipaaMode(): boolean {
+  const mode = process.env.GOVERNANCE_MODE || process.env.ROS_MODE || '';
+  const appMode = String(process.env.APP_MODE || '').toLowerCase();
+  return (
+    mode === 'LIVE' ||
+    appMode === 'hipaa' ||
+    String(process.env.HIPAA_MODE || '').toLowerCase() === 'true' ||
+    String(process.env.HIPAA_MODE || '').toLowerCase() === '1'
+  );
+}
+
+/** Run a function inside a DB transaction. Commits on success, rolls back on throw. */
+async function runWithTransaction<T>(fn: (tx: DbClient) => Promise<T>): Promise<T> {
+  if (!pool) throw new Error('Database pool not initialized');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client as DbClient);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function logManuscriptEvent(
   manuscriptId: string,
   action: string,
@@ -146,6 +177,25 @@ async function logManuscriptEvent(
     VALUES (${`audit_${nanoid(12)}`}, ${manuscriptId}, ${action}, ${JSON.stringify(details)}::jsonb, ${userId}, ${previousHash || null}, ${currentHash})
   `);
 
+  return currentHash;
+}
+
+/** Log manuscript event inside an existing transaction (for use with canonical audit). */
+async function logManuscriptEventTx(
+  tx: DbClient,
+  manuscriptId: string,
+  action: string,
+  userId: string,
+  details: Record<string, any>,
+  previousHash?: string | null
+): Promise<string> {
+  const hashInput = JSON.stringify({ manuscriptId, action, details, previousHash, timestamp: Date.now() });
+  const currentHash = generateContentHash(hashInput);
+  await tx.query(
+    `INSERT INTO manuscript_audit_log (id, manuscript_id, action, details, user_id, previous_hash, current_hash)
+     VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)`,
+    [`audit_${nanoid(12)}`, manuscriptId, action, JSON.stringify(details), userId, previousHash ?? null, currentHash]
+  );
   return currentHash;
 }
 
@@ -184,54 +234,63 @@ router.post('/', requireRole('RESEARCHER'), async (req: Request, res: Response) 
 
     const { title, researchId, projectId, templateType, citationStyle, targetJournal } = parsed.data;
     const manuscriptId = `ms_${nanoid(12)}`;
-
-    // Create manuscript
-    await db.execute(sql`
-      INSERT INTO manuscripts (id, user_id, project_id, title, template_type, citation_style, target_journal)
-      VALUES (${manuscriptId}, ${userId}, ${projectId || null}, ${title}, ${templateType}, ${citationStyle}, ${targetJournal || null})
-    `);
-
-    // Create initial version
     const versionId = `ver_${nanoid(12)}`;
-    const initialContent = {
-      sections: {
-        title: { content: title, wordCount: title.split(/\s+/).length },
-        abstract: { content: '', wordCount: 0 },
-        introduction: { content: '', wordCount: 0 },
-        methods: { content: '', wordCount: 0 },
-        results: { content: '', wordCount: 0 },
-        discussion: { content: '', wordCount: 0 },
-        conclusion: { content: '', wordCount: 0 },
-        references: { content: '', citations: [] },
-      },
-    };
-    const contentHash = generateContentHash(JSON.stringify(initialContent));
 
-    await db.execute(sql`
-      INSERT INTO manuscript_versions (id, manuscript_id, version_number, content, data_snapshot_hash, word_count, change_description, current_hash, created_by)
-      VALUES (${versionId}, ${manuscriptId}, 1, ${JSON.stringify(initialContent)}::jsonb, ${contentHash}, 0, 'Initial creation', ${contentHash}, ${userId})
-    `);
+    await runWithTransaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO manuscripts (id, user_id, project_id, title, template_type, citation_style, target_journal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [manuscriptId, userId, projectId ?? null, title, templateType, citationStyle, targetJournal ?? null]
+      );
 
-    // Update manuscript with current version
-    await db.execute(sql`
-      UPDATE manuscripts SET current_version_id = ${versionId} WHERE id = ${manuscriptId}
-    `);
+      const initialContent = {
+        sections: {
+          title: { content: title, wordCount: title.split(/\s+/).length },
+          abstract: { content: '', wordCount: 0 },
+          introduction: { content: '', wordCount: 0 },
+          methods: { content: '', wordCount: 0 },
+          results: { content: '', wordCount: 0 },
+          discussion: { content: '', wordCount: 0 },
+          conclusion: { content: '', wordCount: 0 },
+          references: { content: '', citations: [] },
+        },
+      };
+      const contentHash = generateContentHash(JSON.stringify(initialContent));
 
-    // Audit log
-    await logManuscriptEvent(manuscriptId, 'MANUSCRIPT_CREATED', userId, {
-      title,
-      templateType,
-      citationStyle,
-      researchId,
-    });
+      await tx.query(
+        `INSERT INTO manuscript_versions (id, manuscript_id, version_number, content, data_snapshot_hash, word_count, change_description, current_hash, created_by)
+         VALUES ($1, $2, 1, $3::jsonb, $4, 0, 'Initial creation', $4, $5)`,
+        [versionId, manuscriptId, JSON.stringify(initialContent), contentHash, userId]
+      );
 
-    await createAuditEntry({
-      eventType: 'MANUSCRIPT_CREATED',
-      userId,
-      resourceType: 'manuscript',
-      resourceId: manuscriptId,
-      action: 'create',
-      details: { title, templateType },
+      await tx.query(
+        `UPDATE manuscripts SET current_version_id = $1 WHERE id = $2`,
+        [versionId, manuscriptId]
+      );
+
+      await logManuscriptEventTx(tx, manuscriptId, 'MANUSCRIPT_CREATED', userId, {
+        templateType,
+        citationStyle,
+        researchId,
+      });
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: manuscriptId,
+          actor_type: 'USER',
+          actor_id: userId,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'CREATE',
+          resource_type: 'manuscript',
+          resource_id: manuscriptId,
+          after_hash: contentHash,
+          payload: { manuscript_id: manuscriptId, template_type: templateType, citation_style: citationStyle, version_id: versionId },
+          dedupe_key: `manuscript:create:${manuscriptId}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
     });
 
     res.status(201).json({
@@ -374,13 +433,40 @@ router.patch('/:id', requireRole('RESEARCHER'), async (req: Request, res: Respon
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    await db.execute(sql`
-      UPDATE manuscripts
-      SET ${sql.raw(updateFields.join(', '))}, updated_at = NOW()
-      WHERE id = ${id}
-    `);
+    const updatePayloadForDedupe = JSON.stringify(updates);
+    const afterHash = generateContentHash(updatePayloadForDedupe);
 
-    await logManuscriptEvent(id, 'MANUSCRIPT_UPDATED', userId, updates);
+    await runWithTransaction(async (tx) => {
+      values.push(id);
+      const setClause = updateFields.join(', ') + ', updated_at = NOW()';
+      await tx.query(
+        `UPDATE manuscripts SET ${setClause} WHERE id = $${values.length}`,
+        values
+      );
+
+      await logManuscriptEventTx(tx, id, 'MANUSCRIPT_UPDATED', userId, {
+        status: updates.status,
+        target_journal: updates.targetJournal,
+      });
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'UPDATE',
+          resource_type: 'manuscript',
+          resource_id: id,
+          after_hash: afterHash,
+          payload: { manuscript_id: id, status: updates.status ?? undefined, target_journal: updates.targetJournal ?? undefined },
+          dedupe_key: `manuscript:update:${id}:${generateContentHash(updatePayloadForDedupe).substring(0, 16)}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
+    });
 
     const result = await db.execute(sql`SELECT * FROM manuscripts WHERE id = ${id}`);
     res.json(result.rows?.[0] || {});
@@ -517,30 +603,62 @@ router.post('/:id/doc/save', requireRole('RESEARCHER'), async (req: Request, res
     const newVersionNumber = (currentVersion.version_number || 0) + 1;
     const newVersionId = `ver_${nanoid(12)}`;
 
-    // Create content object
     const contentPayload = sections
       ? { sections, yjsState: yjsState || null, sectionId: sectionId || null }
       : { text: resolvedContentText, yjsState: yjsState || null, sectionId: sectionId || null };
     const contentHash = generateContentHash(JSON.stringify(contentPayload));
     const wordCount = countWords(resolvedContentText);
+    const sectionsCount = sections ? Object.keys(sections).length : undefined;
 
-    // Insert new version
-    await db.execute(sql`
-      INSERT INTO manuscript_versions (id, manuscript_id, version_number, content, data_snapshot_hash, word_count, change_description, previous_hash, current_hash, created_by)
-      VALUES (${newVersionId}, ${id}, ${newVersionNumber}, ${JSON.stringify(contentPayload)}::jsonb, ${contentHash}, ${wordCount}, ${changeDescription || 'Document saved'}, ${currentVersion.current_hash}, ${contentHash}, ${userId})
-    `);
+    await runWithTransaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO manuscript_versions (id, manuscript_id, version_number, content, data_snapshot_hash, word_count, change_description, previous_hash, current_hash, created_by)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10)`,
+        [
+          newVersionId,
+          id,
+          newVersionNumber,
+          JSON.stringify(contentPayload),
+          contentHash,
+          wordCount,
+          changeDescription || 'Document saved',
+          currentVersion.current_hash,
+          contentHash,
+          userId,
+        ]
+      );
 
-    // Update manuscript current version
-    await db.execute(sql`
-      UPDATE manuscripts SET current_version_id = ${newVersionId}, updated_at = NOW() WHERE id = ${id}
-    `);
+      await tx.query(
+        `UPDATE manuscripts SET current_version_id = $1, updated_at = NOW() WHERE id = $2`,
+        [newVersionId, id]
+      );
 
-    await logManuscriptEvent(id, 'DOCUMENT_SAVED', userId, {
-      versionNumber: newVersionNumber,
-      wordCount,
-      sectionId,
-      sectionsCount: sections ? Object.keys(sections).length : undefined,
-    }, currentVersion.current_hash);
+      await logManuscriptEventTx(tx, id, 'DOCUMENT_SAVED', userId, {
+        versionNumber: newVersionNumber,
+        wordCount,
+        sectionId,
+        sectionsCount,
+      }, currentVersion.current_hash);
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'DOC_SAVE',
+          resource_type: 'manuscript_version',
+          resource_id: newVersionId,
+          before_hash: currentVersion.current_hash ?? null,
+          after_hash: contentHash,
+          payload: { manuscript_id: id, version_id: newVersionId, version_number: newVersionNumber, word_count: wordCount, sections_count: sectionsCount },
+          dedupe_key: `manuscript:doc_save:${id}:${newVersionId}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
+    });
 
     res.json({
       id: newVersionId,
@@ -575,10 +693,29 @@ router.post('/:id/sections/:sectionId/refine', requireRole('RESEARCHER'), async 
     if (isLiveMode()) {
       const phiResult = scanForPhi(selectedText);
       if (phiResult.detected) {
-        await logManuscriptEvent(id, 'PHI_BLOCKED', userId, {
-          action: 'refine',
-          sectionId,
-          locationsCount: phiResult.identifiers.length,
+        const locationsCount = phiResult.identifiers.length;
+        await runWithTransaction(async (tx) => {
+          await logManuscriptEventTx(tx, id, 'PHI_BLOCKED', userId, {
+            action: 'refine',
+            sectionId,
+            locationsCount,
+          });
+          await appendEvent(
+            tx,
+            {
+              stream_type: STREAM_TYPE_MANUSCRIPT,
+              stream_key: id,
+              actor_type: 'USER',
+              actor_id: userId ?? null,
+              service: SERVICE_ORCHESTRATOR,
+              action: 'PHI_BLOCKED',
+              resource_type: 'manuscript',
+              resource_id: id,
+              payload: { manuscript_id: id, section_id: sectionId, action: 'refine', locations_count: locationsCount },
+              dedupe_key: `manuscript:refine:phi:${id}:${sectionId}:${generateContentHash(selectedText).substring(0, 16)}`,
+            },
+            { hipaaMode: getHipaaMode() }
+          );
         });
 
         return res.status(400).json({
@@ -596,14 +733,35 @@ router.post('/:id/sections/:sectionId/refine', requireRole('RESEARCHER'), async 
     // TODO: Integrate with actual AI service
     // For now, return a mock diff structure
     const proposedText = `[AI Refined] ${selectedText}`;
+    const inputHash = generateContentHash(selectedText);
+    const outputHash = generateContentHash(proposedText);
+    const provenanceId = `prov_${nanoid(8)}`;
 
-    // Log provenance
-    await logManuscriptEvent(id, 'AI_REFINE_REQUESTED', userId, {
-      sectionId,
-      instruction,
-      inputHash: generateContentHash(selectedText),
-      outputHash: generateContentHash(proposedText),
-      model: 'claude-3-sonnet', // TODO: Get from AI router
+    await runWithTransaction(async (tx) => {
+      await logManuscriptEventTx(tx, id, 'AI_REFINE_REQUESTED', userId, {
+        sectionId,
+        inputHash,
+        outputHash,
+        model: 'claude-3-sonnet',
+      });
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'AI_REFINE_REQUESTED',
+          resource_type: 'manuscript',
+          resource_id: id,
+          before_hash: inputHash,
+          after_hash: outputHash,
+          payload: { manuscript_id: id, section_id: sectionId, input_hash: inputHash, output_hash: outputHash },
+          dedupe_key: `manuscript:refine:${id}:${sectionId}:${inputHash.substring(0, 16)}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
     });
 
     // Return diff structure - NOT overwrite
@@ -621,7 +779,7 @@ router.post('/:id/sections/:sectionId/refine', requireRole('RESEARCHER'), async 
       selectionEnd,
       instruction,
       confidence: 0.85,
-      provenanceId: `prov_${nanoid(8)}`,
+      provenanceId,
     });
   } catch (error: any) {
     console.error('[manuscripts] Refine error:', error);
@@ -658,17 +816,36 @@ router.post('/:id/abstract/generate', requireRole('RESEARCHER'), async (req: Req
       ? `**Background**: [Generated background]\n\n**Methods**: [Generated methods]\n\n**Results**: [Generated results]\n\n**Conclusion**: [Generated conclusion]`
       : `[Generated abstract - ${wordLimit} word limit]`;
 
-    await logManuscriptEvent(id, 'ABSTRACT_GENERATED', userId, {
-      structured,
-      wordLimit,
-      model: 'claude-3-sonnet',
+    const provenanceId = `prov_${nanoid(8)}`;
+    await runWithTransaction(async (tx) => {
+      await logManuscriptEventTx(tx, id, 'ABSTRACT_GENERATED', userId, {
+        structured,
+        wordLimit,
+        model: 'claude-3-sonnet',
+      });
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'ABSTRACT_GENERATED',
+          resource_type: 'manuscript',
+          resource_id: id,
+          payload: { manuscript_id: id, structured, word_limit: wordLimit },
+          dedupe_key: `manuscript:abstract:${id}:${generateContentHash(JSON.stringify({ structured, wordLimit })).substring(0, 16)}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
     });
 
     res.json({
       content: abstractContent,
       wordCount: abstractContent.split(/\s+/).length,
       structured,
-      provenanceId: `prov_${nanoid(8)}`,
+      provenanceId,
     });
   } catch (error: any) {
     console.error('[manuscripts] Generate abstract error:', error);
@@ -790,18 +967,40 @@ router.post('/:id/comments', requireRole('RESEARCHER'), async (req: Request, res
 
     const { sectionId, anchorStart, anchorEnd, anchorText, body, tag, parentId } = parsed.data;
     const commentId = `cmt_${nanoid(12)}`;
+    const hasAnchor = !!(anchorStart != null && anchorEnd != null);
+    const isReply = !!parentId;
 
-    await db.execute(sql`
-      INSERT INTO manuscript_comments (id, manuscript_id, section_id, anchor_start, anchor_end, anchor_text, body, tag, parent_id, created_by)
-      VALUES (${commentId}, ${id}, ${sectionId || null}, ${anchorStart || null}, ${anchorEnd || null}, ${anchorText || null}, ${body}, ${tag || null}, ${parentId || null}, ${userId})
-    `);
+    await runWithTransaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO manuscript_comments (id, manuscript_id, section_id, anchor_start, anchor_end, anchor_text, body, tag, parent_id, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [commentId, id, sectionId ?? null, anchorStart ?? null, anchorEnd ?? null, anchorText ?? null, body, tag ?? null, parentId ?? null, userId]
+      );
 
-    await logManuscriptEvent(id, 'COMMENT_ADDED', userId, {
-      commentId,
-      sectionId,
-      hasAnchor: !!(anchorStart && anchorEnd),
-      tag,
-      isReply: !!parentId,
+      await logManuscriptEventTx(tx, id, 'COMMENT_ADDED', userId, {
+        commentId,
+        sectionId,
+        hasAnchor,
+        tag,
+        isReply,
+      });
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'COMMENT_ADDED',
+          resource_type: 'manuscript_comment',
+          resource_id: commentId,
+          payload: { manuscript_id: id, comment_id: commentId, section_id: sectionId ?? undefined, has_anchor: hasAnchor, is_reply: isReply },
+          dedupe_key: `manuscript:comment:${id}:${commentId}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
     });
 
     const result = await db.execute(sql`
@@ -831,21 +1030,46 @@ router.post('/:id/comments/:commentId/resolve', requireRole('RESEARCHER'), async
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const result = await db.execute(sql`
-      UPDATE manuscript_comments
-      SET status = 'resolved', resolved_by = ${userId}, resolved_at = NOW(), updated_at = NOW()
-      WHERE id = ${commentId} AND manuscript_id = ${id}
-      RETURNING *
-    `);
+    let row: any;
+    await runWithTransaction(async (tx) => {
+      const result = await tx.query(
+        `UPDATE manuscript_comments
+         SET status = 'resolved', resolved_by = $1, resolved_at = NOW(), updated_at = NOW()
+         WHERE id = $2 AND manuscript_id = $3
+         RETURNING *`,
+        [userId, commentId, id]
+      );
 
-    if (!result.rows || result.rows.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('COMMENT_NOT_FOUND');
+      }
+      row = result.rows[0];
+
+      await logManuscriptEventTx(tx, id, 'COMMENT_RESOLVED', userId, { commentId });
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'COMMENT_RESOLVED',
+          resource_type: 'manuscript_comment',
+          resource_id: commentId,
+          payload: { manuscript_id: id, comment_id: commentId, status: 'resolved' },
+          dedupe_key: `manuscript:comment:resolve:${id}:${commentId}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
+    });
+
+    res.json(row);
+  } catch (error: any) {
+    if (error?.message === 'COMMENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Comment not found' });
     }
-
-    await logManuscriptEvent(id, 'COMMENT_RESOLVED', userId, { commentId });
-
-    res.json(result.rows[0]);
-  } catch (error: any) {
     console.error('[manuscripts] Resolve comment error:', error);
     res.status(500).json({ error: 'Failed to resolve comment' });
   }
@@ -860,21 +1084,44 @@ router.delete('/:id/comments/:commentId', requireRole('RESEARCHER'), async (req:
     const { id, commentId } = req.params;
     const userId = (req as any).user?.id;
 
-    const result = await db.execute(sql`
-      UPDATE manuscript_comments
-      SET status = 'archived', updated_at = NOW()
-      WHERE id = ${commentId} AND manuscript_id = ${id} AND created_by = ${userId}
-      RETURNING *
-    `);
+    await runWithTransaction(async (tx) => {
+      const result = await tx.query(
+        `UPDATE manuscript_comments
+         SET status = 'archived', updated_at = NOW()
+         WHERE id = $1 AND manuscript_id = $2 AND created_by = $3
+         RETURNING *`,
+        [commentId, id, userId]
+      );
 
-    if (!result.rows || result.rows.length === 0) {
-      return res.status(404).json({ error: 'Comment not found or not authorized' });
-    }
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('COMMENT_NOT_FOUND');
+      }
 
-    await logManuscriptEvent(id, 'COMMENT_DELETED', userId, { commentId });
+      await logManuscriptEventTx(tx, id, 'COMMENT_DELETED', userId, { commentId });
+
+      await appendEvent(
+        tx,
+        {
+          stream_type: STREAM_TYPE_MANUSCRIPT,
+          stream_key: id,
+          actor_type: 'USER',
+          actor_id: userId ?? null,
+          service: SERVICE_ORCHESTRATOR,
+          action: 'COMMENT_DELETED',
+          resource_type: 'manuscript_comment',
+          resource_id: commentId,
+          payload: { manuscript_id: id, comment_id: commentId, status: 'archived' },
+          dedupe_key: `manuscript:comment:delete:${id}:${commentId}`,
+        },
+        { hipaaMode: getHipaaMode() }
+      );
+    });
 
     res.json({ success: true, id: commentId });
   } catch (error: any) {
+    if (error?.message === 'COMMENT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Comment not found or not authorized' });
+    }
     console.error('[manuscripts] Delete comment error:', error);
     res.status(500).json({ error: 'Failed to delete comment' });
   }
