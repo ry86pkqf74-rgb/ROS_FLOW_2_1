@@ -65,6 +65,7 @@ import submissionsRoutes from './routes/submissions';
 import manuscriptBranchesRoutes, { manuscriptBranchingRoutes } from './routes/manuscript-branches';
 import commitsRoutes from './routes/commits.routes';
 import manuscriptsRoutes from './routes/manuscripts';  // Canonical manuscript CRUD (Track M)
+import editSessionsRoutes from './routes/edit-sessions.routes';  // Phase 3: HITL edit sessions
 // Audit Improvements: New modular routes
 import authRoutes from './routes/auth';
 import workflowStagesExecuteRoutes from './routes/workflow/stages';
@@ -448,6 +449,7 @@ app.use('/api/ros/manuscripts', manuscriptBranchesRoutes);  // Manuscript branch
 app.use('/api/ros', commitsRoutes);  // Commit endpoints: list, diff, rollback-as-commit
 app.use('/api/manuscripts', manuscriptsRoutes);  // Canonical manuscript CRUD (Track M Phase M1)
 app.use('/api/manuscripts', manuscriptBranchingRoutes);  // Git-like manuscript versioning + AI refinement
+app.use('/api/edit-sessions', editSessionsRoutes);  // Phase 3: HITL edit sessions (draft → submit → approve/reject → merge)
 app.use('/api/orcid', orcidRoutes);
 
 // V2 API Routes (new collaboration + provenance features)
