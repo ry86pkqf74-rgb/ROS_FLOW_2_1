@@ -9,9 +9,14 @@ import crypto from 'crypto';
 import { pool, query as dbQuery } from '../../db';
 import { appendEvent, type DbClient } from './audit.service';
 
-const STREAM_TYPE_MANUSCRIPT = 'MANUSCRIPT';
+const STREAM_TYPE_EDIT_SESSION = 'EDIT_SESSION';
 const SERVICE_ORCHESTRATOR = 'orchestrator';
 const REDACTED_NOTE = '[REDACTED]';
+
+/** Deterministic stream key for edit-session ledger: one stream per session. */
+function streamKeyForSession(sessionId: string): string {
+  return `edit_session:${sessionId}`;
+}
 
 export type EditSessionStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'merged';
 
@@ -123,8 +128,8 @@ export async function createEditSession(params: {
     const afterHash = sessionStateHash(session);
 
     await appendEvent(tx, {
-      stream_type: STREAM_TYPE_MANUSCRIPT,
-      stream_key: params.manuscriptId,
+      stream_type: STREAM_TYPE_EDIT_SESSION,
+      stream_key: streamKeyForSession(session.id),
       actor_type: 'USER',
       actor_id: params.createdBy ?? null,
       service: SERVICE_ORCHESTRATOR,
@@ -133,7 +138,13 @@ export async function createEditSession(params: {
       resource_id: session.id,
       before_hash: null,
       after_hash: afterHash,
-      payload: { branch_id: params.branchId, manuscript_id: params.manuscriptId, status: 'draft' },
+      payload: {
+        edit_session_id: session.id,
+        branch_id: params.branchId,
+        manuscript_id: params.manuscriptId,
+        status_from: null,
+        status_to: 'draft',
+      },
       dedupe_key: `edit_session:${session.id}:create`,
     });
 
@@ -165,8 +176,8 @@ export async function submitEditSession(sessionId: string, submittedBy?: string 
     const afterHash = sessionStateHash(session);
 
     await appendEvent(tx, {
-      stream_type: STREAM_TYPE_MANUSCRIPT,
-      stream_key: row.manuscript_id,
+      stream_type: STREAM_TYPE_EDIT_SESSION,
+      stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
       actor_id: submittedBy ?? null,
       service: SERVICE_ORCHESTRATOR,
@@ -175,7 +186,13 @@ export async function submitEditSession(sessionId: string, submittedBy?: string 
       resource_id: sessionId,
       before_hash: beforeHash,
       after_hash: afterHash,
-      payload: { branch_id: row.branch_id, status: 'submitted' },
+      payload: {
+        edit_session_id: sessionId,
+        branch_id: row.branch_id,
+        manuscript_id: row.manuscript_id,
+        status_from: 'draft',
+        status_to: 'submitted',
+      },
       dedupe_key: `edit_session:${sessionId}:submit`,
     });
 
@@ -207,8 +224,8 @@ export async function approveEditSession(sessionId: string, approvedBy?: string 
     const afterHash = sessionStateHash(session);
 
     await appendEvent(tx, {
-      stream_type: STREAM_TYPE_MANUSCRIPT,
-      stream_key: row.manuscript_id,
+      stream_type: STREAM_TYPE_EDIT_SESSION,
+      stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
       actor_id: approvedBy ?? null,
       service: SERVICE_ORCHESTRATOR,
@@ -217,7 +234,13 @@ export async function approveEditSession(sessionId: string, approvedBy?: string 
       resource_id: sessionId,
       before_hash: beforeHash,
       after_hash: afterHash,
-      payload: { branch_id: row.branch_id, status: 'approved' },
+      payload: {
+        edit_session_id: sessionId,
+        branch_id: row.branch_id,
+        manuscript_id: row.manuscript_id,
+        status_from: 'submitted',
+        status_to: 'approved',
+      },
       dedupe_key: `edit_session:${sessionId}:approve`,
     });
 
@@ -254,8 +277,8 @@ export async function rejectEditSession(
     const afterHash = sessionStateHash(session);
 
     await appendEvent(tx, {
-      stream_type: STREAM_TYPE_MANUSCRIPT,
-      stream_key: row.manuscript_id,
+      stream_type: STREAM_TYPE_EDIT_SESSION,
+      stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
       actor_id: opts.rejectedBy ?? null,
       service: SERVICE_ORCHESTRATOR,
@@ -265,8 +288,11 @@ export async function rejectEditSession(
       before_hash: beforeHash,
       after_hash: afterHash,
       payload: {
+        edit_session_id: sessionId,
         branch_id: row.branch_id,
-        status: 'rejected',
+        manuscript_id: row.manuscript_id,
+        status_from: 'submitted',
+        status_to: 'rejected',
         note_length: redacted.noteLength,
         note_redacted: redacted.noteRedacted,
       },
@@ -302,8 +328,8 @@ export async function mergeEditSession(sessionId: string, mergedBy?: string | nu
     const afterHash = sessionStateHash(session);
 
     await appendEvent(tx, {
-      stream_type: STREAM_TYPE_MANUSCRIPT,
-      stream_key: row.manuscript_id,
+      stream_type: STREAM_TYPE_EDIT_SESSION,
+      stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
       actor_id: mergedBy ?? null,
       service: SERVICE_ORCHESTRATOR,
@@ -312,7 +338,13 @@ export async function mergeEditSession(sessionId: string, mergedBy?: string | nu
       resource_id: sessionId,
       before_hash: beforeHash,
       after_hash: afterHash,
-      payload: { branch_id: row.branch_id, status: 'merged' },
+      payload: {
+        edit_session_id: sessionId,
+        branch_id: row.branch_id,
+        manuscript_id: row.manuscript_id,
+        status_from: 'approved',
+        status_to: 'merged',
+      },
       dedupe_key: `edit_session:${sessionId}:merge`,
     });
 

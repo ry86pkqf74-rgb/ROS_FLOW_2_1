@@ -31,37 +31,44 @@ async function createBranch(manuscriptId: string): Promise<string> {
   return result.rows[0]?.id;
 }
 
-async function fetchAuditEvents(manuscriptId: string) {
+const EDIT_SESSION_STREAM_PREFIX = 'edit_session:';
+
+/** Fetch audit_events for the edit-session ledger stream (stream_key = edit_session:{id}). */
+async function fetchAuditEventsByEditSession(sessionId: string) {
+  const streamKey = `${EDIT_SESSION_STREAM_PREFIX}${sessionId}`;
   const result = await query(
-    `SELECT ae.action, ae.resource_type, ae.resource_id, ae.payload_json
+    `SELECT ae.seq, ae.action, ae.resource_type, ae.resource_id, ae.payload_json
      FROM audit_events ae
      JOIN audit_event_streams aes ON aes.stream_id = ae.stream_id
-     WHERE aes.stream_type = 'MANUSCRIPT' AND aes.stream_key = $1
+     WHERE aes.stream_type = 'EDIT_SESSION' AND aes.stream_key = $1
      ORDER BY ae.seq ASC`,
-    [manuscriptId],
+    [streamKey],
   );
   return result.rows;
 }
 
-async function cleanup(manuscriptId: string, branchId?: string | null) {
+async function cleanup(manuscriptId: string, branchId?: string | null, sessionId?: string | null) {
   if (branchId) {
     await query('DELETE FROM edit_sessions WHERE branch_id = $1', [branchId]);
   } else {
     await query('DELETE FROM edit_sessions WHERE manuscript_id = $1', [manuscriptId]);
   }
-  await query(
-    `DELETE FROM audit_events
-     WHERE stream_id IN (
-       SELECT stream_id FROM audit_event_streams
-       WHERE stream_type = 'MANUSCRIPT' AND stream_key = $1
-     )`,
-    [manuscriptId],
-  );
-  await query(
-    `DELETE FROM audit_event_streams
-     WHERE stream_type = 'MANUSCRIPT' AND stream_key = $1`,
-    [manuscriptId],
-  );
+  if (sessionId) {
+    const streamKey = `${EDIT_SESSION_STREAM_PREFIX}${sessionId}`;
+    await query(
+      `DELETE FROM audit_events
+       WHERE stream_id IN (
+         SELECT stream_id FROM audit_event_streams
+         WHERE stream_type = 'EDIT_SESSION' AND stream_key = $1
+       )`,
+      [streamKey],
+    );
+    await query(
+      `DELETE FROM audit_event_streams
+       WHERE stream_type = 'EDIT_SESSION' AND stream_key = $1`,
+      [streamKey],
+    );
+  }
   if (branchId) {
     await query('DELETE FROM manuscript_branches WHERE id = $1', [branchId]);
   }
@@ -78,24 +85,32 @@ describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not
     const manuscriptId = randomUUID();
     const actorId = randomUUID();
     let branchId: string | null = null;
+    let session: { id: string } | null = null;
 
     try {
       branchId = await createBranch(manuscriptId);
-      const session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
+      session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
       await submitEditSession(session.id, actorId);
       await approveEditSession(session.id, actorId);
       const merged = await mergeEditSession(session.id, actorId);
 
       expect(merged.status).toBe('merged');
 
-      const events = await fetchAuditEvents(manuscriptId);
-      const actions = events.map(event => event.action);
+      const events = await fetchAuditEventsByEditSession(session.id);
+      expect(events.length).toBe(4);
+
+      const actions = events.map((e: { action: string }) => e.action);
       expect(actions).toEqual([
         'EDIT_SESSION_CREATE',
         'EDIT_SESSION_SUBMIT',
         'EDIT_SESSION_APPROVE',
         'EDIT_SESSION_MERGE',
       ]);
+
+      const expectedSeq = [1, 2, 3, 4];
+      for (let i = 0; i < events.length; i++) {
+        expect(Number(events[i].seq)).toBe(expectedSeq[i]);
+      }
 
       const expectedDedupe: Record<string, string> = {
         EDIT_SESSION_CREATE: `edit_session:${session.id}:create`,
@@ -108,9 +123,11 @@ describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not
         expect(event.resource_type).toBe('EDIT_SESSION');
         expect(event.resource_id).toBe(session.id);
         expect(event.payload_json?.dedupe_key).toBe(expectedDedupe[event.action]);
+        expect(event.payload_json?.reason).toBeUndefined();
+        expect(JSON.stringify(event.payload_json)).not.toMatch(/\brejection_reason\b/);
       }
     } finally {
-      await cleanup(manuscriptId, branchId);
+      await cleanup(manuscriptId, branchId, session?.id ?? null);
     }
   });
 
@@ -120,10 +137,11 @@ describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not
     const actorId = randomUUID();
     const reason = 'Patient name John Doe should not be stored.';
     let branchId: string | null = null;
+    let session: { id: string } | null = null;
 
     try {
       branchId = await createBranch(manuscriptId);
-      const session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
+      session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
       await submitEditSession(session.id, actorId);
       await rejectEditSession(session.id, { rejectedBy: actorId, reason });
 
@@ -133,15 +151,19 @@ describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not
       );
       expect(sessionRow.rows[0]?.rejection_reason).toBe('[REDACTED]');
 
-      const events = await fetchAuditEvents(manuscriptId);
-      const rejectEvent = events.find(event => event.action === 'EDIT_SESSION_REJECT');
+      const events = await fetchAuditEventsByEditSession(session.id);
+      expect(events.length).toBe(3);
+      const seqs = events.map((e: { seq: unknown }) => Number(e.seq));
+      expect(seqs).toEqual([1, 2, 3]);
+
+      const rejectEvent = events.find((e: { action: string }) => e.action === 'EDIT_SESSION_REJECT');
       expect(rejectEvent).toBeDefined();
       expect(rejectEvent?.payload_json?.note_length).toBe(reason.length);
       expect(rejectEvent?.payload_json?.note_redacted).toBe(true);
       expect(rejectEvent?.payload_json?.reason).toBeUndefined();
       expect(JSON.stringify(rejectEvent?.payload_json)).not.toContain(reason);
     } finally {
-      await cleanup(manuscriptId, branchId);
+      await cleanup(manuscriptId, branchId, session?.id ?? null);
     }
   });
 
@@ -150,18 +172,20 @@ describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not
     const manuscriptId = randomUUID();
     const actorId = randomUUID();
     let branchId: string | null = null;
+    let session: { id: string } | null = null;
 
     try {
       branchId = await createBranch(manuscriptId);
-      const session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
+      session = await createEditSession({ branchId, manuscriptId, createdBy: actorId });
 
       await expect(approveEditSession(session.id, actorId)).rejects.toThrow('Cannot approve');
       await expect(mergeEditSession(session.id, actorId)).rejects.toThrow('Cannot merge');
 
-      const events = await fetchAuditEvents(manuscriptId);
-      expect(events.map(event => event.action)).toEqual(['EDIT_SESSION_CREATE']);
+      const events = await fetchAuditEventsByEditSession(session.id);
+      expect(events.map((e: { action: string }) => e.action)).toEqual(['EDIT_SESSION_CREATE']);
+      expect(Number(events[0].seq)).toBe(1);
     } finally {
-      await cleanup(manuscriptId, branchId);
+      await cleanup(manuscriptId, branchId, session?.id ?? null);
     }
   });
 });
