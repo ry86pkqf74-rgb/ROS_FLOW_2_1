@@ -153,6 +153,12 @@ declare module '@researchflow/phi-engine' {
   export const scanForPHI: (text: string) => Promise<any>;
   export const redact: (text: string, detections: any) => string;
   export const detectPHI: (data: any) => Promise<any[]>;
+  export const containsPhi: (text: string) => boolean;
+  export const getPhiStats: (text: string) => Record<string, number>;
+  export const scrubLog: (text: string) => string;
+  export const scrubObject: (obj: any) => any;
+  export const scan: (text: string) => Promise<any>;
+  export const hasPhi: (text: string) => boolean;
   export class PHIEngine {
     scan(text: string): Promise<any>;
     redact(text: string): Promise<string>;
