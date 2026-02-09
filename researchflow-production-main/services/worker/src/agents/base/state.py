@@ -109,6 +109,11 @@ class AgentState(TypedDict):
     # Human-in-the-loop
     awaiting_approval: bool
     approval_request_id: Optional[str]
+    edit_session_id: Optional[str]
+    edit_session_attempt: Optional[int]
+    edit_session_status: Optional[str]
+    waiting_for_human_attempt: int
+    edit_session_created_at: Optional[str]
 
 
 class ImprovementState(TypedDict):
@@ -200,6 +205,11 @@ def create_initial_state(
         start_time=datetime.utcnow().isoformat(),
         awaiting_approval=False,
         approval_request_id=None,
+        edit_session_id=None,
+        edit_session_attempt=None,
+        edit_session_status=None,
+        waiting_for_human_attempt=0,
+        edit_session_created_at=None,
         trace_id=None,
         node_id=None,
         manuscript_id=None,

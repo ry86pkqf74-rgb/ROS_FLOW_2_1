@@ -26,6 +26,8 @@ except ImportError:
 # Local imports
 from .llm_router import get_router, PHIDetector
 from .composio_tools import get_toolset
+from ..agents.nodes.waiting_for_human import enter_waiting_for_human, validate_resume
+from ..clients.orchestrator_client import get_orchestrator_client
 
 
 # Canonical gate status for HITL pause (worker pauses here, orchestrator/UI drives resume)
@@ -49,6 +51,11 @@ class WorkflowState(TypedDict):
     # Phase 3: HITL gate — worker pauses at gate_status=WAITING_FOR_HUMAN; resume with human_decision
     gate_status: Optional[str]
     human_decision: Optional[str]
+    edit_session_id: Optional[str]
+    edit_session_attempt: Optional[int]
+    edit_session_status: Optional[str]
+    waiting_for_human_attempt: Optional[int]
+    edit_session_created_at: Optional[str]
 
 
 class ResearchWorkflow:
@@ -170,10 +177,13 @@ Provide:
     def _human_gate_node(self, state: WorkflowState) -> WorkflowState:
         """Phase 3: Pause for human review. Sets gate_status=WAITING_FOR_HUMAN; resume via invoke with human_decision."""
         logger.info("Human gate: pausing for human review (WAITING_FOR_HUMAN)")
+        client = get_orchestrator_client()
+        session_updates = enter_waiting_for_human(state, client, node_id="human_gate")
         return {
             **state,
             "gate_status": WAITING_FOR_HUMAN,
             "stage": "waiting_for_human",
+            **session_updates,
             "messages": state["messages"] + [{
                 "role": "system",
                 "content": "Workflow paused for human review. Resume with human_decision=approved or human_decision=rejected.",
@@ -315,6 +325,19 @@ Generate high-quality outputs for each step."""
         # Phase 3: Resume from human gate — pass only human_decision so graph continues from resume_handler
         if config.get("resume") and "human_decision" in config:
             human_decision = str(config.get("human_decision", "")).strip()
+            edit_session_id = str(config.get("edit_session_id", "")).strip()
+            run_id = config.get("run_id", "")
+            trace_id = config.get("trace_id", "") or run_id
+            attempt = int(config.get("edit_session_attempt") or config.get("waiting_for_human_attempt") or 0)
+            client = get_orchestrator_client()
+            validate_resume(
+                client,
+                edit_session_id=edit_session_id,
+                node_id="human_gate",
+                run_id=run_id,
+                trace_id=trace_id,
+                attempt=attempt,
+            )
             resume_input: WorkflowState = {
                 "task": "",
                 "plan": None,
@@ -324,12 +347,16 @@ Generate high-quality outputs for each step."""
                 "stage": "resuming",
                 "error": None,
                 "metadata": {},
-                "run_id": config.get("run_id", ""),
-                "trace_id": config.get("trace_id", ""),
+                "run_id": run_id,
+                "trace_id": trace_id,
                 "manuscript_id": config.get("manuscript_id"),
                 "branch_id": config.get("branch_id"),
                 "gate_status": None,
                 "human_decision": human_decision,
+                "edit_session_id": edit_session_id,
+                "edit_session_attempt": attempt,
+                "edit_session_status": None,
+                "waiting_for_human_attempt": attempt,
             }
             result = self.graph.invoke(resume_input, thread_config)
             return result
@@ -354,6 +381,11 @@ Generate high-quality outputs for each step."""
             "branch_id": branch_id,
             "gate_status": None,
             "human_decision": None,
+            "edit_session_id": None,
+            "edit_session_attempt": None,
+            "edit_session_status": None,
+            "waiting_for_human_attempt": 0,
+            "edit_session_created_at": None,
         }
         
         result = self.graph.invoke(initial_state, thread_config)
@@ -373,3 +405,31 @@ def get_workflow() -> ResearchWorkflow:
 def run_research_task(task: str, **kwargs) -> WorkflowState:
     """Convenience function to run a research workflow."""
     return get_workflow().invoke(task, kwargs)
+
+
+def resume_research_task(
+    *,
+    thread_id: str,
+    human_decision: str,
+    edit_session_id: str,
+    run_id: str = "",
+    trace_id: str = "",
+    manuscript_id: Optional[str] = None,
+    branch_id: Optional[str] = None,
+    edit_session_attempt: Optional[int] = None,
+    waiting_for_human_attempt: Optional[int] = None,
+) -> WorkflowState:
+    """Resume a paused workflow after human decision with edit session validation."""
+    config = {
+        "thread_id": thread_id,
+        "resume": True,
+        "human_decision": human_decision,
+        "edit_session_id": edit_session_id,
+        "edit_session_attempt": edit_session_attempt,
+        "waiting_for_human_attempt": waiting_for_human_attempt,
+        "run_id": run_id,
+        "trace_id": trace_id,
+        "manuscript_id": manuscript_id,
+        "branch_id": branch_id,
+    }
+    return get_workflow().invoke("", config)
