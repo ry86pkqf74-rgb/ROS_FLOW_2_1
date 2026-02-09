@@ -7,7 +7,8 @@
 import crypto from 'crypto';
 
 import { pool, query as dbQuery } from '../../db';
-import { appendEvent, type DbClient } from './audit.service';
+import { appendAuditEvent } from './audit-ledger.service';
+import { type DbClient } from './audit.service';
 
 const STREAM_TYPE_EDIT_SESSION = 'EDIT_SESSION';
 const SERVICE_ORCHESTRATOR = 'orchestrator';
@@ -101,6 +102,78 @@ async function runWithTransaction<T>(fn: (tx: DbClient) => Promise<T>): Promise<
   }
 }
 
+async function resolveStreamId(tx: DbClient, streamType: string, streamKey: string): Promise<string> {
+  const insertResult = await tx.query(
+    `INSERT INTO audit_event_streams (stream_type, stream_key)
+     VALUES ($1, $2)
+     ON CONFLICT (stream_type, stream_key) DO NOTHING
+     RETURNING stream_id`,
+    [streamType, streamKey],
+  );
+
+  if (insertResult.rows.length > 0) {
+    return insertResult.rows[0].stream_id;
+  }
+
+  const selectResult = await tx.query(
+    `SELECT stream_id FROM audit_event_streams
+     WHERE stream_type = $1 AND stream_key = $2`,
+    [streamType, streamKey],
+  );
+
+  return selectResult.rows[0].stream_id;
+}
+
+async function appendLedgerEvent(
+  tx: DbClient,
+  input: {
+    stream_type: string;
+    stream_key: string;
+    action: string;
+    resource_type: string;
+    resource_id: string;
+    payload?: Record<string, unknown>;
+    dedupe_key?: string;
+    actor_type: string;
+    actor_id?: string | null;
+    service: string;
+    before_hash?: string | null;
+    after_hash?: string | null;
+  },
+): Promise<void> {
+  const streamId = await resolveStreamId(tx, input.stream_type, input.stream_key);
+
+  if (input.dedupe_key) {
+    const dupeResult = await tx.query(
+      `SELECT id FROM audit_events
+       WHERE stream_id = $1 AND payload_json->>'dedupe_key' = $2
+       LIMIT 1`,
+      [streamId, input.dedupe_key],
+    );
+    if (dupeResult.rows.length > 0) {
+      return;
+    }
+  }
+
+  const payload = input.dedupe_key
+    ? { ...(input.payload ?? {}), dedupe_key: input.dedupe_key }
+    : (input.payload ?? {});
+
+  await appendAuditEvent(tx, {
+    streamId,
+    action: input.action,
+    resourceType: input.resource_type,
+    resourceId: input.resource_id,
+    payload,
+    actorType: input.actor_type,
+    actorId: input.actor_id ?? null,
+    service: input.service,
+    beforeHash: input.before_hash ?? null,
+    afterHash: input.after_hash ?? null,
+    hipaaMode: false,
+  });
+}
+
 /**
  * Create a new edit session in draft for a branch.
  */
@@ -127,7 +200,7 @@ export async function createEditSession(params: {
     const session = mapRow(result.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendEvent(tx, {
+    await appendLedgerEvent(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(session.id),
       actor_type: 'USER',
@@ -175,7 +248,7 @@ export async function submitEditSession(sessionId: string, submittedBy?: string 
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendEvent(tx, {
+    await appendLedgerEvent(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -223,7 +296,7 @@ export async function approveEditSession(sessionId: string, approvedBy?: string 
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendEvent(tx, {
+    await appendLedgerEvent(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -276,7 +349,7 @@ export async function rejectEditSession(
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendEvent(tx, {
+    await appendLedgerEvent(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
@@ -327,7 +400,7 @@ export async function mergeEditSession(sessionId: string, mergedBy?: string | nu
     const session = mapRow(updated.rows[0]);
     const afterHash = sessionStateHash(session);
 
-    await appendEvent(tx, {
+    await appendLedgerEvent(tx, {
       stream_type: STREAM_TYPE_EDIT_SESSION,
       stream_key: streamKeyForSession(sessionId),
       actor_type: 'USER',
