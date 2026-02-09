@@ -132,3 +132,42 @@ This guide covers:
 - Environment variable configuration from `.env.example`
 - Canonical health checks for all services
 - Common failure modes and fixes
+
+## Apply edit_sessions Migration (020)
+
+Migration `020_edit_sessions.sql` creates the `edit_sessions` table used by the
+Phase 3 human-in-the-loop workflow (draft → submit → approve/reject → merge).
+
+### Quick apply
+
+```bash
+# From the orchestrator directory (services/orchestrator/)
+DATABASE_URL=postgres://user:pass@host:5432/db node scripts/run-migration-020.mjs
+
+# Or with .env already configured:
+cd services/orchestrator && node scripts/run-migration-020.mjs
+```
+
+The runner script will:
+1. Verify `DATABASE_URL` is set (fails fast with instructions if missing)
+2. Test database connectivity (5 s timeout)
+3. Apply the migration (idempotent — safe to re-run)
+4. Print the resulting column list for verification
+
+### What it creates
+
+| Object | Purpose |
+|--------|---------|
+| `edit_sessions` table | Stores HITL edit session state |
+| CHECK constraint on `status` | Restricts to `draft`, `submitted`, `approved`, `rejected`, `merged` |
+| `idx_edit_sessions_manuscript` | Index on `manuscript_id` |
+| `idx_edit_sessions_status` | Index on `status` |
+| `idx_edit_sessions_branch` | Index on `branch_id` |
+| `update_edit_session_updated_at()` | Trigger function — auto-bumps `updated_at` |
+
+### Running tests
+
+```bash
+# From repo root (skips automatically when DB unavailable)
+DATABASE_URL=postgres://... pnpm vitest run src/__tests__/migrations/020_edit_sessions.test.ts
+```

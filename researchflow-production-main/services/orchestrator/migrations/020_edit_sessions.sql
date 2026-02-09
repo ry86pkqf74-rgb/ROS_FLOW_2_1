@@ -1,6 +1,9 @@
 -- Migration: 020_edit_sessions
 -- Phase 3: Human-in-the-loop edit sessions (draft → submit → approve/reject → merge)
 -- Each state transition emits a canonical audit ledger event (see edit-session.service).
+--
+-- Idempotency: Every statement uses IF NOT EXISTS / CREATE OR REPLACE / DROP IF EXISTS
+-- so this migration is safe to run repeatedly without error.
 
 CREATE TABLE IF NOT EXISTS edit_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -23,10 +26,13 @@ CREATE TABLE IF NOT EXISTS edit_sessions (
   UNIQUE(branch_id)
 );
 
+-- Indices (IF NOT EXISTS for idempotent re-runs)
 CREATE INDEX IF NOT EXISTS idx_edit_sessions_manuscript ON edit_sessions(manuscript_id);
-CREATE INDEX IF NOT EXISTS idx_edit_sessions_status ON edit_sessions(status);
-CREATE INDEX IF NOT EXISTS idx_edit_sessions_branch ON edit_sessions(branch_id);
+CREATE INDEX IF NOT EXISTS idx_edit_sessions_status    ON edit_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_edit_sessions_branch    ON edit_sessions(branch_id);
 
+-- Auto-update trigger for updated_at column
+-- Function uses CREATE OR REPLACE; trigger uses DROP IF EXISTS + CREATE for safety.
 CREATE OR REPLACE FUNCTION update_edit_session_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
