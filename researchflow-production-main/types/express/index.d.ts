@@ -6,6 +6,15 @@
 declare global {
   namespace Express {
     interface Request {
+      headers?: any;
+      body?: any;
+      socket?: any;
+      ip?: string;
+      method?: string;
+      originalUrl?: string;
+      header?: (name: string) => any;
+      rawBody?: any;
+      recovery?: any;
       user?: {
         id: string;
         username: string;
