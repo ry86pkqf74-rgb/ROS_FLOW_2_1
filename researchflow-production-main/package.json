@@ -2,7 +2,7 @@
   "name": "researchflow-production",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@9.15.0",
   "description": "Docker-first deployment architecture for ResearchFlow",
   "workspaces": [
     "packages/*",
@@ -84,7 +84,7 @@
   },
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=10.0.0"
+    "pnpm": ">=9.0.0"
   },
   "overrides": {
     "glob": "^10.4.0",

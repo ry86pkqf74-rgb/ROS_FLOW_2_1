@@ -1,0 +1,35 @@
+# Dependabot for ROS_FLOW_2_1 (repo root)
+# Scans researchflow-production-main and root GitHub Actions.
+# See docs/DEPENDABOT_AND_SECURITY.md for how to review and address alerts.
+
+version: 2
+updates:
+  # npm (pnpm) in nested monorepo
+  - package-ecosystem: "npm"
+    directory: "/researchflow-production-main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "deps"
+
+  # GitHub Actions (root workflows)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
