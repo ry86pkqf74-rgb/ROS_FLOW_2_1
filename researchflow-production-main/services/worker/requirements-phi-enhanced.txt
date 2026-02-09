@@ -4,7 +4,7 @@
 # Core Dependencies (Required)
 pandas>=1.5.0,<2.0.0
 numpy>=1.21.0,<2.0.0
-cryptography>=3.4.8,<42.0.0
+cryptography>=42.0.2
 
 # ML Dependencies (Optional but Recommended)
 # SpaCy for general NER
