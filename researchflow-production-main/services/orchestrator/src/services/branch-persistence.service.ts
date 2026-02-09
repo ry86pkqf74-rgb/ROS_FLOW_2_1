@@ -12,6 +12,52 @@ import crypto from 'crypto';
 import { pool, query as dbQuery } from '../../db';
 import { appendEvent, type DbClient } from './audit.service';
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+
+function canonicalizeJson(value: unknown): JsonValue {
+  if (value === null) return null;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+
+  if (Array.isArray(value)) {
+    return value.map((v) => canonicalizeJson(v));
+  }
+
+  if (value instanceof Date) return value.toISOString();
+
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    const out: Record<string, JsonValue> = {};
+    for (const k of keys) out[k] = canonicalizeJson(obj[k]);
+    return out;
+  }
+
+  // JSON.stringify would drop/throw on these; normalize to null to keep hashing deterministic.
+  return null;
+}
+
+function stableStringifyJson(value: unknown): string {
+  return JSON.stringify(canonicalizeJson(value));
+}
+
+function sha256Hex(input: string): string {
+  return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
+}
+
+function computeContentHash(content: unknown): string {
+  return sha256Hex(stableStringifyJson(content));
+}
+
+function computeCommitHash(params: { parentCommitHash: string | null; contentHash: string }): string {
+  return sha256Hex(
+    stableStringifyJson({
+      parent_commit_hash: params.parentCommitHash,
+      content_hash: params.contentHash,
+    })
+  );
+}
+
 export interface Branch {
   id: string;
   manuscriptId: string;
@@ -211,6 +257,48 @@ export class BranchPersistenceService {
   async createRevision(request: CreateRevisionRequest, opts?: { tx?: DbClient; skipAudit?: boolean }): Promise<Revision> {
     const { branchId, content, commitMessage, createdBy } = request;
     const run = async (tx: DbClient) => {
+      const branchMetaResult = await tx.query(
+        `SELECT manuscript_id FROM manuscript_branches WHERE id = $1 FOR UPDATE`,
+        [branchId]
+      );
+      if (branchMetaResult.rows.length === 0) {
+        throw new Error('Branch not found');
+      }
+      const manuscriptId: string = branchMetaResult.rows[0].manuscript_id ?? branchId;
+
+      const parentCommitResult = await tx.query(
+        `SELECT id, commit_hash
+         FROM manuscript_branch_commits
+         WHERE branch_id = $1
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        [branchId]
+      );
+      const parentCommitId: string | null = parentCommitResult.rows[0]?.id ?? null;
+      const parentCommitHash: string | null = parentCommitResult.rows[0]?.commit_hash ?? null;
+
+      const contentHash = computeContentHash(content);
+      const commitHash = computeCommitHash({ parentCommitHash, contentHash });
+
+      // Idempotency: if this exact commit already exists for the branch, return its linked revision if present.
+      const existingCommitResult = await tx.query(
+        `SELECT id, revision_id
+         FROM manuscript_branch_commits
+         WHERE branch_id = $1 AND commit_hash = $2
+         LIMIT 1`,
+        [branchId, commitHash]
+      );
+      const existingRevisionId: string | null = existingCommitResult.rows[0]?.revision_id ?? null;
+      if (existingRevisionId) {
+        const existingRevisionResult = await tx.query(
+          `SELECT * FROM manuscript_revisions WHERE id = $1 LIMIT 1`,
+          [existingRevisionId]
+        );
+        if (existingRevisionResult.rows.length > 0) {
+          return this.mapRevision(existingRevisionResult.rows[0]);
+        }
+      }
+
       const prevResult = await tx.query(`
         SELECT content FROM manuscript_revisions
         WHERE branch_id = $1
@@ -244,11 +332,28 @@ export class BranchPersistenceService {
       `, [versionHash, JSON.stringify(this.computeSectionWordCounts(content)), branchId]);
       
       const revision = this.mapRevision(result.rows[0]);
+
+      const commitInsertResult = await tx.query(
+        `INSERT INTO manuscript_branch_commits
+           (branch_id, commit_hash, parent_commit_id, commit_message, revision_id, content_hash, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (branch_id, commit_hash) DO NOTHING
+         RETURNING id`,
+        [branchId, commitHash, parentCommitId, commitMessage ?? null, revision.id, contentHash, createdBy ?? null]
+      );
+      const commitId: string =
+        commitInsertResult.rows[0]?.id ??
+        (
+          await tx.query(
+            `SELECT id FROM manuscript_branch_commits WHERE branch_id = $1 AND commit_hash = $2 LIMIT 1`,
+            [branchId, commitHash]
+          )
+        ).rows[0]?.id;
+      if (!commitId) throw new Error('Failed to create or resolve commit_id for revision');
+
       const shouldEmitAudit = opts?.skipAudit !== true;
       
       if (shouldEmitAudit) {
-        const branchRow = await tx.query('SELECT manuscript_id FROM manuscript_branches WHERE id = $1', [branchId]);
-        const manuscriptId = branchRow.rows[0]?.manuscript_id ?? branchId;
         const beforeHash = prevResult.rows.length > 0 ? this.computeHash(prevContent) : null;
         await appendEvent(tx, {
           stream_type: STREAM_TYPE_MANUSCRIPT,
@@ -261,7 +366,16 @@ export class BranchPersistenceService {
           resource_id: revision.id,
           before_hash: beforeHash,
           after_hash: versionHash,
-          payload: { branch_id: branchId, revision_id: revision.id, revision_number: revisionNumber, sections_changed_count: sectionsChanged.length, word_count: wordCount },
+          payload: {
+            branch_id: branchId,
+            revision_id: revision.id,
+            revision_number: revisionNumber,
+            commit_id: commitId,
+            commit_hash: commitHash,
+            parent_commit_id: parentCommitId,
+            sections_changed_count: sectionsChanged.length,
+            word_count: wordCount
+          },
           dedupe_key: `branch:${branchId}:revision:${revision.id}`,
         });
       }
