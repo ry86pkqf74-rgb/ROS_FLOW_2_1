@@ -33,7 +33,7 @@ declare module '@researchflow/core/schema' {
   // Additional table exports for orchestrator
   export const researchProjects: any;
   export const userRoles: any;
-  export const approvalGates: any;  // alias for approvals table
+  export const approvalGates: any;  // separate table from approvals (both exist in schema)
   export const approvalAuditEntries: any;
   export const phiIncidents: any;
   export const handoffPacks: any;
