@@ -113,6 +113,7 @@ import phaseChatRoutes from './routes/phaseChatRoutes';
 import guidelinesProxyRoutes from './routes/guidelines-proxy.routes';
 // Planning Hub: Notion-like pages, databases, tasks, goals, and projections
 import hubRoutes from './routes/hub';
+import internalRoutes from './routes';
 // Cumulative Workflow: Stage data flow between 20 research stages
 import cumulativeDataRoutes from './routes/cumulative-data';
 // Multi-File Ingestion: Multi-file/multi-sheet data merging with ID detection
@@ -539,6 +540,7 @@ app.use('/api', visualizationRoutes);  // Stage 8: Data Visualization (DataVisua
 app.use('/api/phase', phaseChatRoutes);  // Phase Chat: Stage-specific AI agents
 app.use('/api/guidelines', guidelinesProxyRoutes);  // Guidelines Engine: Proxy to Python FastAPI
 app.use('/api/hub', hubRoutes);  // Planning Hub
+app.use('/internal', internalRoutes);  // Internal (service-to-service) routes
 app.use('/api/cumulative', cumulativeDataRoutes);  // Cumulative workflow stage data
 app.use('/api/ingest', ingestRoutes);  // Multi-file ingestion
 app.use('/api/ros/stages/manuscript_ideation', manuscriptIdeationRoutes);  // Manuscript ideation workflow stage
