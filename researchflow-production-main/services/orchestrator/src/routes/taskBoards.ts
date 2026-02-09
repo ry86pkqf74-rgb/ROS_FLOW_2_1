@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
 import * as taskBoardService from '../services/taskBoardService';
+import { asOptionalString, asString } from '../utils/httpCoerce';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ const router = Router();
  */
 router.post('/research/:researchId/boards', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -48,7 +49,7 @@ router.post('/research/:researchId/boards', async (req: Request, res: Response) 
  */
 router.get('/research/:researchId/boards', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const boards = taskBoardService.getBoardsByResearch(researchId);
     return res.json({ boards });
   } catch (error) {
@@ -63,7 +64,7 @@ router.get('/research/:researchId/boards', async (req: Request, res: Response) =
  */
 router.get('/boards/:boardId', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
     const viewData = taskBoardService.getBoardViewData(boardId);
 
     if (!viewData) {
@@ -83,7 +84,7 @@ router.get('/boards/:boardId', async (req: Request, res: Response) => {
  */
 router.patch('/boards/:boardId', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
 
     const updates = z.object({
       name: z.string().min(1).max(100).optional(),
@@ -113,7 +114,7 @@ router.patch('/boards/:boardId', async (req: Request, res: Response) => {
  */
 router.delete('/boards/:boardId', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
     const success = taskBoardService.archiveBoard(boardId);
 
     if (!success) {
@@ -133,7 +134,7 @@ router.delete('/boards/:boardId', async (req: Request, res: Response) => {
  */
 router.get('/boards/:boardId/analytics', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
     const board = taskBoardService.getBoard(boardId);
 
     if (!board) {
@@ -158,7 +159,7 @@ router.get('/boards/:boardId/analytics', async (req: Request, res: Response) => 
  */
 router.post('/boards/:boardId/tasks', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -189,16 +190,17 @@ router.post('/boards/:boardId/tasks', async (req: Request, res: Response) => {
  */
 router.get('/boards/:boardId/tasks', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
-    const { status, assignee } = req.query;
+    const boardId = asString(req.params.boardId);
+    const status = asOptionalString(req.query.status);
+    const assignee = asOptionalString(req.query.assignee);
 
     let tasks = taskBoardService.getTasksByBoard(boardId);
 
-    if (status && typeof status === 'string') {
+    if (status) {
       tasks = tasks.filter(t => t.status === status);
     }
 
-    if (assignee && typeof assignee === 'string') {
+    if (assignee) {
       tasks = tasks.filter(t => t.assigneeId === assignee);
     }
 
@@ -215,7 +217,7 @@ router.get('/boards/:boardId/tasks', async (req: Request, res: Response) => {
  */
 router.get('/tasks/:taskId', async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
+    const taskId = asString(req.params.taskId);
     const task = taskBoardService.getTask(taskId);
 
     if (!task) {
@@ -236,7 +238,7 @@ router.get('/tasks/:taskId', async (req: Request, res: Response) => {
  */
 router.patch('/tasks/:taskId', async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
+    const taskId = asString(req.params.taskId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -268,7 +270,7 @@ router.patch('/tasks/:taskId', async (req: Request, res: Response) => {
  */
 router.post('/tasks/:taskId/move', async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
+    const taskId = asString(req.params.taskId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -297,7 +299,7 @@ router.post('/tasks/:taskId/move', async (req: Request, res: Response) => {
  */
 router.delete('/tasks/:taskId', async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
+    const taskId = asString(req.params.taskId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -322,7 +324,7 @@ router.delete('/tasks/:taskId', async (req: Request, res: Response) => {
  */
 router.get('/tasks/by-artifact/:artifactId', async (req: Request, res: Response) => {
   try {
-    const { artifactId } = req.params;
+    const artifactId = asString(req.params.artifactId);
     const tasks = taskBoardService.getTasksByArtifact(artifactId);
     return res.json({ tasks });
   } catch (error) {
@@ -341,7 +343,7 @@ router.get('/tasks/by-artifact/:artifactId', async (req: Request, res: Response)
  */
 router.post('/boards/:boardId/labels', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
 
     const { name, color } = z.object({
       name: z.string().max(50),
@@ -365,7 +367,7 @@ router.post('/boards/:boardId/labels', async (req: Request, res: Response) => {
  */
 router.get('/boards/:boardId/labels', async (req: Request, res: Response) => {
   try {
-    const { boardId } = req.params;
+    const boardId = asString(req.params.boardId);
     const labels = taskBoardService.getLabelsByBoard(boardId);
     return res.json({ labels });
   } catch (error) {
@@ -380,7 +382,7 @@ router.get('/boards/:boardId/labels', async (req: Request, res: Response) => {
  */
 router.delete('/labels/:labelId', async (req: Request, res: Response) => {
   try {
-    const { labelId } = req.params;
+    const labelId = asString(req.params.labelId);
     const success = taskBoardService.deleteLabel(labelId);
 
     if (!success) {
