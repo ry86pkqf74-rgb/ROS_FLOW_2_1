@@ -3,7 +3,7 @@
  * Task T50: Track word counts against section limits
  */
 
-import type { SectionContent, WordCountLimits } from '../types';
+import type { IMRaDSection, SectionContent, WordCountLimits } from '../types';
 
 // Re-export for consumers
 export type { SectionContent, WordCountLimits };
@@ -25,7 +25,7 @@ export interface WordCountReport {
 }
 
 export interface SectionWordCount {
-  sectionType: string;
+  sectionType: IMRaDSection;
   wordCount: number;
   characterCount: number;
   limit?: { min?: number; max?: number };
@@ -47,7 +47,7 @@ export class WordCountTrackerService {
       const characterCount = section.content.length;
       totalWords += wordCount;
 
-      const limit = request.limits[section.sectionType as keyof WordCountLimits] as { min?: number; max?: number } | undefined;
+      const limit = request.limits[section.section as keyof WordCountLimits];
 
       let status: SectionWordCount['status'] = 'within';
       let percentage: number | undefined;
@@ -65,7 +65,7 @@ export class WordCountTrackerService {
       }
 
       sections.push({
-        sectionType: section.sectionType,
+        sectionType: section.section,
         wordCount,
         characterCount,
         limit,

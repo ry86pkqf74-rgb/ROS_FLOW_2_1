@@ -28,9 +28,8 @@ export class VisualizationService {
       line: 'Line graph depicting',
       scatter: 'Scatter plot illustrating',
       box: 'Box plot comparing',
-      histogram: 'Distribution of',
-      kaplan_meier: 'Kaplan-Meier survival curve for',
-      forest: 'Forest plot of'
+      'kaplan-meier': 'Kaplan-Meier survival curve for',
+      forest: 'Forest plot of',
     };
     return `Figure ${figureNumber}. ${types[config.type] || 'Figure showing'} ${config.yAxis.label} by ${config.xAxis.label}.`;
   }

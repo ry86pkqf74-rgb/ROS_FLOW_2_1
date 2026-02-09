@@ -5,14 +5,14 @@
 
 import { nanoid } from 'nanoid';
 
-import type { Citation, CitationStyle } from '../types';
+import type { BibliographyStyle, LegacyCitation } from '../types';
 
 /**
  * Citation Manager Service - Manage manuscript citations
  */
 export class CitationManagerService {
   private static instance: CitationManagerService;
-  private citations: Map<string, Citation> = new Map();
+  private citations: Map<string, LegacyCitation> = new Map();
 
   private constructor() {}
 
@@ -26,12 +26,15 @@ export class CitationManagerService {
   /**
    * Add citation
    */
-  addCitation(citation: Omit<Citation, 'id' | 'formatted'>): Citation {
+  addCitation(citation: Omit<LegacyCitation, 'id' | 'formatted'>): LegacyCitation {
     const id = nanoid();
-    const fullCitation: Citation = {
+    const baseCitation: Omit<LegacyCitation, 'formatted'> = {
       ...citation,
       id,
-      formatted: this.formatCitation(citation as Citation, 'AMA'),
+    };
+    const fullCitation: LegacyCitation = {
+      ...baseCitation,
+      formatted: this.formatCitation(baseCitation),
     };
 
     this.citations.set(id, fullCitation);
@@ -41,21 +44,23 @@ export class CitationManagerService {
   /**
    * Get citation by ID
    */
-  getCitation(id: string): Citation | undefined {
+  getCitation(id: string): LegacyCitation | undefined {
     return this.citations.get(id);
   }
 
   /**
    * List all citations
    */
-  listCitations(): Citation[] {
+  listCitations(): LegacyCitation[] {
     return Array.from(this.citations.values());
   }
 
   /**
    * Format citation in specified style
    */
-  formatCitation(citation: Citation, style: CitationStyle): Record<CitationStyle, string> {
+  formatCitation(
+    citation: Omit<LegacyCitation, 'formatted'>
+  ): Record<BibliographyStyle, string> {
     return {
       AMA: this.formatAMA(citation),
       APA: this.formatAPA(citation),
@@ -68,7 +73,7 @@ export class CitationManagerService {
   /**
    * Validate citation completeness
    */
-  validateCitation(citation: Partial<Citation>): { valid: boolean; errors: string[] } {
+  validateCitation(citation: Partial<LegacyCitation>): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (!citation.title) errors.push('Title is required');
@@ -84,9 +89,9 @@ export class CitationManagerService {
   /**
    * Deduplicate citations
    */
-  deduplicateCitations(citations: Citation[]): Citation[] {
+  deduplicateCitations(citations: LegacyCitation[]): LegacyCitation[] {
     const seen = new Set<string>();
-    const unique: Citation[] = [];
+    const unique: LegacyCitation[] = [];
 
     for (const citation of citations) {
       const key = `${citation.title}-${citation.year}-${citation.authors[0]}`;
@@ -102,7 +107,7 @@ export class CitationManagerService {
   /**
    * Format in AMA style
    */
-  private formatAMA(citation: Citation): string {
+  private formatAMA(citation: Omit<LegacyCitation, 'formatted'>): string {
     const authors = this.formatAuthorsAMA(citation.authors);
     let formatted = `${authors}. ${citation.title}.`;
 
@@ -136,7 +141,7 @@ export class CitationManagerService {
   /**
    * Format in APA style
    */
-  private formatAPA(citation: Citation): string {
+  private formatAPA(citation: Omit<LegacyCitation, 'formatted'>): string {
     const authors = this.formatAuthorsAPA(citation.authors);
     let formatted = `${authors} (${citation.year}). ${citation.title}.`;
 
@@ -164,7 +169,7 @@ export class CitationManagerService {
   /**
    * Format in Vancouver style
    */
-  private formatVancouver(citation: Citation): string {
+  private formatVancouver(citation: Omit<LegacyCitation, 'formatted'>): string {
     const authors = this.formatAuthorsVancouver(citation.authors);
     let formatted = `${authors}. ${citation.title}.`;
 
@@ -194,14 +199,14 @@ export class CitationManagerService {
   /**
    * Format in NLM style (similar to Vancouver)
    */
-  private formatNLM(citation: Citation): string {
+  private formatNLM(citation: Omit<LegacyCitation, 'formatted'>): string {
     return this.formatVancouver(citation);
   }
 
   /**
    * Format in Chicago style
    */
-  private formatChicago(citation: Citation): string {
+  private formatChicago(citation: Omit<LegacyCitation, 'formatted'>): string {
     const authors = this.formatAuthorsChicago(citation.authors);
     let formatted = `${authors}. "${citation.title}."`;
 
