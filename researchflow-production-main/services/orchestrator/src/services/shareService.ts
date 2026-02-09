@@ -10,10 +10,11 @@
 import { createHash, randomBytes } from "crypto";
 
 import { artifactShares, artifacts } from "@researchflow/core/schema";
-import { eq, and, isNull, gt, sql } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db } from "../../db";
+import { isNull } from "../db/drizzleCompat";
 
 
 export type SharePermission = 'read' | 'comment';
