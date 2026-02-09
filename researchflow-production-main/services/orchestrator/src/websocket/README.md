@@ -409,7 +409,7 @@ webSocketManager.shutdown();
 All events are designed to be PHI-safe:
 
 - **Never include** raw dataset values, manuscript text, patient names, MRNs, etc.
-- **Always include** only: IDs, counts, status strings, and error codes
+- **Always include** only: IDs, counts, status strings, and error codes (audit events may reference audit IDs or hashes for correlation; see [Internal audit ingest](#internal-audit-ingest)).
 - **EventBus** validates payloads and rejects events with potential PHI
 
 Example safe event:
@@ -456,6 +456,17 @@ PORT=3001
 # EventBus Redis integration (optional)
 REDIS_URL=redis://localhost:6379
 ```
+
+## Internal audit ingest
+
+Internal HTTP endpoint for audit event ingestion (separate from the WebSocket protocol). WebSocket events may reference audit IDs or hashes for correlation; full content is not streamed over WebSocket.
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /internal/audit/events` |
+| **Header** | `x-internal-api-key` (required) |
+| **Env** | `INTERNAL_API_KEY` must be set on the orchestrator; if missing, this endpoint is disabled. |
+| **Payload** | PHI-minimized; full content is fetched via REST when needed, not streamed in the request body. |
 
 ## Testing
 
