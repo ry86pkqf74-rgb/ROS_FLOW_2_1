@@ -19,6 +19,13 @@ describe('commitDiff utilities', () => {
     expect(summary.removed_section_keys).toEqual(['B']);
     expect(summary.modified_section_keys).toEqual(['A']);
     expect(summary.changed_section_keys).toEqual(['A', 'B', 'C']);
+    expect(summary.changed_sections_count).toBe(3);
+    expect(summary.added_sections_count).toBe(1);
+    expect(summary.removed_sections_count).toBe(1);
+    expect(summary.modified_sections_count).toBe(1);
+    expect(typeof summary.word_count_delta).toBe('number');
+    expect(typeof summary.old_total_word_count).toBe('number');
+    expect(typeof summary.new_total_word_count).toBe('number');
 
     const serialized = JSON.stringify(summary);
     expect(serialized).not.toContain(oldContent.A);
