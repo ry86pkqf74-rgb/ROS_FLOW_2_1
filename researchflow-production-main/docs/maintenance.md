@@ -28,7 +28,7 @@ This repo uses **direct-to-main** workflow (no PRs). Before pushing to `main`, v
 3. **Run DB-backed test files explicitly**  
    ```bash
    pnpm test src/__tests__/migrations/020_edit_sessions.test.ts
-   pnpm test services/orchestrator/src/__tests__/migrations/019_commit_diffs.test.ts
+   pnpm test services/orchestrator/src/services/__tests__/edit-session.service.test.ts
    ```
    Both must pass (not skip). If they skip, the DB is unavailable—see below.
 
@@ -47,7 +47,7 @@ See `.github/workflows/ci.yml` for the current setup (Docker Compose with Postgr
 
 1. ✅ Set `DATABASE_URL` and confirm Postgres is reachable
 2. ✅ Run `node services/orchestrator/scripts/run-migration-020.mjs` (exit 0)
-3. ✅ Run DB-backed tests: `pnpm test src/__tests__/migrations/020_edit_sessions.test.ts` and `pnpm test services/orchestrator/src/__tests__/migrations/019_commit_diffs.test.ts`
+3. ✅ Run DB-backed tests: `pnpm test src/__tests__/migrations/020_edit_sessions.test.ts` and `pnpm test services/orchestrator/src/services/__tests__/edit-session.service.test.ts`
 4. ✅ Verify CI is green on your local branch if available
 5. ✅ Run any other relevant test suites (`pnpm test:unit`, `pnpm test:integration`)
 6. ✅ Ensure Docker images build successfully if touching Dockerfiles
