@@ -1878,6 +1878,24 @@ export const insertManuscriptYjsUpdateSchema = createInsertSchema(manuscriptYjsU
 export type ManuscriptYjsUpdate = InferSelectModel<typeof manuscriptYjsUpdates>;
 export type InsertManuscriptYjsUpdate = z.infer<typeof insertManuscriptYjsUpdateSchema>;
 
+// Manuscript branch commits (append-only commit log per branch; migration 018)
+export const manuscriptBranchCommits = pgTable("manuscript_branch_commits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  branchId: varchar("branch_id", { length: 36 }).notNull(),
+  commitHash: varchar("commit_hash", { length: 64 }).notNull(),
+  parentCommitId: varchar("parent_commit_id", { length: 36 }).references((): any => manuscriptBranchCommits.id, { onDelete: "set null" }),
+  commitMessage: text("commit_message"),
+  revisionId: varchar("revision_id", { length: 36 }),
+  contentHash: varchar("content_hash", { length: 64 }),
+  createdBy: varchar("created_by", { length: 36 }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertManuscriptBranchCommitSchema = createInsertSchema(manuscriptBranchCommits).omit({ id: true, createdAt: true } as any);
+
+export type ManuscriptBranchCommit = InferSelectModel<typeof manuscriptBranchCommits>;
+export type InsertManuscriptBranchCommit = z.infer<typeof insertManuscriptBranchCommitSchema>;
+
 // =====================
 // PHASE F: OBSERVABILITY + FEATURE FLAGS
 // =====================
