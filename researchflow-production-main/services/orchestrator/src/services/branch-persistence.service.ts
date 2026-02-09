@@ -10,6 +10,8 @@
 import crypto from 'crypto';
 
 import { pool, query as dbQuery } from '../../db';
+import { computeSectionSummary, computeUnifiedDiff } from '../utils/commitDiff';
+
 import { appendEvent, type DbClient } from './audit.service';
 
 type JsonPrimitive = string | number | boolean | null;
@@ -56,6 +58,17 @@ function computeCommitHash(params: { parentCommitHash: string | null; contentHas
       content_hash: params.contentHash,
     })
   );
+}
+
+function toSectionContent(input: Record<string, any> | null | undefined): Record<string, string> {
+  if (!input || typeof input !== 'object') return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'string') out[key] = value;
+    else if (value === null || value === undefined) out[key] = '';
+    else out[key] = stableStringifyJson(value);
+  }
+  return out;
 }
 
 export interface Branch {
@@ -282,14 +295,59 @@ export class BranchPersistenceService {
 
       // Idempotency: if this exact commit already exists for the branch, return its linked revision if present.
       const existingCommitResult = await tx.query(
-        `SELECT id, revision_id
+        `SELECT id, revision_id, parent_commit_id, diff_strategy, diff_summary_json, diff_unified
          FROM manuscript_branch_commits
          WHERE branch_id = $1 AND commit_hash = $2
          LIMIT 1`,
         [branchId, commitHash]
       );
+      const existingCommitId: string | null = existingCommitResult.rows[0]?.id ?? null;
       const existingRevisionId: string | null = existingCommitResult.rows[0]?.revision_id ?? null;
       if (existingRevisionId) {
+        const existingHasStoredDiffs =
+          existingCommitResult.rows[0]?.diff_strategy === 'stored' &&
+          existingCommitResult.rows[0]?.diff_summary_json != null &&
+          existingCommitResult.rows[0]?.diff_unified != null;
+
+        if (!existingHasStoredDiffs && existingCommitId) {
+          const existingParentCommitId: string | null =
+            existingCommitResult.rows[0]?.parent_commit_id ?? null;
+          if (existingParentCommitId) {
+            const parentContentResult = await tx.query(
+              `
+                SELECT r.content
+                FROM manuscript_branch_commits c
+                JOIN manuscript_revisions r ON r.id = c.revision_id
+                WHERE c.id = $1
+                LIMIT 1
+              `,
+              [existingParentCommitId]
+            );
+            const parentContent: Record<string, any> | null =
+              parentContentResult.rows[0]?.content ?? null;
+            if (parentContent) {
+              const diffSummaryJson = computeSectionSummary(
+                toSectionContent(parentContent),
+                toSectionContent(content)
+              );
+              const diffUnified = computeUnifiedDiff(
+                toSectionContent(parentContent),
+                toSectionContent(content)
+              );
+              await tx.query(
+                `
+                  UPDATE manuscript_branch_commits
+                  SET diff_strategy = 'stored',
+                      diff_summary_json = $2,
+                      diff_unified = $3
+                  WHERE id = $1
+                `,
+                [existingCommitId, JSON.stringify(diffSummaryJson), diffUnified]
+              );
+            }
+          }
+        }
+
         const existingRevisionResult = await tx.query(
           `SELECT * FROM manuscript_revisions WHERE id = $1 LIMIT 1`,
           [existingRevisionId]
@@ -311,6 +369,15 @@ export class BranchPersistenceService {
       const sectionsChanged = Object.keys(diff).filter(k => diff[k].action !== 'unchanged');
       const wordCount = this.computeTotalWordCount(content);
       const versionHash = this.computeHash(content);
+
+      const hasParentContent = prevResult.rows.length > 0;
+      const diffSummaryJson = hasParentContent
+        ? computeSectionSummary(toSectionContent(prevContent), toSectionContent(content))
+        : null;
+      const diffUnified = hasParentContent
+        ? computeUnifiedDiff(toSectionContent(prevContent), toSectionContent(content))
+        : null;
+      const diffStrategy = hasParentContent ? 'stored' : null;
       
       const nextNumResult = await tx.query(
         'SELECT get_next_revision_number($1) as next_num',
@@ -335,20 +402,51 @@ export class BranchPersistenceService {
 
       const commitInsertResult = await tx.query(
         `INSERT INTO manuscript_branch_commits
-           (branch_id, commit_hash, parent_commit_id, commit_message, revision_id, content_hash, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (branch_id, commit_hash) DO NOTHING
+           (
+             branch_id,
+             commit_hash,
+             parent_commit_id,
+             commit_message,
+             revision_id,
+             content_hash,
+             created_by,
+             diff_strategy,
+             diff_summary_json,
+             diff_unified
+           )
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (branch_id, commit_hash) DO UPDATE
+           SET parent_commit_id = EXCLUDED.parent_commit_id,
+               commit_message = COALESCE(manuscript_branch_commits.commit_message, EXCLUDED.commit_message),
+               revision_id = COALESCE(manuscript_branch_commits.revision_id, EXCLUDED.revision_id),
+               content_hash = COALESCE(manuscript_branch_commits.content_hash, EXCLUDED.content_hash),
+               diff_strategy = CASE
+                 WHEN EXCLUDED.diff_strategy IS NOT NULL THEN EXCLUDED.diff_strategy
+                 ELSE manuscript_branch_commits.diff_strategy
+               END,
+               diff_summary_json = CASE
+                 WHEN EXCLUDED.diff_summary_json IS NOT NULL THEN EXCLUDED.diff_summary_json
+                 ELSE manuscript_branch_commits.diff_summary_json
+               END,
+               diff_unified = CASE
+                 WHEN EXCLUDED.diff_unified IS NOT NULL THEN EXCLUDED.diff_unified
+                 ELSE manuscript_branch_commits.diff_unified
+               END
          RETURNING id`,
-        [branchId, commitHash, parentCommitId, commitMessage ?? null, revision.id, contentHash, createdBy ?? null]
+        [
+          branchId,
+          commitHash,
+          parentCommitId,
+          commitMessage ?? null,
+          revision.id,
+          contentHash,
+          createdBy ?? null,
+          diffStrategy,
+          diffSummaryJson ? JSON.stringify(diffSummaryJson) : null,
+          diffUnified,
+        ]
       );
-      const commitId: string =
-        commitInsertResult.rows[0]?.id ??
-        (
-          await tx.query(
-            `SELECT id FROM manuscript_branch_commits WHERE branch_id = $1 AND commit_hash = $2 LIMIT 1`,
-            [branchId, commitHash]
-          )
-        ).rows[0]?.id;
+      const commitId: string | null = commitInsertResult.rows[0]?.id ?? null;
       if (!commitId) throw new Error('Failed to create or resolve commit_id for revision');
 
       const shouldEmitAudit = opts?.skipAudit !== true;
