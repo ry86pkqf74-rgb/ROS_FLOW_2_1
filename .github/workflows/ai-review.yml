@@ -1,0 +1,174 @@
+# Non-blocking AI review: posts a comment on every PR. Never blocks merge.
+name: AI Review (non-blocking)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: AI review comment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git diff "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" > pr_diff.txt || true
+          # Truncate for API limits (keep under ~80k chars)
+          max=80000
+          if [ $(wc -c < pr_diff.txt) -gt $max ]; then
+            head -c $max pr_diff.txt > pr_diff_truncated.txt
+            echo "\n\n... (diff truncated for review)" >> pr_diff_truncated.txt
+            mv pr_diff_truncated.txt pr_diff.txt
+          fi
+
+      - name: Run AI review and build comment
+        id: ai_review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const diff = fs.readFileSync('pr_diff.txt', 'utf-8');
+          const prTitle = process.env.PR_TITLE || '';
+          const prBody = process.env.PR_BODY || '';
+          const apiKey = process.env.OPENAI_API_KEY;
+
+          const fallback = (msg) => {
+            const body = '## AI Review (non-blocking)\\n\\n' + msg + '\\n\\n*This check never blocks merge.*';
+            fs.writeFileSync('comment.md', body);
+            process.exit(0);
+          };
+
+          if (!apiKey) {
+            fallback('Skipped: \`OPENAI_API_KEY\` not set. Add the secret to enable AI review comments.');
+            return;
+          }
+
+          const systemPrompt = \`You are a code reviewer for a healthcare/research platform. Review the PR diff and respond with valid JSON only (no markdown code fence) in this exact shape:
+          {
+            \"summary\": \"2-3 sentence overall assessment\",
+            \"risks\": { \"security\": [], \"phi\": [], \"audit_logging\": [] },
+            \"fileNotes\": [ { \"file\": \"path\", \"notes\": \"short note\" } ],
+            \"followUps\": [ \"suggested follow-up 1\", \"...\" ],
+            \"severitySummary\": { \"critical\": 0, \"high\": 0, \"medium\": 0, \"low\": 0 }
+          }
+          Focus on: security (injection, secrets), PHI exposure, audit/logging gaps. Be concise. severitySummary counts should reflect items you would mention in risks/fileNotes.\`;
+
+          const userContent = \`PR title: \${prTitle}\\n\\nDescription: \${prBody || '(none)'}\\n\\nDiff:\\n\${diff.slice(0, 70000)}\`;
+
+          (async () => {
+            try {
+              const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + apiKey
+                },
+                body: JSON.stringify({
+                  model: 'gpt-4o-mini',
+                  max_tokens: 2048,
+                  temperature: 0.2,
+                  messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                  ]
+                })
+              });
+              if (!res.ok) {
+                fallback('OpenAI API error: ' + res.status + ' ' + (await res.text()).slice(0, 200));
+                return;
+              }
+              const data = await res.json();
+              const raw = data.choices?.[0]?.message?.content?.trim() || '{}';
+              const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);
+              const r = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: 'Could not parse review.', risks: {}, fileNotes: [], followUps: [], severitySummary: {} };
+
+              const s = r.severitySummary || {};
+              const sev = \`**Severity summary:** Critical \${s.critical ?? 0} | High \${s.high ?? 0} | Medium \${s.medium ?? 0} | Low \${s.low ?? 0}\`;
+
+              let md = '## AI Review (non-blocking)\\n\\n';
+              md += '### Summary\\n' + (r.summary || '—') + '\\n\\n';
+              md += sev + '\\n\\n';
+
+              const risks = r.risks || {};
+              const riskKeys = ['security', 'phi', 'audit_logging'];
+              if (riskKeys.some(k => (risks[k] || []).length > 0)) {
+                md += '### Risks\\n';
+                for (const k of riskKeys) {
+                  const arr = risks[k] || [];
+                  if (arr.length) md += '- **' + k.replace('_', '/') + ':** ' + arr.join('; ') + '\\n';
+                }
+                md += '\\n';
+              }
+
+              if ((r.fileNotes || []).length > 0) {
+                md += '### File-by-file notes\\n';
+                for (const n of r.fileNotes) md += '- \`' + (n.file || '') + '\`: ' + (n.notes || '') + '\\n';
+                md += '\\n';
+              }
+
+              if ((r.followUps || []).length > 0) {
+                md += '### Suggested follow-ups\\n';
+                for (const f of r.followUps) md += '- ' + f + '\\n';
+                md += '\\n';
+              }
+
+              md += '---\\n*This check never blocks merge.*';
+              fs.writeFileSync('comment.md', md);
+            } catch (e) {
+              fallback('Review failed: ' + (e.message || String(e)).slice(0, 300));
+            }
+          })();
+          "
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        continue-on-error: true
+
+      - name: Post or update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body;
+            try {
+              body = fs.readFileSync('comment.md', 'utf-8');
+            } catch {
+              body = '## AI Review (non-blocking)\n\nComment could not be generated. This check never blocks merge.';
+            }
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const bot = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes('AI Review (non-blocking)'));
+            if (bot) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: bot.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
