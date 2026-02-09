@@ -10,12 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Copy requirements (from service directory when building with context=.)
+COPY services/agents/agent-results-interpretation-proxy/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY app/ app/
+# Copy application code (from service directory when building with context=.)
+COPY services/agents/agent-results-interpretation-proxy/app/ app/
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
