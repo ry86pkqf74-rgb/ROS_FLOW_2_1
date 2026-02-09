@@ -28,7 +28,8 @@ import {
   isHipaaMode,
   sanitizePayloadForHipaa,
 } from './protocol';
-import { subscribe as subscribeToEventBus } from './event-bus';
+// Protocol event bus: ./protocol-event-bus (publish/subscribe for protocol events).
+import { subscribe as subscribeToEventBus } from './protocol-event-bus';
 
 /**
  * Client connection metadata
