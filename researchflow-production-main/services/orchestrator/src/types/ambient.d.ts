@@ -171,12 +171,31 @@ declare module 'ioredis' {
     rpush(key: string, ...values: string[]): Promise<number>;
     ltrim(key: string, start: number, stop: number): Promise<string>;
     expire(key: string, seconds: number): Promise<number>;
+    setex(key: string, seconds: number, value: string): Promise<any>;
+    flushdb(...args: any[]): Promise<any>;
+    getBuffer(key: string): Promise<any>;
+    keys(pattern: string): Promise<string[]>;
+    info(...args: any[]): Promise<any>;
+    dbsize(): Promise<number>;
+    ttl(key: string): Promise<number>;
+    memory(...args: any[]): Promise<any>;
+    // Streams/health helpers (permissive typing)
+    xadd(...args: any[]): Promise<any>;
+    xgroup(...args: any[]): Promise<any>;
+    xreadgroup(...args: any[]): Promise<any>;
+    xack(...args: any[]): Promise<any>;
+    xpending(...args: any[]): Promise<any>;
+    xclaim(...args: any[]): Promise<any>;
+    xrange(...args: any[]): Promise<any>;
+    xinfo(...args: any[]): Promise<any>;
+    ping(...args: any[]): Promise<any>;
     pipeline(): RedisPipeline;
   }
   export interface RedisPipeline {
     rpush(key: string, ...values: string[]): this;
     ltrim(key: string, start: number, stop: number): this;
     expire(key: string, seconds: number): this;
+    xadd(...args: any[]): this;
     exec(): Promise<Array<[Error | null, any]>>;
   }
 }
@@ -208,7 +227,10 @@ declare module 'archiver' { const archiver: any; export = archiver; }
 declare module 'bottleneck' { export default class Bottleneck { constructor(opts?: any); schedule<T>(fn: () => Promise<T>): Promise<T>; } }
 declare module 'bullmq' { export class Queue { constructor(name: string, opts?: any); add(name: string, data: any, opts?: any): Promise<any>; } export class Worker { constructor(name: string, processor: any, opts?: any); } }
 declare module 'prom-client' { export const Registry: any; export const Counter: any; export const Gauge: any; export const Histogram: any; export const collectDefaultMetrics: any; }
-declare module 'redis' { export const createClient: any; }
+declare module 'redis' {
+  export type RedisClientType = any;
+  export const createClient: any;
+}
 declare module 'yjs' { export class Doc { constructor(); } export const encodeStateAsUpdate: any; export const applyUpdate: any; }
 declare module 'drizzle-orm' { export const eq: any; export const and: any; export const or: any; export const desc: any; export const asc: any; export const gt: any; export const lt: any; export const gte: any; export const lte: any; export const sql: any; export const inArray: any; }
 
