@@ -64,6 +64,13 @@ class AgentState(TypedDict):
     run_id: str
     thread_id: str  # For checkpointing
 
+    # Audit / tracing (optional; for later audit + tracing)
+    trace_id: Optional[str]
+    node_id: Optional[str]
+    manuscript_id: Optional[str]
+    branch_id: Optional[str]
+    commit_id: Optional[str]
+
     # Workflow context
     current_stage: int
     stage_range: tuple[int, int]
@@ -193,4 +200,9 @@ def create_initial_state(
         start_time=datetime.utcnow().isoformat(),
         awaiting_approval=False,
         approval_request_id=None,
+        trace_id=None,
+        node_id=None,
+        manuscript_id=None,
+        branch_id=None,
+        commit_id=None,
     )
