@@ -1,9 +1,10 @@
 import crypto from "crypto";
 
 import { topics, Topic, InsertTopic } from "@researchflow/core/schema";
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 import { db } from "../../db";
+import { ne } from "../db/drizzleCompat";
 
 import { createAuditEntry } from "./auditService";
 

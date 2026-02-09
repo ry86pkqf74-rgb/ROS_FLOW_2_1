@@ -6,9 +6,10 @@
  */
 
 import { tutorialAssets, userOnboarding } from '@researchflow/core/schema';
-import { eq, and, or, isNull, desc } from 'drizzle-orm';
+import { eq, and, or, desc } from 'drizzle-orm';
 
 import { db } from '../../db';
+import { isNull } from "../db/drizzleCompat";
 
 import { featureFlagsService } from './featureFlagsService';
 

@@ -6,7 +6,9 @@
  */
 
 import { artifacts, researchProjects } from "@researchflow/core/schema";
-import { eq, sql, and, or, ilike } from "drizzle-orm";
+import { eq, sql, and, or } from "drizzle-orm";
+
+import { ilike } from "../db/drizzleCompat";
 
 import { db } from "../../db";
 

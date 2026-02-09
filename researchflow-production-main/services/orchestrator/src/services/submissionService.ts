@@ -20,10 +20,11 @@ import {
   artifactVersions,
 } from "@researchflow/core/schema";
 import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db } from "../../db";
+import { isNull } from "../db/drizzleCompat";
 
 
 export type SubmissionStatus = 'draft' | 'submitted' | 'revise' | 'accepted' | 'rejected' | 'withdrawn' | 'camera_ready';
