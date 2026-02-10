@@ -1,6 +1,8 @@
 -- Migration: 004_phrase_library
 -- Phase 4.2: Phrase library tables for academic writing assistance
 
+BEGIN;
+
 -- Phrase library table
 CREATE TABLE IF NOT EXISTS phrase_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -142,3 +144,5 @@ COMMENT ON TABLE phrase_library IS 'Academic phrases for manuscript writing assi
 COMMENT ON TABLE phrase_favorites IS 'User favorite phrases for quick access';
 COMMENT ON TABLE writing_tool_usage IS 'Usage tracking for AI writing tools';
 COMMENT ON COLUMN phrase_library.rationale IS 'Explanation of when/why to use this phrase';
+
+COMMIT;

@@ -1,6 +1,8 @@
 -- Migration: 003_manuscript_branches
 -- Phase 3.3: Branch persistence for manuscript versioning
 
+BEGIN;
+
 -- Manuscript branches table
 CREATE TABLE IF NOT EXISTS manuscript_branches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -146,3 +148,5 @@ COMMENT ON TABLE manuscript_revisions IS 'Stores revision history for each branc
 COMMENT ON TABLE branch_merges IS 'Tracks branch merge history';
 COMMENT ON COLUMN manuscript_branches.version_hash IS 'SHA-256 hash of content for quick comparison';
 COMMENT ON COLUMN manuscript_revisions.diff_from_parent IS 'JSON diff showing changes from previous revision';
+
+COMMIT;

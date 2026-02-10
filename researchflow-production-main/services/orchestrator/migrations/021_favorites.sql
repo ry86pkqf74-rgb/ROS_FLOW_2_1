@@ -1,6 +1,8 @@
 -- Orchestrator migration: favorites table
 -- Mirrors infrastructure/docker/postgres/migrations/005_favorites.sql
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS favorites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
@@ -12,3 +14,5 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
+
+COMMIT;

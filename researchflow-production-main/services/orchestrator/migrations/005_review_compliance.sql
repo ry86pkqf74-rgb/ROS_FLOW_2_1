@@ -1,6 +1,8 @@
 -- Migration: 005_review_compliance
 -- Phase 5: Review and Compliance tables
 
+BEGIN;
+
 -- ============================================
 -- APPROVAL GATES
 -- ============================================
@@ -213,3 +215,5 @@ COMMENT ON TABLE gate_configurations IS 'Configuration for each gate type';
 COMMENT ON TABLE blinding_records IS 'Manuscript blinding records for peer review';
 COMMENT ON TABLE compliance_reports IS 'STROBE/PRISMA compliance check results';
 COMMENT ON TABLE compliance_history IS 'Track compliance score changes over time';
+
+COMMIT;

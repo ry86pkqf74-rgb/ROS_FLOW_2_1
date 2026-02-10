@@ -2,6 +2,8 @@
 -- Migration: 014_guidelines_engine.sql
 -- Purpose: Create tables for clinical guidelines, scoring systems, and validation blueprints
 
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- Source Registry: tracks where guidelines come from and licensing
@@ -186,3 +188,5 @@ COMMENT ON TABLE rule_specs IS 'Computable rule definitions (JSON Logic) for det
 COMMENT ON TABLE evidence_statements IS 'Evidence citations anchored to system cards';
 COMMENT ON TABLE validation_blueprints IS 'AI-generated study plans for validating scoring systems';
 COMMENT ON TABLE calculator_results IS 'Audit trail of all score/staging calculations';
+
+COMMIT;

@@ -3,6 +3,8 @@
 -- PHI-min and HIPAA-safe: diff_summary_json holds section-level metadata only (no raw manuscript text).
 -- Immutability trigger is unchanged; no new indexes (avoid over-indexing).
 
+BEGIN;
+
 -- diff_unified: full unified diff when stored. TEXT chosen for simplicity; BYTEA could be used later
 -- for compression if size becomes an issue (e.g. gzip in app layer and store as BYTEA).
 ALTER TABLE manuscript_branch_commits
@@ -30,3 +32,5 @@ END $$;
 COMMENT ON COLUMN manuscript_branch_commits.diff_unified IS 'Optional stored unified diff; used when diff_strategy=stored.';
 COMMENT ON COLUMN manuscript_branch_commits.diff_summary_json IS 'Section-level diff summary only; no raw manuscript text (PHI-safe).';
 COMMENT ON COLUMN manuscript_branch_commits.diff_strategy IS 'How diff was produced: computed (on read) or stored (at commit).';
+
+COMMIT;

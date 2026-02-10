@@ -7,6 +7,8 @@
 -- 3. Approval Gate Workflow
 -- 4. Semantic Search Basics
 
+BEGIN;
+
 -- Ensure feature flag exists
 INSERT INTO feature_flags (flag_key, enabled, description, tier_required, created_at, updated_at)
 VALUES ('inline_tutorials', true, 'Interactive inline tutorials for feature onboarding', 'FREE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -177,3 +179,5 @@ BEGIN
     RAISE NOTICE 'Successfully seeded 4 default tutorials';
   END IF;
 END $$;
+
+COMMIT;

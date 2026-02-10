@@ -14,6 +14,8 @@
 --               payload_hash || '|' || prev_event_hash).
 -- - Canonicalization rules must be consistent (UTF-8, explicit null handling) so hashes are reproducible.
 
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS audit_event_streams (
@@ -85,4 +87,6 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_trace_id
 CREATE INDEX IF NOT EXISTS idx_audit_events_node_created_at
   ON audit_events(node_id, created_at DESC)
   WHERE node_id IS NOT NULL;
+
+COMMIT;
 
