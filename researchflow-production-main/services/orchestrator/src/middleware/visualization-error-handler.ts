@@ -417,6 +417,7 @@ export class VisualizationErrorHandler {
       logAction({
         userId: req.user?.id || 'anonymous',
         action: 'SECURITY_ERROR',
+        eventType: 'SECURITY_ERROR',
         resourceType: 'visualization',
         resourceId: req.body?.research_id || 'unknown',
         metadata: {

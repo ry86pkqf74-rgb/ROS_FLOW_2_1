@@ -280,6 +280,7 @@ export async function setFlag(
   // Write audit log
   await logAction({
     action: 'FEATURE_FLAG_CHANGED',
+    eventType: 'FEATURE_FLAG_CHANGED',
     userId: actorUserId,
     resourceId: key,
     resourceType: 'feature_flag',
@@ -324,6 +325,7 @@ export async function deleteFlag(key: string, actorUserId: string): Promise<void
   // Write audit log
   await logAction({
     action: 'FEATURE_FLAG_DELETED',
+    eventType: 'FEATURE_FLAG_DELETED',
     userId: actorUserId,
     resourceId: key,
     resourceType: 'feature_flag',

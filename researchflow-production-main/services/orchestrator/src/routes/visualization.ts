@@ -315,6 +315,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'CHART_GENERATED',
+        eventType: 'CHART_GENERATED',
         resourceType: 'visualization',
         resourceId: visualizationResult.figure_id || requestId,
         metadata: {
@@ -678,6 +679,7 @@ router.delete(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'FIGURE_DELETED',
+        eventType: 'FIGURE_DELETED',
         resourceType: 'figure',
         resourceId: id,
         metadata: { deleted_at: new Date().toISOString() },
@@ -798,6 +800,7 @@ router.patch(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'PHI_SCAN_UPDATED',
+        eventType: 'PHI_SCAN_UPDATED',
         resourceType: 'figure',
         resourceId: id,
         metadata: {
