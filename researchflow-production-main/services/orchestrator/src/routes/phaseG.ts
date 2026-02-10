@@ -58,7 +58,7 @@ router.get('/cluster/services', ...protectWithRole('STEWARD'), async (_req: Requ
 
 router.get('/cluster/scaling-events', ...protectWithRole('STEWARD'), (_req: Request, res: Response) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 50;
+    const limit = parseInt(String(_req.query.limit)) || 50;
     const events = clusterStatusService.getScalingHistory(limit);
     res.json({ success: true, data: events });
   } catch (error) {
@@ -88,7 +88,7 @@ router.get('/scaling/scenarios', ...protectWithRole('STEWARD'), (_req: Request, 
 
 router.get('/scaling/history', ...protectWithRole('STEWARD'), (_req: Request, res: Response) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 20;
+    const limit = parseInt(String(_req.query.limit)) || 20;
     const history = predictiveScalingService.getPredictionHistory(limit);
     res.json({ success: true, data: history });
   } catch (error) {
@@ -100,7 +100,7 @@ router.get('/scaling/history', ...protectWithRole('STEWARD'), (_req: Request, re
 router.get('/metrics/heatmap/:type', (req: Request, res: Response) => {
   try {
     const type = req.params.type as 'cpu' | 'memory';
-    const windowMinutes = parseInt(req.query.window as string) || 60;
+    const windowMinutes = parseInt(String(req.query.window)) || 60;
     const data = metricsCollectorService.getHeatmapData(type, windowMinutes);
     res.json({ success: true, data });
   } catch (error) {
@@ -119,7 +119,7 @@ router.get('/metrics/cache', (_req: Request, res: Response) => {
 
 router.get('/metrics/latency', (req: Request, res: Response) => {
   try {
-    const windowMinutes = parseInt(req.query.window as string) || 60;
+    const windowMinutes = parseInt(String(req.query.window)) || 60;
     const stats = metricsCollectorService.getLatencyStats(windowMinutes);
     res.json({ success: true, data: stats });
   } catch (error) {
@@ -129,7 +129,7 @@ router.get('/metrics/latency', (req: Request, res: Response) => {
 
 router.get('/metrics/latency/histogram', (req: Request, res: Response) => {
   try {
-    const windowMinutes = parseInt(req.query.window as string) || 60;
+    const windowMinutes = parseInt(String(req.query.window)) || 60;
     const histogram = metricsCollectorService.getLatencyHistogram(windowMinutes);
     res.json({ success: true, data: histogram });
   } catch (error) {
@@ -327,7 +327,7 @@ router.get('/cluster/ha/health', async (_req: Request, res: Response) => {
 // Task 125: Performance Analyzer
 router.get('/performance/analysis', async (req: Request, res: Response) => {
   try {
-    const windowMinutes = parseInt(req.query.window as string) || 60;
+    const windowMinutes = parseInt(String(req.query.window)) || 60;
     const report = await performanceAnalyzerService.analyzePerformance(windowMinutes);
     res.json({ success: true, data: report });
   } catch (error) {
@@ -337,7 +337,7 @@ router.get('/performance/analysis', async (req: Request, res: Response) => {
 
 router.get('/performance/bottlenecks', async (req: Request, res: Response) => {
   try {
-    const count = parseInt(req.query.count as string) || 5;
+    const count = parseInt(String(req.query.count)) || 5;
     const bottlenecks = await performanceAnalyzerService.getTopBottlenecks(count);
     res.json({ success: true, data: bottlenecks });
   } catch (error) {
@@ -439,7 +439,7 @@ router.get('/simulation/active', (_req: Request, res: Response) => {
 
 router.get('/simulation/history', (req: Request, res: Response) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseInt(String(req.query.limit)) || 50;
     const history = devSimulationService.getSimulationHistory(limit);
     res.json({ success: true, data: history });
   } catch (error) {
@@ -529,7 +529,7 @@ router.post('/chaos/experiments/:id/run', async (req: Request, res: Response) =>
 router.get('/chaos/runs', (req: Request, res: Response) => {
   try {
     const experimentId = req.query.experimentId as string | undefined;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseInt(String(req.query.limit)) || 50;
     const runs = chaosEngineeringService.getRunHistory(experimentId, limit);
     res.json({ success: true, data: runs });
   } catch (error) {
@@ -759,7 +759,7 @@ router.post('/serverless/functions/:id/invoke', async (req: Request, res: Respon
 
 router.get('/serverless/functions/:id/metrics', (req: Request, res: Response) => {
   try {
-    const periodMinutes = parseInt(req.query.period as string) || 60;
+    const periodMinutes = parseInt(String(req.query.period)) || 60;
     const metrics = serverlessTriggerService.getMetrics(req.params.id, periodMinutes);
     if (!metrics) {
       return res.status(404).json({ success: false, error: 'Function not found' });
@@ -773,7 +773,7 @@ router.get('/serverless/functions/:id/metrics', (req: Request, res: Response) =>
 router.get('/serverless/invocations', (req: Request, res: Response) => {
   try {
     const functionId = req.query.functionId as string | undefined;
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = parseInt(String(req.query.limit)) || 100;
     const invocations = serverlessTriggerService.getInvocationHistory(functionId, limit);
     res.json({ success: true, data: invocations });
   } catch (error) {
@@ -793,7 +793,7 @@ router.get('/serverless/stats', (_req: Request, res: Response) => {
 // Task 134: Cost Monitoring
 router.get('/costs/summary', (req: Request, res: Response) => {
   try {
-    const days = parseInt(req.query.days as string) || 30;
+    const days = parseInt(String(req.query.days)) || 30;
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - days * 86400000);
     const summary = costMonitoringService.getCostSummary(startDate, endDate);
@@ -805,7 +805,7 @@ router.get('/costs/summary', (req: Request, res: Response) => {
 
 router.get('/costs/daily', (req: Request, res: Response) => {
   try {
-    const days = parseInt(req.query.days as string) || 30;
+    const days = parseInt(String(req.query.days)) || 30;
     const costs = costMonitoringService.getDailyCosts(days);
     res.json({ success: true, data: costs });
   } catch (error) {
@@ -815,7 +815,7 @@ router.get('/costs/daily', (req: Request, res: Response) => {
 
 router.get('/costs/forecast', (req: Request, res: Response) => {
   try {
-    const days = parseInt(req.query.days as string) || 30;
+    const days = parseInt(String(req.query.days)) || 30;
     const forecast = costMonitoringService.getForecast(days);
     res.json({ success: true, data: forecast });
   } catch (error) {
