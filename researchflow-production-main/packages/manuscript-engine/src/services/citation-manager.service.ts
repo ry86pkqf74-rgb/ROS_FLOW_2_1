@@ -31,7 +31,7 @@ export class CitationManagerService {
     const fullCitation: Citation = {
       ...citation,
       id,
-      formatted: this.formatCitation(citation as Citation, 'AMA'),
+      formatted: this.formatCitation(citation as Citation, 'superscript_number'),
     };
 
     this.citations.set(id, fullCitation);
@@ -103,7 +103,9 @@ export class CitationManagerService {
    * Format in AMA style
    */
   private formatAMA(citation: Citation): string {
-    const authors = this.formatAuthorsAMA(citation.authors);
+    const authors = this.formatAuthorsAMA(
+      citation.authors.map((author) => author.lastName ?? author.initials ?? author.firstName ?? 'Unknown'),
+    );
     let formatted = `${authors}. ${citation.title}.`;
 
     if (citation.journal) {
@@ -137,7 +139,9 @@ export class CitationManagerService {
    * Format in APA style
    */
   private formatAPA(citation: Citation): string {
-    const authors = this.formatAuthorsAPA(citation.authors);
+    const authors = this.formatAuthorsAPA(
+      citation.authors.map((author) => author.lastName ?? author.initials ?? author.firstName ?? 'Unknown'),
+    );
     let formatted = `${authors} (${citation.year}). ${citation.title}.`;
 
     if (citation.journal) {
@@ -165,7 +169,9 @@ export class CitationManagerService {
    * Format in Vancouver style
    */
   private formatVancouver(citation: Citation): string {
-    const authors = this.formatAuthorsVancouver(citation.authors);
+    const authors = this.formatAuthorsVancouver(
+      citation.authors.map((author) => author.lastName ?? author.initials ?? author.firstName ?? 'Unknown'),
+    );
     let formatted = `${authors}. ${citation.title}.`;
 
     if (citation.journal) {
@@ -202,7 +208,9 @@ export class CitationManagerService {
    * Format in Chicago style
    */
   private formatChicago(citation: Citation): string {
-    const authors = this.formatAuthorsChicago(citation.authors);
+    const authors = this.formatAuthorsChicago(
+      citation.authors.map((author) => author.lastName ?? author.initials ?? author.firstName ?? 'Unknown'),
+    );
     let formatted = `${authors}. "${citation.title}."`;
 
     if (citation.journal) {
