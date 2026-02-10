@@ -103,7 +103,7 @@ describe('ScientificNotationService', () => {
     });
 
     it('should format with complex units', () => {
-      const result = formatWithUnit(9.8, 'm/s²', { style: 'PLAIN', significantDigits: 1 });
+      const result = formatWithUnit(9.8, 'm/s²', { style: 'PLAIN', significantDigits: 2 });
       expect(result).toBe('9.8 m/s²');
     });
   });
