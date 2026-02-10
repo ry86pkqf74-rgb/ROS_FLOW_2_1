@@ -1497,7 +1497,8 @@ app.use("/api/health", healthRouter);
     requireRole(ROLES.VIEWER),
     async (req: Request, res: Response) => {
       try {
-        const fileUpload = await storage.getFileUpload(req.params.id);
+        const { id } = req.params as { id: string };
+        const fileUpload = await storage.getFileUpload(id);
 
         if (!fileUpload) {
           return res.status(404).json({ error: "File not found" });
@@ -1533,7 +1534,8 @@ app.use("/api/health", healthRouter);
     logAuditEvent("FILE_DELETE", "files"),
     async (req: Request, res: Response) => {
       try {
-        const fileUpload = await storage.getFileUpload(req.params.id);
+        const { id } = req.params as { id: string };
+        const fileUpload = await storage.getFileUpload(id);
 
         if (!fileUpload) {
           return res.status(404).json({ error: "File not found" });
@@ -1544,7 +1546,7 @@ app.use("/api/health", healthRouter);
           fs.unlinkSync(filePath);
         }
 
-        await storage.updateFileUpload(req.params.id, { status: "deleted" });
+        await storage.updateFileUpload(id, { status: "deleted" });
 
         await storage.createAuditLog({
           eventType: "FILE_DELETE",
@@ -4954,7 +4956,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { researchId } = req.params;
+      const { researchId } = req.params as { researchId: string };
       const artifacts = await storage.listArtifacts(researchId);
       res.json({
         status: "success",
@@ -4973,7 +4975,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { researchId, stageId } = req.params;
+      const { researchId, stageId } = req.params as { researchId: string; stageId: string };
       const artifacts = await storage.listArtifactsByStage(researchId, stageId);
       res.json({
         status: "success",
@@ -4992,7 +4994,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const artifact = await storage.getArtifact(id);
       
       if (!artifact) {
@@ -5016,7 +5018,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('ARTIFACT_UPDATE', 'artifact'),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const parseResult = insertArtifactSchema.partial().safeParse(req.body);
       
       if (!parseResult.success) {
@@ -5050,7 +5052,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('ARTIFACT_DELETE', 'artifact'),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const deleted = await storage.deleteArtifact(id);
       
       if (!deleted) {
@@ -5079,7 +5081,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('ARTIFACT_VERSION_CREATE', 'artifact-version'),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       
       // Check if artifact exists
       const artifact = await storage.getArtifact(id);
@@ -5115,7 +5117,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       
       // Check if artifact exists
       const artifact = await storage.getArtifact(id);
@@ -5141,7 +5143,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const version = await storage.getArtifactVersion(id);
       
       if (!version) {
@@ -5169,7 +5171,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('ARTIFACT_COMPARISON_CREATE', 'artifact-comparison'),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       
       // Check if artifact exists
       const artifact = await storage.getArtifact(id);
@@ -5205,7 +5207,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const comparison = await storage.getArtifactComparison(id);
       
       if (!comparison) {
@@ -5314,7 +5316,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { executionId } = req.params;
+      const { executionId } = req.params as { executionId: string };
       
       const { getExecutionStatus } = await import("./services/sap-executor");
       const result = getExecutionStatus(executionId);
@@ -5344,7 +5346,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { exportId } = req.params;
+      const { exportId } = req.params as { exportId: string };
       
       const { getExportStatus } = await import("./services/conference-exporter");
       const result = getExportStatus(exportId);
@@ -5370,7 +5372,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { researchId } = req.params;
+      const { researchId } = req.params as { researchId: string };
       
       const { listExports } = await import("./services/conference-exporter");
       const exports = listExports(researchId);
@@ -5588,7 +5590,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { scanId } = req.params;
+      const { scanId } = req.params as { scanId: string };
       
       const { getScanResult } = await import("./services/phi-scanner");
       const result = getScanResult(scanId);
@@ -5614,7 +5616,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { auditId } = req.params;
+      const { auditId } = req.params as { auditId: string };
       
       const { getOverrideResult } = await import("./services/phi-scanner");
       const result = getOverrideResult(auditId);
@@ -5641,7 +5643,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { artifactId } = req.params;
+      const { artifactId } = req.params as { artifactId: string };
       
       // In a real implementation, this would query the database for:
       // - Latest scan for this artifact
@@ -5865,7 +5867,7 @@ Return ONLY valid JSON, no markdown.`;
   // GET /api/ros/pipeline/run/:runId - Get single run details with provenance
   app.get("/api/ros/pipeline/run/:runId", async (req, res) => {
     try {
-      const { runId } = req.params;
+      const { runId } = req.params as { runId: string };
       const run = mockPipelineRuns.find((r) => r.runId === runId);
 
       if (!run) {
@@ -5896,7 +5898,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.VIEWER),
     async (req, res) => {
     try {
-      const { topicId } = req.params;
+      const { topicId } = req.params as { topicId: string };
       const topic = await getTopicById(topicId);
       
       if (!topic) {
@@ -5923,7 +5925,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.VIEWER),
     async (req, res) => {
     try {
-      const { topicId } = req.params;
+      const { topicId } = req.params as { topicId: string };
       const { fromVersion, toVersion } = req.query;
       
       const { diffVersions } = await import("./utils/version-hash");
@@ -5975,7 +5977,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.VIEWER),
     async (req, res) => {
     try {
-      const { topicId } = req.params;
+      const { topicId } = req.params as { topicId: string };
       const { stageExecutedVersion } = req.query;
       
       const topic = await getTopicById(topicId);
@@ -6011,7 +6013,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('TOPIC_LOCK', 'topics'),
     async (req, res) => {
     try {
-      const { topicId } = req.params;
+      const { topicId } = req.params as { topicId: string };
       const userId = req.user?.id || 'anonymous';
       
       const topic = await getTopicById(topicId);
@@ -6124,7 +6126,7 @@ Return ONLY valid JSON, no markdown.`;
     logAuditEvent('SAP_APPROVE', 'statistical_plans'),
     async (req, res) => {
     try {
-      const { sapId } = req.params;
+      const { sapId } = req.params as { sapId: string };
       const { justification } = req.body;
 
       if (!justification || justification.length < 10) {
@@ -6162,7 +6164,7 @@ Return ONLY valid JSON, no markdown.`;
     requireRole(ROLES.RESEARCHER),
     async (req, res) => {
     try {
-      const { sapId } = req.params;
+      const { sapId } = req.params as { sapId: string };
       const { format } = req.body;
       
       const { generateMethodsForExport } = await import("./utils/methods-generator");
