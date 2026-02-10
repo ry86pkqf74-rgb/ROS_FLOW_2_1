@@ -43,7 +43,7 @@ test.describe('ResearchFlow Interactive Elements Verification', () => {
           const isClickable = await card.evaluate(el => {
             return el.tagName === 'A' ||
                    el.hasAttribute('onclick') ||
-                   el.hasAttribute('role') === 'button' ||
+                   el.getAttribute('role') === 'button' ||
                    el.querySelector('a, button') !== null;
           });
           expect(isClickable || true).toBeTruthy(); // Log but don't fail
