@@ -46,12 +46,14 @@ export class PHIGate {
       return { allowed: true, phiDetected: false, patterns: [], mode };
     }
 
+    const detectedPatterns = scanResult.patterns.map((pattern) => pattern.type);
+
     if (mode === 'LIVE') {
       // FAIL-CLOSED: Block the request in LIVE mode
       return {
         allowed: false,
         phiDetected: true,
-        patterns: scanResult.detectedPatterns,
+        patterns: detectedPatterns,
         mode,
       };
     }
@@ -60,7 +62,7 @@ export class PHIGate {
     return {
       allowed: true,
       phiDetected: true,
-      patterns: scanResult.detectedPatterns,
+      patterns: detectedPatterns,
       sanitizedContent: redactPHI(content),
       mode,
     };
