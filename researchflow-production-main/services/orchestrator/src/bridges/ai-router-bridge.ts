@@ -12,7 +12,7 @@
  * - Error handling with fallbacks
  */
 
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import * as z from 'zod';
 
 // Type definitions
@@ -401,7 +401,7 @@ export class AIRouterBridge {
       } catch (error) {
         lastError = error as Error;
         
-        if (error instanceof AxiosError) {
+        if (error instanceof axios.AxiosError) {
           // Don't retry on client errors (4xx)
           if (error.response?.status && error.response.status < 500) {
             throw error;
