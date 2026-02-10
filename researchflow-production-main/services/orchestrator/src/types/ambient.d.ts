@@ -70,16 +70,23 @@ declare module 'ws' {
   export class WebSocket extends EventEmitter {
     static OPEN: number;
     static CLOSED: number;
+    readonly OPEN: number;
+    readonly CLOSED: number;
     readyState: number;
     send(data: any, cb?: any): void;
     close(code?: number, reason?: string): void;
     ping(data?: any, mask?: boolean, cb?: any): void;
     terminate(): void;
   }
+  export namespace WebSocket {
+    type RawData = any;
+    type Data = any;
+  }
   export class WebSocketServer extends EventEmitter {
     constructor(options: any);
     clients: Set<WebSocket>;
     close(cb?: any): void;
+    handleUpgrade(request: any, socket: any, head: any, cb: (client: WebSocket) => void): void;
   }
   export default WebSocket;
 }
