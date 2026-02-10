@@ -85,6 +85,12 @@ jobs:
         run: pnpm run typecheck
         continue-on-error: true
 
+      - name: Install PostgreSQL client (psql)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql --version
+
       - name: Apply orchestrator DB migrations in order
         run: node services/orchestrator/scripts/ci-migrate.mjs
         env:
