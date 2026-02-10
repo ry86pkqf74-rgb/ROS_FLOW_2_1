@@ -6,7 +6,7 @@
 import crypto from 'crypto';
 
 import { Request, Response, NextFunction } from 'express';
-import { rateLimit } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 
 import { createLogger } from '../utils/logger';
