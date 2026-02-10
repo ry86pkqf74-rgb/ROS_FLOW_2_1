@@ -47,7 +47,9 @@ export class WordCountTrackerService {
       const characterCount = section.content.length;
       totalWords += wordCount;
 
-      const limit = request.limits[section.sectionType as keyof WordCountLimits] as { min?: number; max?: number } | undefined;
+      // Use sectionType if available, fall back to required section field
+      const sectionType = section.sectionType ?? section.section;
+      const limit = request.limits[sectionType as keyof WordCountLimits] as { min?: number; max?: number } | undefined;
 
       let status: SectionWordCount['status'] = 'within';
       let percentage: number | undefined;
@@ -65,7 +67,7 @@ export class WordCountTrackerService {
       }
 
       sections.push({
-        sectionType: section.sectionType,
+        sectionType,
         wordCount,
         characterCount,
         limit,

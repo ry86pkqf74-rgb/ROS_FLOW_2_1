@@ -48,6 +48,7 @@ export type ClinicalDataset = z.infer<typeof ClinicalDatasetSchema>;
 // Section Content Types
 export interface SectionContent {
   section: IMRaDSection;
+  sectionType: IMRaDSection;
   content: string;
   wordCount: number;
   citations: string[];

@@ -22,6 +22,19 @@ import { wordCountTrackerService } from '../../../packages/manuscript-engine/src
 import { outlineExpanderService } from '../../../packages/manuscript-engine/src/services/outline-expander.service';
 import { IMRAD_TEMPLATE, getTemplateById, listTemplates } from '../../../packages/manuscript-engine/src/templates/imrad-templates';
 import { NEJM_TEMPLATE, JAMA_TEMPLATE, LANCET_TEMPLATE, BMJ_TEMPLATE, getJournalTemplate } from '../../../packages/manuscript-engine/src/templates/journal-templates';
+import type { IMRaDSection, SectionContent } from '../../../packages/manuscript-engine/src/types';
+
+const makeSectionContent = (section: IMRaDSection, content: string): SectionContent => ({
+  section,
+  sectionType: section,
+  content,
+  wordCount: content.split(/\s+/).filter(Boolean).length,
+  citations: [],
+  figures: [],
+  tables: [],
+  generatedAt: new Date(),
+  generatedBy: 'human',
+});
 
 describe('Phase 3: Structure Building Integration', () => {
   const mockManuscriptId = 'manuscript-test-structure';
@@ -220,8 +233,8 @@ describe('Phase 3: Structure Building Integration', () => {
       const report = wordCountTrackerService.trackWordCount({
         manuscriptId: mockManuscriptId,
         sections: [
-          { sectionId: 'abstract', sectionType: 'abstract', content: 'This is a test abstract with some words.' },
-          { sectionId: 'intro', sectionType: 'introduction', content: 'This is an introduction section.' },
+          makeSectionContent('abstract', 'This is a test abstract with some words.'),
+          makeSectionContent('introduction', 'This is an introduction section.'),
         ],
         limits: {
           abstract: { max: 300 },
@@ -452,11 +465,11 @@ describe('Phase 3: Structure Building Integration', () => {
       const wordCountReport = wordCountTrackerService.trackWordCount({
         manuscriptId: mockManuscriptId,
         sections: [
-          { sectionId: 'abstract', sectionType: 'abstract', content: abstract.text },
-          { sectionId: 'intro', sectionType: 'introduction', content: introduction.fullText },
-          { sectionId: 'methods', sectionType: 'methods', content: methods.fullText },
-          { sectionId: 'results', sectionType: 'results', content: results.fullText },
-          { sectionId: 'discussion', sectionType: 'discussion', content: discussion.fullText },
+          makeSectionContent('abstract', abstract.text),
+          makeSectionContent('introduction', introduction.fullText),
+          makeSectionContent('methods', methods.fullText),
+          makeSectionContent('results', results.fullText),
+          makeSectionContent('discussion', discussion.fullText),
         ],
         limits: IMRAD_TEMPLATE.wordLimits,
       });
