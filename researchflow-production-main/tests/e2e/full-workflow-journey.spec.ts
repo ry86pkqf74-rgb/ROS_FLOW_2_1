@@ -117,7 +117,7 @@ test.describe('Full 20-Stage Workflow Journey', () => {
     // Look for category section headers or badges
     for (const category of CATEGORIES) {
       // Check for category heading or badge
-      const categoryElement = page.locator(`text=${category}`, { exact: false }).first();
+      const categoryElement = page.locator(`text=${category}`).first();
 
       // Category should be visible somewhere on the page
       const pageContent = await page.content();
