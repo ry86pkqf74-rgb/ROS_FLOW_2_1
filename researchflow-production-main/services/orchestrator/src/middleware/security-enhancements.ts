@@ -56,7 +56,7 @@ export class SecurityEnhancementMiddleware {
   private logger = createLogger('security-middleware');
   private activeConnections = new Map<string, { count: number; lastAccess: number }>();
   private suspiciousIPs = new Set<string>();
-  private refreshTokens = new Map<string, { userId: string; expiresAt: number }>();
+  private refreshTokenStore = new Map<string, { userId: string; expiresAt: number }>();
 
   constructor(config: Partial<SecurityConfig> = {}) {
     this.config = {
@@ -343,7 +343,7 @@ export class SecurityEnhancementMiddleware {
 
     // Store refresh token
     const refreshPayload = jwt.decode(refreshToken) as any;
-    this.refreshTokens.set(refreshToken, {
+    this.refreshTokenStore.set(refreshToken, {
       userId: payload.userId,
       expiresAt: refreshPayload.exp * 1000
     });
@@ -374,13 +374,13 @@ export class SecurityEnhancementMiddleware {
       }
 
       // Check if refresh token exists in storage
-      const storedToken = this.refreshTokens.get(refreshToken);
+      const storedToken = this.refreshTokenStore.get(refreshToken);
       if (!storedToken || storedToken.userId !== decoded.userId) {
         return { success: false, error: 'Refresh token not found or invalid' };
       }
 
       // Remove old refresh token
-      this.refreshTokens.delete(refreshToken);
+      this.refreshTokenStore.delete(refreshToken);
 
       // In production, fetch user data from database
       const userPayload = {
@@ -417,7 +417,7 @@ export class SecurityEnhancementMiddleware {
     }
 
     if (refreshToken) {
-      this.refreshTokens.delete(refreshToken);
+      this.refreshTokenStore.delete(refreshToken);
     }
   }
 
@@ -612,9 +612,9 @@ export class SecurityEnhancementMiddleware {
     setInterval(() => {
       const now = Date.now();
       
-      for (const [token, data] of this.refreshTokens) {
+      for (const [token, data] of this.refreshTokenStore) {
         if (data.expiresAt < now) {
-          this.refreshTokens.delete(token);
+          this.refreshTokenStore.delete(token);
         }
       }
     }, 60 * 60 * 1000);
@@ -642,7 +642,7 @@ export class SecurityEnhancementMiddleware {
       stats: {
         activeConnections: this.activeConnections.size,
         suspiciousIPs: this.suspiciousIPs.size,
-        activeRefreshTokens: this.refreshTokens.size
+        activeRefreshTokens: this.refreshTokenStore.size
       }
     };
   }
@@ -653,7 +653,7 @@ export class SecurityEnhancementMiddleware {
   reset(): void {
     this.activeConnections.clear();
     this.suspiciousIPs.clear();
-    this.refreshTokens.clear();
+    this.refreshTokenStore.clear();
   }
 }
 
