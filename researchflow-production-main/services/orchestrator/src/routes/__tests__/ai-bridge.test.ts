@@ -7,7 +7,7 @@
  */
 
 import assert from 'node:assert';
-import { test, describe, beforeEach, mock } from 'node:test';
+import { beforeEach, describe, expect, it, test, vi } from 'vitest';
 
 import express from 'express';
 import request from 'supertest';
@@ -15,16 +15,24 @@ import request from 'supertest';
 import aiBridgeRoutes from '../ai-bridge';
 
 // Mock dependencies
-const mockRequirePermission = mock.fn((permission: string) => (req: any, res: any, next: any) => {
-  // Mock RBAC middleware - allow all requests in tests
-  next();
-});
+type RequirePermission = (permission: string) => (req: any, res: any, next: any) => void;
+type LogAction = (...args: unknown[]) => Promise<void>;
+type AxiosResponse = { data?: unknown; status?: number };
+type AxiosPost = (url: string, data?: unknown, config?: unknown) => Promise<AxiosResponse>;
+type AxiosGet = (url: string, config?: unknown) => Promise<AxiosResponse>;
 
-const mockLogAction = mock.fn().mockResolvedValue(undefined);
+const mockRequirePermission = vi.fn<RequirePermission>(
+  (permission: string) => (req: any, res: any, next: any) => {
+    // Mock RBAC middleware - allow all requests in tests
+    next();
+  }
+);
+
+const mockLogAction = vi.fn<LogAction>(() => Promise.resolve());
 
 const mockAxios = {
-  post: mock.fn(),
-  get: mock.fn(),
+  post: vi.fn<AxiosPost>(),
+  get: vi.fn<AxiosGet>(),
 };
 
 // Create test app factory
@@ -36,7 +44,7 @@ function createTestApp() {
     req.user = {
       id: 'test-user-123',
       email: 'test@example.com',
-      role: 'RESEARCHER',
+      role: 'researcher',
     };
     next();
   });
@@ -45,12 +53,15 @@ function createTestApp() {
 }
 
 describe('AI Bridge API', () => {
+  let app: ReturnType<typeof createTestApp>;
+
   beforeEach(() => {
-    mockAxios.post.mock.resetHistory();
-    mockAxios.get.mock.resetHistory();
+    app = createTestApp();
+    mockAxios.post.mockReset();
+    mockAxios.get.mockReset();
     
     // Mock AI Router routing response
-    mockAxios.post.mock.mockImplementation((url) => {
+    mockAxios.post.mockImplementation((url) => {
       if (url.includes('/api/ai/router/route')) {
         return Promise.resolve({
           data: {
@@ -68,7 +79,7 @@ describe('AI Bridge API', () => {
     });
 
     // Mock health check
-    mockAxios.get.mock.mockImplementation((url) => {
+    mockAxios.get.mockImplementation((url) => {
       if (url.includes('/api/ai/router/tiers')) {
         return Promise.resolve({
           status: 200,
@@ -109,7 +120,7 @@ describe('AI Bridge API', () => {
     });
 
     it('should handle AI Router being down', async () => {
-      mockedAxios.get.mockRejectedValue(new Error('Connection refused'));
+      mockAxios.get.mockRejectedValue(new Error('Connection refused'));
 
       const response = await request(app)
         .get('/api/ai-bridge/health')
@@ -225,7 +236,7 @@ describe('AI Bridge API', () => {
     });
 
     it('should handle AI Router failures gracefully', async () => {
-      mockedAxios.post.mockRejectedValue(new Error('AI Router down'));
+      mockAxios.post.mockRejectedValue(new Error('AI Router down'));
 
       const response = await request(app)
         .post('/api/ai-bridge/invoke')
@@ -306,7 +317,7 @@ describe('AI Bridge API', () => {
     it('should handle partial batch failures', async () => {
       // Mock one failure during batch processing
       let callCount = 0;
-      mockedAxios.post.mockImplementation((url) => {
+      mockAxios.post.mockImplementation((url) => {
         callCount++;
         if (url.includes('/api/ai/router/route')) {
           if (callCount === 2) {
