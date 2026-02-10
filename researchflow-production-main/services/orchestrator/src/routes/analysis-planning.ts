@@ -119,7 +119,8 @@ router.get(
   conditionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user?.id || 'demo-user';
-    const projectId = req.query.projectId as string | undefined;
+    const projectId =
+      typeof req.query.projectId === 'string' ? req.query.projectId : undefined;
 
     const plans = await planningService.listPlans(userId, projectId);
     res.json({ plans });
@@ -133,15 +134,16 @@ router.get(
   '/plans/:planId',
   conditionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const plan = await planningService.getPlan(req.params.planId);
+    const planId = req.params.planId as string; // Route param is a single string.
+    const plan = await planningService.getPlan(planId);
     if (!plan) {
       return res.status(404).json({ error: 'Plan not found' });
     }
 
     // Also get jobs and artifacts
-    const jobs = await planningService.getJobsByPlan(req.params.planId);
+    const jobs = await planningService.getJobsByPlan(planId);
     const artifacts = await planningService.getArtifacts({
-      planId: req.params.planId,
+      planId,
     });
 
     res.json({ plan, jobs, artifacts });
@@ -158,13 +160,14 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const body = approvePlanSchema.parse(req.body);
     const approverId = (req as any).user.id;
+    const planId = req.params.planId as string; // Route param is a single string.
 
     let plan;
     if (body.approved) {
-      plan = await planningService.approvePlan(req.params.planId, approverId);
+      plan = await planningService.approvePlan(planId, approverId);
     } else {
       plan = await planningService.rejectPlan(
-        req.params.planId,
+        planId,
         body.reason || 'No reason provided'
       );
     }
@@ -182,8 +185,9 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const body = runPlanSchema.parse(req.body);
     const userId = (req as any).user?.id || 'demo-user';
+    const planId = req.params.planId as string; // Route param is a single string.
 
-    const job = await planningService.runPlan(req.params.planId, userId, body);
+    const job = await planningService.runPlan(planId, userId, body);
     res.json({ job, message: 'Plan execution started' });
   })
 );
@@ -195,12 +199,13 @@ router.get(
   '/jobs/:jobId',
   conditionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const job = await planningService.getJob(req.params.jobId);
+    const jobId = req.params.jobId as string; // Route param is a single string.
+    const job = await planningService.getJob(jobId);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    const events = await planningService.getJobEvents(req.params.jobId);
+    const events = await planningService.getJobEvents(jobId);
     res.json({ job, events });
   })
 );
@@ -209,7 +214,8 @@ router.get(
  * GET /api/jobs/:jobId/events - SSE stream for job events
  */
 router.get('/jobs/:jobId/events', conditionalAuth, async (req: Request, res: Response) => {
-  const job = await planningService.getJob(req.params.jobId);
+  const jobId = req.params.jobId as string; // Route param is a single string.
+  const job = await planningService.getJob(jobId);
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
   }
@@ -228,9 +234,9 @@ router.get('/jobs/:jobId/events', conditionalAuth, async (req: Request, res: Res
   // Poll for updates
   const interval = setInterval(async () => {
     try {
-      const updatedJob = await planningService.getJob(req.params.jobId);
+      const updatedJob = await planningService.getJob(jobId);
       const events = await planningService.getJobEvents(
-        req.params.jobId,
+        jobId,
         lastEventTime
       );
 
