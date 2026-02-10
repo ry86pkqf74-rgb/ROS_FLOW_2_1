@@ -17,7 +17,6 @@ interface LogContext {
   module?: string;
   requestId?: string;
   correlationId?: string;
-  correlationId?: string;
   userId?: string;
   [key: string]: unknown;
 }
