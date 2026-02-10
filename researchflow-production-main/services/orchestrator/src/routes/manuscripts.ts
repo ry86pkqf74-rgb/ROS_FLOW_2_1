@@ -36,6 +36,12 @@ import { scanForPhi } from '../services/phi-protection';
 
 const router = Router();
 
+const normalizeQueryString = (value: unknown): string | undefined => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.join(',');
+  return undefined;
+};
+
 // =============================================================================
 // Validation Schemas
 // =============================================================================
@@ -320,7 +326,9 @@ router.get('/', requireRole('VIEWER'), async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { status, limit = '20', offset = '0' } = req.query;
+    const status = normalizeQueryString(req.query.status);
+    const limit = normalizeQueryString(req.query.limit) ?? '20';
+    const offset = normalizeQueryString(req.query.offset) ?? '0';
 
     let query = sql`
       SELECT m.*,
@@ -330,19 +338,19 @@ router.get('/', requireRole('VIEWER'), async (req: Request, res: Response) => {
     `;
 
     if (status) {
-      query = sql`${query} AND m.status = ${status as string}`;
+      query = sql`${query} AND m.status = ${status}`;
     }
 
-    query = sql`${query} ORDER BY m.updated_at DESC LIMIT ${parseInt(limit as string)} OFFSET ${parseInt(offset as string)}`;
+    query = sql`${query} ORDER BY m.updated_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
 
     const result = await db.execute(query);
 
     res.json({
       manuscripts: result.rows || [],
       pagination: {
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-        hasMore: (result.rows?.length || 0) === parseInt(limit as string),
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: (result.rows?.length || 0) === parseInt(limit),
       },
     });
   } catch (error: any) {
@@ -357,7 +365,7 @@ router.get('/', requireRole('VIEWER'), async (req: Request, res: Response) => {
  */
 router.get('/:id', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
     const userId = (req as any).user?.id;
 
     const result = await db.execute(sql`
@@ -400,7 +408,7 @@ router.get('/:id', requireRole('VIEWER'), async (req: Request, res: Response) =>
  */
 router.patch('/:id', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
     const userId = (req as any).user?.id;
 
     const parsed = updateManuscriptSchema.safeParse(req.body);
@@ -482,7 +490,7 @@ router.patch('/:id', requireRole('RESEARCHER'), async (req: Request, res: Respon
  */
 router.get('/:id/sections', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
 
     const result = await db.execute(sql`
       SELECT mv.content
@@ -529,7 +537,7 @@ router.get('/:id/sections', requireRole('VIEWER'), async (req: Request, res: Res
  */
 router.get('/:id/doc', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
 
     const result = await db.execute(sql`
       SELECT mv.*
@@ -555,7 +563,7 @@ router.get('/:id/doc', requireRole('VIEWER'), async (req: Request, res: Response
  */
 router.post('/:id/doc/save', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
     const userId = (req as any).user?.id;
 
     const parsed = saveDocSchema.safeParse(req.body);
@@ -679,7 +687,8 @@ router.post('/:id/doc/save', requireRole('RESEARCHER'), async (req: Request, res
  */
 router.post('/:id/sections/:sectionId/refine', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id, sectionId } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
+    const sectionId = normalizeQueryString(req.params.sectionId) ?? '';
     const userId = (req as any).user?.id;
 
     const parsed = refineSectionSchema.safeParse(req.body);
@@ -793,7 +802,7 @@ router.post('/:id/sections/:sectionId/refine', requireRole('RESEARCHER'), async 
  */
 router.post('/:id/abstract/generate', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
     const userId = (req as any).user?.id;
 
     const { structured = false, wordLimit = 250 } = req.body;
@@ -859,8 +868,9 @@ router.post('/:id/abstract/generate', requireRole('RESEARCHER'), async (req: Req
  */
 router.get('/:id/events', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { limit = '50', offset = '0' } = req.query;
+    const id = normalizeQueryString(req.params.id) ?? '';
+    const limit = normalizeQueryString(req.query.limit) ?? '50';
+    const offset = normalizeQueryString(req.query.offset) ?? '0';
 
     const result = await db.execute(sql`
       SELECT mal.*, u.email as user_email
@@ -868,15 +878,15 @@ router.get('/:id/events', requireRole('VIEWER'), async (req: Request, res: Respo
       LEFT JOIN users u ON mal.user_id = u.id
       WHERE mal.manuscript_id = ${id}
       ORDER BY mal.timestamp DESC
-      LIMIT ${parseInt(limit as string)} OFFSET ${parseInt(offset as string)}
+      LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
     `);
 
     res.json({
       manuscriptId: id,
       events: result.rows || [],
       pagination: {
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
+        limit: parseInt(limit),
+        offset: parseInt(offset),
       },
     });
   } catch (error: any) {
@@ -905,8 +915,9 @@ const createCommentSchema = z.object({
  */
 router.get('/:id/comments', requireRole('VIEWER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { status, sectionId } = req.query;
+    const id = normalizeQueryString(req.params.id) ?? '';
+    const status = normalizeQueryString(req.query.status);
+    const sectionId = normalizeQueryString(req.query.sectionId);
 
     let query = sql`
       SELECT mc.*, u.email as author_email, u.name as author_name
@@ -916,10 +927,10 @@ router.get('/:id/comments', requireRole('VIEWER'), async (req: Request, res: Res
     `;
 
     if (status) {
-      query = sql`${query} AND mc.status = ${status as string}`;
+      query = sql`${query} AND mc.status = ${status}`;
     }
     if (sectionId) {
-      query = sql`${query} AND mc.section_id = ${sectionId as string}`;
+      query = sql`${query} AND mc.section_id = ${sectionId}`;
     }
 
     query = sql`${query} ORDER BY mc.created_at ASC`;
@@ -953,7 +964,7 @@ router.get('/:id/comments', requireRole('VIEWER'), async (req: Request, res: Res
  */
 router.post('/:id/comments', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
     const userId = (req as any).user?.id;
 
     if (!userId) {
@@ -1023,7 +1034,8 @@ router.post('/:id/comments', requireRole('RESEARCHER'), async (req: Request, res
  */
 router.post('/:id/comments/:commentId/resolve', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id, commentId } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
+    const commentId = normalizeQueryString(req.params.commentId) ?? '';
     const userId = (req as any).user?.id;
 
     if (!userId) {
@@ -1081,7 +1093,8 @@ router.post('/:id/comments/:commentId/resolve', requireRole('RESEARCHER'), async
  */
 router.delete('/:id/comments/:commentId', requireRole('RESEARCHER'), async (req: Request, res: Response) => {
   try {
-    const { id, commentId } = req.params;
+    const id = normalizeQueryString(req.params.id) ?? '';
+    const commentId = normalizeQueryString(req.params.commentId) ?? '';
     const userId = (req as any).user?.id;
 
     await runWithTransaction(async (tx) => {
