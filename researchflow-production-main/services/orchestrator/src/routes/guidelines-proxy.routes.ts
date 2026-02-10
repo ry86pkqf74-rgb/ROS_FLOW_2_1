@@ -6,8 +6,11 @@
  * the Node.js orchestrator for better maintainability.
  */
 
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { Router, Request, Response, NextFunction } from 'express';
+
+// Type alias for axios request config (avoids TS2614 on named import)
+type AxiosRequestConfig = Parameters<typeof axios.request>[0];
 
 const router = Router();
 
@@ -48,7 +51,7 @@ async function proxyRequest(
     const response = await engineClient.request(config);
     res.status(response.status).json(response.data);
   } catch (error) {
-    const axiosError = error as AxiosError;
+    const axiosError = error as axios.AxiosError;
     if (axiosError.response) {
       // Forward error response from engine
       res.status(axiosError.response.status).json(axiosError.response.data);
