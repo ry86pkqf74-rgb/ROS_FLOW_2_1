@@ -42,6 +42,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'Prefix Test',
+        scopes: ['READ'],
       });
 
       expect(result.key.keyPrefix).toBeDefined();
@@ -54,6 +55,7 @@ describe('ApiKeyRotationService', () => {
         tenantId,
         label: 'Rotation Test',
         rotationIntervalDays: 30,
+        scopes: ['READ'],
       });
 
       expect(result.key.rotationIntervalDays).toBe(30);
@@ -65,6 +67,7 @@ describe('ApiKeyRotationService', () => {
         tenantId,
         label: 'Expiry Test',
         expiresInDays: 365,
+        scopes: ['READ'],
       });
 
       const expiresAt = new Date(result.key.expiresAt);
@@ -81,6 +84,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'Get Test',
+        scopes: ['READ'],
       });
 
       const key = getApiKey(created.key.id);
@@ -98,8 +102,8 @@ describe('ApiKeyRotationService', () => {
     it('should list all keys for a user', () => {
       const testUserId = `list-user-${Date.now()}`;
 
-      createApiKey({ userId: testUserId, tenantId, label: 'Key 1' });
-      createApiKey({ userId: testUserId, tenantId, label: 'Key 2' });
+      createApiKey({ userId: testUserId, tenantId, label: 'Key 1', scopes: ['READ'] });
+      createApiKey({ userId: testUserId, tenantId, label: 'Key 2', scopes: ['READ'] });
 
       const keys = listUserApiKeys(testUserId);
       expect(keys.length).toBe(2);
@@ -113,6 +117,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'Rotate Test',
+        scopes: ['READ'],
       });
 
       const oldKeyId = created.key.id;
@@ -132,6 +137,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'Revoke Test',
+        scopes: ['READ'],
       });
 
       revokeApiKey(created.key.id, userId);
@@ -147,6 +153,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'Revoke Test',
+        scopes: ['READ'],
       });
 
       const success = revokeApiKey(created.key.id, userId, 'Security concern');
@@ -168,6 +175,7 @@ describe('ApiKeyRotationService', () => {
         tenantId,
         label: 'Expiring Soon',
         expiresInDays: 7,
+        scopes: ['READ'],
       });
 
       const reminders = getRotationReminders({
@@ -184,7 +192,7 @@ describe('ApiKeyRotationService', () => {
     it('should return summary statistics', () => {
       const testUserId = `summary-user-${Date.now()}`;
 
-      createApiKey({ userId: testUserId, tenantId, label: 'Summary Key' });
+      createApiKey({ userId: testUserId, tenantId, label: 'Summary Key', scopes: ['READ'] });
 
       const summary = getKeyRotationSummary(testUserId);
 
@@ -201,6 +209,7 @@ describe('ApiKeyRotationService', () => {
         userId,
         tenantId,
         label: 'History Test',
+        scopes: ['READ'],
       });
 
       const history = getKeyHistory(created.key.id);
