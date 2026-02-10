@@ -13,7 +13,7 @@
 
 import * as Y from 'yjs';
 
-import { db } from '../lib/db';
+import { db } from '../../db';
 
 export class YjsPersistence {
   /**
