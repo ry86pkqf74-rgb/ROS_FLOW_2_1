@@ -601,9 +601,3 @@ export function createCustomDispatcher(config?: {
 }): CustomDispatcher {
   return new CustomDispatcher(config);
 }
-
-export type {
-  CustomAgentRegistry,
-  DispatchDecision,
-  CustomDispatchContext,
-};
