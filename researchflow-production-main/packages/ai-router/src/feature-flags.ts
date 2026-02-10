@@ -155,11 +155,81 @@ export const FEATURE_FLAGS: Record<FeatureFlagKey, FeatureFlagConfig> = {
   },
 };
 
+const DEFAULT_EVALUATION_RESULTS: Record<FeatureFlagKey, FeatureFlagEvaluationResult> = {
+  [FeatureFlagKey.CUSTOM_AGENT_ENABLED]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_ENABLED,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_V2]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_V2,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_ADVANCED_ROUTING]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_ADVANCED_ROUTING,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_MEMORY_MANAGEMENT]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_MEMORY_MANAGEMENT,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_PERFORMANCE_MONITORING]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_PERFORMANCE_MONITORING,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_AB_TEST_VARIANT_A]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_AB_TEST_VARIANT_A,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_AB_TEST_VARIANT_B]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_AB_TEST_VARIANT_B,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_AB_TEST_CONTROL]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_AB_TEST_CONTROL,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_INFERENCE]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_INFERENCE,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_CACHING]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_CACHING,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+  [FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_BATCH_PROCESSING]: {
+    flagKey: FeatureFlagKey.CUSTOM_AGENT_EXPERIMENTAL_BATCH_PROCESSING,
+    enabled: false,
+    rolloutPercentage: 0,
+    reason: 'not_found',
+  },
+};
+
 export class FeatureFlagManager {
   private flags: Map<FeatureFlagKey, FeatureFlagConfig>;
 
   constructor(customFlags?: Record<FeatureFlagKey, FeatureFlagConfig>) {
-    this.flags = new Map(Object.entries(customFlags || FEATURE_FLAGS));
+    const entries = Object.entries(customFlags || FEATURE_FLAGS) as Array<[FeatureFlagKey, FeatureFlagConfig]>;
+    this.flags = new Map(entries);
   }
 
   private getConsistentHash(userId: string, flagKey: FeatureFlagKey): number {
@@ -190,7 +260,7 @@ export class FeatureFlagManager {
   }
 
   evaluateFlags(flagKeys: FeatureFlagKey[], userContext: UserContext): Record<FeatureFlagKey, FeatureFlagEvaluationResult> {
-    const results: Record<FeatureFlagKey, FeatureFlagEvaluationResult> = {};
+    const results: Record<FeatureFlagKey, FeatureFlagEvaluationResult> = { ...DEFAULT_EVALUATION_RESULTS };
     for (const flagKey of flagKeys) {
       results[flagKey] = this.evaluateFlag(flagKey, userContext);
     }
