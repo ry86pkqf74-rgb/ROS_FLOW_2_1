@@ -8,7 +8,7 @@
 import { ideas, ideaScorecards, topicBriefs, type Idea, type IdeaScorecard, type InsertIdea } from '@researchflow/core/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
-import { db } from '../../lib/db.js';
+import { db } from '../../../db.js';
 import { createAuditEntry } from '../auditService.js';
 
 export class IdeasService {

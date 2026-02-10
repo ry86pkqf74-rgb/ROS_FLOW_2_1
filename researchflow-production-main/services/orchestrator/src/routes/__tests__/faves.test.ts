@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import favesRoutes from '../faves';
 
 // Mock dependencies
-vi.mock('../../db.js', () => ({
+vi.mock('../../../db.js', () => ({
   db: {
     execute: vi.fn(),
   },
@@ -46,7 +46,7 @@ describe('FAVES API Routes', () => {
 
   describe('GET /api/faves/evaluations', () => {
     it('should return list of evaluations', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       (db.execute as any).mockResolvedValueOnce({
         rows: [
@@ -76,7 +76,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should accept query parameters', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       (db.execute as any).mockResolvedValue({ rows: [] });
 
@@ -91,7 +91,7 @@ describe('FAVES API Routes', () => {
 
   describe('GET /api/faves/evaluations/:id', () => {
     it('should return evaluation details', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const evalId = '550e8400-e29b-41d4-a716-446655440000';
       
       (db.execute as any)
@@ -119,7 +119,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should return 404 for non-existent evaluation', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       (db.execute as any).mockResolvedValue({ rows: [] });
 
@@ -133,7 +133,7 @@ describe('FAVES API Routes', () => {
 
   describe('POST /api/faves/evaluations', () => {
     it('should create new evaluation', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const { eventBus } = await import('../../services/event-bus');
       
       const newEval = {
@@ -181,7 +181,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should return 400 if model not found', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       (db.execute as any).mockResolvedValue({ rows: [] });
 
@@ -200,7 +200,7 @@ describe('FAVES API Routes', () => {
 
   describe('POST /api/faves/evaluations/:id/dimensions', () => {
     it('should submit dimension results', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const { eventBus } = await import('../../services/event-bus');
       const evalId = '550e8400-e29b-41d4-a716-446655440000';
       
@@ -284,7 +284,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should return 404 if evaluation not found', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       (db.execute as any).mockResolvedValue({ rows: [] });
 
@@ -299,7 +299,7 @@ describe('FAVES API Routes', () => {
 
   describe('POST /api/faves/evaluations/:id/artifacts', () => {
     it('should add artifacts to evaluation', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const evalId = '550e8400-e29b-41d4-a716-446655440000';
       
       const artifacts = [
@@ -340,7 +340,7 @@ describe('FAVES API Routes', () => {
 
   describe('GET /api/faves/gate/:modelId', () => {
     it('should check deployment gate for model', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const modelId = '660e8400-e29b-41d4-a716-446655440001';
       
       (db.execute as any).mockResolvedValue({
@@ -374,7 +374,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should return no evaluation status if not evaluated', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const modelId = '660e8400-e29b-41d4-a716-446655440999';
       
       (db.execute as any).mockResolvedValue({ rows: [] });
@@ -388,7 +388,7 @@ describe('FAVES API Routes', () => {
     });
 
     it('should flag stale evaluations', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const modelId = '660e8400-e29b-41d4-a716-446655440001';
       
       // Evaluation from 91 days ago
@@ -417,7 +417,7 @@ describe('FAVES API Routes', () => {
 
   describe('POST /api/faves/gate/:modelId/override', () => {
     it('should request gate override', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const { eventBus } = await import('../../services/event-bus');
       const modelId = '660e8400-e29b-41d4-a716-446655440001';
       
@@ -469,7 +469,7 @@ describe('FAVES API Routes', () => {
 
   describe('GET /api/faves/stats', () => {
     it('should return FAVES statistics', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       
       // Mock stats query
       (db.execute as any).mockResolvedValueOnce({
@@ -507,7 +507,7 @@ describe('FAVES API Routes', () => {
 
   describe('GET /api/faves/models/:modelId/history', () => {
     it('should return evaluation history for model', async () => {
-      const { db } = await import('../../db.js');
+      const { db } = await import('../../../db.js');
       const modelId = '660e8400-e29b-41d4-a716-446655440001';
       
       (db.execute as any).mockResolvedValue({
