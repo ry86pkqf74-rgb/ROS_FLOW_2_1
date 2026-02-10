@@ -9,7 +9,7 @@ import { eq, desc } from 'drizzle-orm';
 import express, { type Request, type Response } from 'express';
 import * as z from 'zod';
 
-import { db } from '../../lib/db.js';
+import { db } from '../../../db.js';
 import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { blockInStandby } from '../../middleware/governance-gates.js';
 import { requirePermission, requireRole } from '../../middleware/rbac.js';

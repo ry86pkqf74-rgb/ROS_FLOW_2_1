@@ -8,7 +8,7 @@
 import { docKits, docKitItems, venues, type DocKit, type DocKitItem } from '@researchflow/core/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
-import { db } from '../../lib/db.js';
+import { db } from '../../../db.js';
 import { createAuditEntry } from '../auditService.js';
 
 export class DocKitsService {

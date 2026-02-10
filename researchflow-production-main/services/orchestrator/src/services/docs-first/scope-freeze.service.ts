@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { topicBriefs, docAnchors, type DocAnchor } from '@researchflow/core/schema';
 import { eq, desc } from 'drizzle-orm';
 
-import { db } from '../../lib/db.js';
+import { db } from '../../../db.js';
 import { createAuditEntry } from '../auditService.js';
 
 
