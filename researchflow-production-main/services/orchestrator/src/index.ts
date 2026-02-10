@@ -143,8 +143,6 @@ import transparencyRoutes from './routes/transparency';  // Transparency and aud
 import integrationsStorageRoutes from './routes/integrations-storage';  // Integration data persistence
 
 // Transparency & Compliance Routes (Phase 10)
-import favesRoutes from './routes/faves';  // FAVES compliance tracking
-import transparencyRoutes from './routes/transparency';  // Evidence bundles & model registry
 import monitoringRoutes from './routes/monitoring';  // Drift & bias monitoring
 
 // Phase 3: Secondary Routes (Integration Plan)
