@@ -57,10 +57,11 @@ export class CitationManagerService {
   formatCitation(citation: Citation, style: CitationStyle): Record<CitationStyle, string> {
     return {
       superscript_number: this.formatAMA(citation),
-      APA: this.formatAPA(citation),
-      Vancouver: this.formatVancouver(citation),
-      NLM: this.formatNLM(citation),
-      Chicago: this.formatChicago(citation),
+      author_year: this.formatAPA(citation),
+      author_year_full: this.formatAPA(citation),
+      number_parentheses: this.formatVancouver(citation),
+      footnote: this.formatNLM(citation),
+      endnote: this.formatChicago(citation),
     };
   }
 
