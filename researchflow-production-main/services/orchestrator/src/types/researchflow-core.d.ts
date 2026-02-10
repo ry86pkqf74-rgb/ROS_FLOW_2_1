@@ -173,6 +173,7 @@ declare module '@researchflow/phi-engine' {
     type: PhiFinding['type'];
     regex: RegExp;
     description: string;
+    hipaaCategory: string;
     baseConfidence: number;
   };
 
@@ -196,7 +197,7 @@ declare module '@researchflow/phi-engine' {
   export type SnippetScanOptions = any;
   export type SnippetInput = any;
   export class PhiSnippetScanner {
-    scan(input: SnippetInput, options?: SnippetScanOptions): SnippetScanResult;
+    scanSnippet(input: SnippetInput, options?: SnippetScanOptions): SnippetScanResult;
     scanBatch(inputs: SnippetInput[], options?: SnippetScanOptions): BatchScanResult;
   }
   export const createSnippetScanner: () => PhiSnippetScanner;
