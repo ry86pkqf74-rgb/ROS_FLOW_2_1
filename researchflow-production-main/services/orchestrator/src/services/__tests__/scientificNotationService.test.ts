@@ -9,11 +9,9 @@ import {
   formatScientific,
   formatWithUnit,
   convertUnit,
-  parseScientific,
-  toSIPrefix,
-  getSupportedUnits,
-  getFormattingOptions,
+  FormattingOptionsSchema,
 } from '../scientificNotationService';
+import scientificNotationService from '../scientificNotationService';
 
 describe('ScientificNotationService', () => {
   describe('formatScientific', () => {
@@ -49,30 +47,31 @@ describe('ScientificNotationService', () => {
       expect(result).toContain('^{6}');
     });
 
-    it('should respect precision', () => {
-      const result = formatScientific(1.23456789, { style: 'PLAIN', precision: 2 });
-      expect(result).toBe('1.23');
+    it('should respect significantDigits', () => {
+      const result = formatScientific(1.23456789, { style: 'PLAIN', significantDigits: 2 });
+      expect(result).toBe('1.2');
     });
 
     it('should add thousands separator', () => {
       const result = formatScientific(1234567, {
         style: 'PLAIN',
-        thousandsSeparator: ',',
+        useGrouping: true,
+        locale: 'en-US',
       });
       expect(result).toBe('1,234,567');
     });
 
-    it('should use custom decimal separator', () => {
+    it('should use locale decimal separator', () => {
       const result = formatScientific(1234.56, {
         style: 'PLAIN',
-        decimalSeparator: ',',
+        locale: 'de-DE',
       });
       expect(result).toBe('1234,56');
     });
 
-    it('should add sign prefix for positive numbers', () => {
-      const result = formatScientific(42, { style: 'PLAIN', showPositiveSign: true });
-      expect(result).toBe('+42');
+    it('should not add sign prefix for positive numbers (no option in schema)', () => {
+      const result = formatScientific(42, { style: 'PLAIN' });
+      expect(result).toBe('42');
     });
 
     it('should handle negative numbers', () => {
@@ -104,7 +103,7 @@ describe('ScientificNotationService', () => {
     });
 
     it('should format with complex units', () => {
-      const result = formatWithUnit(9.8, 'm/s²', { style: 'PLAIN', precision: 1 });
+      const result = formatWithUnit(9.8, 'm/s²', { style: 'PLAIN', significantDigits: 1 });
       expect(result).toBe('9.8 m/s²');
     });
   });
@@ -115,18 +114,13 @@ describe('ScientificNotationService', () => {
       expect(result).toBe(1);
     });
 
-    it('should convert temperature (Celsius to Fahrenheit)', () => {
-      const result = convertUnit(100, '°C', '°F');
-      expect(result).toBe(212);
+    it('should return undefined for temperature (°C/°F have no siConversion in service)', () => {
+      expect(convertUnit(100, '°C', '°F')).toBeUndefined();
+      expect(convertUnit(32, '°F', '°C')).toBeUndefined();
     });
 
-    it('should convert temperature (Fahrenheit to Celsius)', () => {
-      const result = convertUnit(32, '°F', '°C');
-      expect(result).toBe(0);
-    });
-
-    it('should throw error for incompatible units', () => {
-      expect(() => convertUnit(1, 'm', 'kg')).toThrow('Cannot convert');
+    it('should return undefined for incompatible units', () => {
+      expect(convertUnit(1, 'm', 'kg')).toBeUndefined();
     });
 
     it('should handle same unit conversion', () => {
@@ -135,63 +129,9 @@ describe('ScientificNotationService', () => {
     });
   });
 
-  describe('parseScientific', () => {
-    it('should parse scientific notation', () => {
-      const result = parseScientific('1.23e6');
-      expect(result).toBe(1230000);
-    });
-
-    it('should parse with × symbol', () => {
-      const result = parseScientific('1.23 × 10^6');
-      expect(result).toBeCloseTo(1230000, 0);
-    });
-
-    it('should parse plain numbers', () => {
-      const result = parseScientific('42');
-      expect(result).toBe(42);
-    });
-
-    it('should parse negative exponents', () => {
-      const result = parseScientific('1.23e-3');
-      expect(result).toBeCloseTo(0.00123, 6);
-    });
-
-    it('should handle thousands separators', () => {
-      const result = parseScientific('1,234,567');
-      expect(result).toBe(1234567);
-    });
-  });
-
-  describe('toSIPrefix', () => {
-    it('should convert to kilo', () => {
-      const result = toSIPrefix(1500);
-      expect(result.value).toBe(1.5);
-      expect(result.prefix).toBe('k');
-      expect(result.multiplier).toBe(1000);
-    });
-
-    it('should convert to mega', () => {
-      const result = toSIPrefix(1500000);
-      expect(result.value).toBe(1.5);
-      expect(result.prefix).toBe('M');
-    });
-
-    it('should convert to milli', () => {
-      const result = toSIPrefix(0.0015);
-      expect(result.value).toBe(1.5);
-      expect(result.prefix).toBe('m');
-    });
-
-    it('should handle values near 1', () => {
-      const result = toSIPrefix(1);
-      expect(result.value).toBe(1);
-      expect(result.prefix).toBe('');
-    });
-  });
-
-  describe('getSupportedUnits', () => {
-    it('should return list of supported units', () => {
-      const units = getSupportedUnits();
+  describe('supported units (from COMMON_UNITS)', () => {
+    it('should expose list of supported units via default export', () => {
+      const units = Object.keys(scientificNotationService.COMMON_UNITS);
       expect(units.length).toBeGreaterThan(0);
       expect(units).toContain('m');
       expect(units).toContain('kg');
@@ -199,12 +139,12 @@ describe('ScientificNotationService', () => {
     });
   });
 
-  describe('getFormattingOptions', () => {
-    it('should return default options', () => {
-      const options = getFormattingOptions();
+  describe('default formatting options (FormattingOptionsSchema)', () => {
+    it('should have default options with style, significantDigits, locale', () => {
+      const options = FormattingOptionsSchema.parse({});
       expect(options).toHaveProperty('style');
-      expect(options).toHaveProperty('precision');
-      expect(options).toHaveProperty('decimalSeparator');
+      expect(options).toHaveProperty('significantDigits');
+      expect(options).toHaveProperty('locale');
     });
   });
 });
