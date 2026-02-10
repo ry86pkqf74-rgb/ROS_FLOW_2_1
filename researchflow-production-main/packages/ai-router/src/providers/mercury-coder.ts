@@ -783,7 +783,6 @@ ${codeToEdit}
   ): Promise<void> {
     try {
       const logEntry: AIUsageLogEntry = {
-        timestamp: new Date().toISOString(),
         tool: 'mercury-coder',
         provider: 'inception-labs',
         model: result.model,
