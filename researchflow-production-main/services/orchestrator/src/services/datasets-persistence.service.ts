@@ -7,7 +7,8 @@
 
 import { datasets } from '@researchflow/core/schema';
 import { DatasetMetadata } from '@researchflow/core/types/classification';
-import { eq, ilike, and, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
+import { ilike } from "../db/drizzleCompat";
 
 import { db } from '../../db';
 

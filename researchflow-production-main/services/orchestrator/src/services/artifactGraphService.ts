@@ -7,7 +7,8 @@
  * - Detecting outdated nodes
  */
 import { artifactEdges, artifacts, artifactVersions } from "@researchflow/core/schema";
-import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { isNull } from "../db/drizzleCompat";
 import { nanoid } from "nanoid";
 
 import { db } from "../../db";

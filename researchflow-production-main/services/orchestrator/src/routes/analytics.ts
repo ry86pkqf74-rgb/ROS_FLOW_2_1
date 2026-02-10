@@ -9,7 +9,8 @@
  */
 
 import { userConsents } from '@researchflow/core/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { isNull } from "../db/drizzleCompat";
 import { Router, type Request, type Response } from 'express';
 
 import { db } from '../../db';

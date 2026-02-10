@@ -10,7 +10,8 @@
  * @version 1.0.0
  */
 
-import { desc, eq, and, sql, gte, lte, isNull } from 'drizzle-orm';
+import { desc, eq, and, sql, gte, lte } from 'drizzle-orm';
+import { isNull } from "../db/drizzleCompat";
 import { Router, Request, Response, NextFunction } from 'express';
 import * as z from 'zod';
 
