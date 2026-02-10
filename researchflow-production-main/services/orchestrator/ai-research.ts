@@ -614,7 +614,12 @@ export interface IRBProposalResult {
   studySummary: string;
   background: string;
   objectives: { primary: string; secondary: string[] };
-  studyDesign: string;
+  studyDesign: {
+    designType: string;
+    duration: string;
+    setting: string;
+    phases?: string[];
+  };
   population: {
     inclusion: string[];
     exclusion: string[];
@@ -624,6 +629,7 @@ export interface IRBProposalResult {
     sources: string[];
     variables: string[];
     timeline: string;
+    methods?: string[];
   };
   riskAssessment: {
     riskLevel: 'minimal' | 'moderate' | 'greater than minimal';
