@@ -3,6 +3,7 @@
 -- Description: Establishes foundation for artifact provenance tracking
 
 BEGIN;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
 -- Core artifacts table
