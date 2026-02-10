@@ -17,7 +17,7 @@ import branchPersistenceService from '../services/branch-persistence.service';
 const hasDb = !!pool;
 let dbAvailable = false;
 
-describe('commits endpoints', { skip: !hasDb ? 'DATABASE_URL not set' : false }, () => {
+describe('commits endpoints', { skip: !hasDb }, () => {
   let testBranchId: string;
   let testManuscriptId: string;
   let initialCommitId: string;
