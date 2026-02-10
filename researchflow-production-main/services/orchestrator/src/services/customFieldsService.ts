@@ -2,7 +2,7 @@ import { orgCustomFields, entityCustomFieldValues, auditLogs } from '@researchfl
 import { eq, and, sql } from 'drizzle-orm';
 import * as z from 'zod';
 
-import { db } from '../lib/db';
+import { db } from '../../db';
 
 /**
  * Field Definition Schema
