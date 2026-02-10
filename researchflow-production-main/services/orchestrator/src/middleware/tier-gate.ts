@@ -94,7 +94,9 @@ async function wouldExceedLimit(
 export function requireMemberLimit(): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const orgId = req.org?.org.id || req.params.orgId;
+      const paramOrgId =
+        typeof req.params.orgId === "string" ? req.params.orgId : undefined;
+      const orgId = req.org?.org.id || paramOrgId;
 
       if (!orgId) {
         return res.status(400).json({
@@ -139,7 +141,11 @@ export function requireMemberLimit(): RequestHandler {
 export function requireProjectLimit(): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const orgId = req.org?.org.id || req.body?.orgId || req.params.orgId;
+      const bodyOrgId =
+        typeof req.body?.orgId === "string" ? req.body.orgId : undefined;
+      const paramOrgId =
+        typeof req.params.orgId === "string" ? req.params.orgId : undefined;
+      const orgId = req.org?.org.id || bodyOrgId || paramOrgId;
 
       if (!orgId) {
         return res.status(400).json({
@@ -184,7 +190,9 @@ export function requireProjectLimit(): RequestHandler {
 export function requireAICallLimit(): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const orgId = req.org?.org.id || req.params.orgId;
+      const paramOrgId =
+        typeof req.params.orgId === "string" ? req.params.orgId : undefined;
+      const orgId = req.org?.org.id || paramOrgId;
 
       if (!orgId) {
         // Allow if no org context (might be personal/demo usage)
@@ -237,7 +245,9 @@ export function requireTierFeature(
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const orgId = req.org?.org.id || req.params.orgId;
+      const paramOrgId =
+        typeof req.params.orgId === "string" ? req.params.orgId : undefined;
+      const orgId = req.org?.org.id || paramOrgId;
 
       if (!orgId) {
         return next(); // Allow if no org context

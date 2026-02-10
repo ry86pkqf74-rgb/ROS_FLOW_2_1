@@ -71,7 +71,8 @@ aiProvidersRouter.get('/', (req: Request, res: Response) => {
  */
 aiProvidersRouter.get('/:id', (req: Request, res: Response) => {
   try {
-    const provider = getProvider(req.params.id);
+    const providerId = req.params.id as string; // Route param is a single string.
+    const provider = getProvider(providerId);
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
@@ -101,7 +102,9 @@ aiProvidersRouter.get('/:id', (req: Request, res: Response) => {
  */
 aiProvidersRouter.get('/:providerId/models/:modelId', (req: Request, res: Response) => {
   try {
-    const model = getModelInfo(req.params.providerId, req.params.modelId);
+    const providerId = req.params.providerId as string; // Route params are single strings.
+    const modelId = req.params.modelId as string; // Route params are single strings.
+    const model = getModelInfo(providerId, modelId);
     if (!model) {
       return res.status(404).json({ error: 'Model not found' });
     }
@@ -165,7 +168,8 @@ aiProvidersRouter.post('/', (req: Request, res: Response) => {
  */
 aiProvidersRouter.delete('/:id', (req: Request, res: Response) => {
   try {
-    const success = unregisterCustomProvider(req.params.id);
+    const providerId = req.params.id as string; // Route param is a single string.
+    const success = unregisterCustomProvider(providerId);
     if (!success) {
       return res.status(400).json({
         error: 'Cannot unregister: provider not found or is built-in',
@@ -231,8 +235,9 @@ aiProvidersRouter.put('/:id/configure', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Credentials object required' });
     }
 
+    const providerId = req.params.id as string; // Route param is a single string.
     const config = configureProvider(
-      req.params.id,
+      providerId,
       tenantId,
       credentials,
       settings
@@ -261,7 +266,8 @@ aiProvidersRouter.put('/:id/configure', (req: Request, res: Response) => {
 aiProvidersRouter.get('/:id/config', (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
-    const config = getProviderConfig(req.params.id, tenantId);
+    const providerId = req.params.id as string; // Route param is a single string.
+    const config = getProviderConfig(providerId, tenantId);
 
     if (!config) {
       return res.status(404).json({ error: 'Provider not configured' });
@@ -290,7 +296,8 @@ aiProvidersRouter.get('/:id/config', (req: Request, res: Response) => {
 aiProvidersRouter.post('/:id/enable', (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
-    const config = enableProviderForTenant(req.params.id, tenantId);
+    const providerId = req.params.id as string; // Route param is a single string.
+    const config = enableProviderForTenant(providerId, tenantId);
 
     if (!config) {
       return res.status(404).json({
@@ -312,7 +319,8 @@ aiProvidersRouter.post('/:id/enable', (req: Request, res: Response) => {
 aiProvidersRouter.post('/:id/disable', (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
-    const config = disableProviderForTenant(req.params.id, tenantId);
+    const providerId = req.params.id as string; // Route param is a single string.
+    const config = disableProviderForTenant(providerId, tenantId);
 
     if (!config) {
       return res.status(404).json({ error: 'Provider not configured' });
