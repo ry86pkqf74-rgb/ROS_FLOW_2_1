@@ -1,6 +1,8 @@
 -- Migration 011: Phase F - UI/UX Enhancements Tables
 -- Tasks 101-110: Feature Flags, Experiments, Custom Fields, Semantic Search, Tutorials
 
+BEGIN;
+
 -- ============================================================================
 -- FEATURE FLAGS & EXPERIMENTS (Task 110)
 -- ============================================================================
@@ -159,3 +161,5 @@ COMMENT ON TABLE org_custom_fields IS 'Organization-level custom field schemas';
 COMMENT ON TABLE entity_custom_field_values IS 'Custom field values for entities';
 COMMENT ON TABLE artifact_embeddings IS 'PHI-safe metadata embeddings for semantic search';
 COMMENT ON TABLE tutorial_assets IS 'Tutorial content and video resources';
+
+COMMIT;

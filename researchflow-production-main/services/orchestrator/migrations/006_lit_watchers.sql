@@ -1,6 +1,8 @@
 -- Migration: 006_lit_watchers
 -- Phase 2.2: Literature watcher tables for automated search monitoring
 
+BEGIN;
+
 -- Literature watchers table
 CREATE TABLE IF NOT EXISTS lit_watchers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -82,3 +84,5 @@ COMMENT ON COLUMN lit_watchers.frequency IS 'How often to run the search: daily,
 COMMENT ON COLUMN lit_watchers.sources IS 'Array of literature sources to search (pubmed, semantic_scholar, arxiv)';
 COMMENT ON COLUMN lit_alerts.relevance_score IS 'Calculated relevance score 0.0-1.0 based on query match';
 COMMENT ON COLUMN lit_alerts.alert_status IS 'new=unseen, viewed=seen, dismissed=ignored, added=added to manuscript';
+
+COMMIT;

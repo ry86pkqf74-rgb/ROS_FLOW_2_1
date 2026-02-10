@@ -6,6 +6,8 @@
 -- - Immutable: no UPDATE or DELETE allowed (trigger enforced).
 -- - Unique (branch_id, commit_hash) to prevent duplicate commits per branch.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS manuscript_branch_commits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   branch_id UUID NOT NULL REFERENCES manuscript_branches(id) ON DELETE CASCADE,
@@ -47,3 +49,5 @@ COMMENT ON TABLE manuscript_branch_commits IS 'Append-only commit log per manusc
 COMMENT ON COLUMN manuscript_branch_commits.commit_hash IS 'Content or logical hash identifying this commit (unique per branch).';
 COMMENT ON COLUMN manuscript_branch_commits.parent_commit_id IS 'Previous commit in the same branch (chain).';
 COMMENT ON COLUMN manuscript_branch_commits.revision_id IS 'Optional link to manuscript_revisions row.';
+
+COMMIT;

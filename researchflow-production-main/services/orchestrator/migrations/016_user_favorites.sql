@@ -1,6 +1,8 @@
 -- Migration: 016_user_favorites
 -- User favorites (starred resources) for quick access
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS user_favorites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
@@ -13,3 +15,5 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites(user_id);
 
 COMMENT ON TABLE user_favorites IS 'User favorite resources (projects, runs, etc.) for quick access';
+
+COMMIT;

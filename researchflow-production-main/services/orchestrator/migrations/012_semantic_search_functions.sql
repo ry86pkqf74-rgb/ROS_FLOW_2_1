@@ -1,6 +1,8 @@
 -- Migration 012: Semantic Search Infrastructure
 -- Task 107: Add cosine similarity function, indexes, and feature flag
 
+BEGIN;
+
 -- Cosine similarity function for JSONB vectors
 -- This enables semantic search without requiring pgvector extension
 CREATE OR REPLACE FUNCTION cosine_similarity(vec1 JSONB, vec2 JSONB)
@@ -66,3 +68,5 @@ SET
 
 -- Add helpful comment
 COMMENT ON FUNCTION cosine_similarity IS 'Calculate cosine similarity between two JSONB vector arrays for semantic search. Returns value between -1 and 1, where 1 indicates identical vectors.';
+
+COMMIT;

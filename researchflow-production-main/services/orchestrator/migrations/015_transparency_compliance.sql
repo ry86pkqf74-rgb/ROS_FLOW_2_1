@@ -3,6 +3,8 @@
 -- Created: January 30, 2026
 -- Covers: Evidence Bundles, HTI-1 Source Attributes, FAVES, Audit v2
 
+BEGIN;
+
 -- ============================================================================
 -- PHASE 8: Evidence Bundle System
 -- ============================================================================

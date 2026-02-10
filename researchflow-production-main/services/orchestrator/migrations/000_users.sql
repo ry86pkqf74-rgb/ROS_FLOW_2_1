@@ -2,6 +2,8 @@
 -- This migration must run first to ensure the users table exists
 -- before other migrations that reference it via foreign keys.
 
+BEGIN;
+
 -- Ensure pgcrypto extension is available for UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -12,3 +14,5 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+COMMIT;

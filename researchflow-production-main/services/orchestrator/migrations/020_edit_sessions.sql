@@ -5,6 +5,8 @@
 -- Idempotency: Every statement uses IF NOT EXISTS / CREATE OR REPLACE / DROP IF EXISTS
 -- so this migration is safe to run repeatedly without error.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS edit_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   branch_id UUID NOT NULL REFERENCES manuscript_branches(id) ON DELETE CASCADE,
@@ -48,3 +50,5 @@ CREATE TRIGGER edit_session_updated_at
   EXECUTE FUNCTION update_edit_session_updated_at();
 
 COMMENT ON TABLE edit_sessions IS 'HITL edit sessions: draft → submit → approve/reject → merge with audit events';
+
+COMMIT;
