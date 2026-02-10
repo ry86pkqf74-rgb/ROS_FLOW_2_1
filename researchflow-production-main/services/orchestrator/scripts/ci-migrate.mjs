@@ -54,6 +54,14 @@ for (const name of files) {
     console.error('ci-migrate: Failed to execute psql (spawn error):', result.error.message);
     if (result.error.code === 'ENOENT') {
       console.error('psql not found on PATH');
+      console.error('');
+      console.error('Install psql:');
+      console.error('  Ubuntu/Debian (CI/local):');
+      console.error('    sudo apt-get update && sudo apt-get install -y postgresql-client');
+      console.error('  macOS (Homebrew):');
+      console.error('    brew install libpq');
+      console.error('    echo \'export PATH="$(brew --prefix libpq)/bin:$PATH"\' >> ~/.zshrc');
+      console.error('    (then open a new shell)');
     }
     process.exit(1);
   }
