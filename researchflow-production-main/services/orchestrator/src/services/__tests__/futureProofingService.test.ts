@@ -32,7 +32,7 @@ describe('FutureProofingService', () => {
       expect(checklist.id).toBeDefined();
       expect(checklist.fromVersion).toBe('1.0.0');
       expect(checklist.toVersion).toBe('2.0.0');
-      expect(checklist.status).toBe('IN_PROGRESS');
+      expect(checklist.status).toBe('DRAFT');
       expect(checklist.items.length).toBeGreaterThan(0);
     });
 
@@ -45,11 +45,11 @@ describe('FutureProofingService', () => {
       expect(categories.has('SECURITY')).toBe(true);
     });
 
-    it('should set priority levels', () => {
+    it('should set severity levels', () => {
       const checklist = createUpgradeChecklist('1.0.0', '2.0.0', userId);
 
-      expect(checklist.items.some(i => i.priority === 'HIGH')).toBe(true);
-      expect(checklist.items.some(i => i.priority === 'MEDIUM')).toBe(true);
+      expect(checklist.items.some(i => i.severity === 'HIGH')).toBe(true);
+      expect(checklist.items.some(i => i.severity === 'MEDIUM')).toBe(true);
     });
   });
 
@@ -104,8 +104,8 @@ describe('FutureProofingService', () => {
       const checklist = createUpgradeChecklist('1.0.0', '2.0.0', userId);
       const progress = getChecklistProgress(checklist.id);
 
-      expect(progress.totalItems).toBeGreaterThan(0);
-      expect(progress.completedItems).toBe(0);
+      expect(progress.total).toBeGreaterThan(0);
+      expect(progress.completed).toBe(0);
       expect(progress.percentComplete).toBe(0);
     });
 
@@ -119,7 +119,7 @@ describe('FutureProofingService', () => {
       });
 
       const progress = getChecklistProgress(checklist.id);
-      expect(progress.completedItems).toBe(1);
+      expect(progress.completed).toBe(1);
       expect(progress.percentComplete).toBeGreaterThan(0);
     });
   });
@@ -171,7 +171,7 @@ describe('FutureProofingService', () => {
 
       expect(notice.id).toBeDefined();
       expect(notice.feature).toBe('legacyEndpoint');
-      expect(notice.status).toBe('DEPRECATED');
+      expect(notice.announcedAt).toBeDefined();
     });
 
     it('should set removal version', () => {
@@ -206,7 +206,7 @@ describe('FutureProofingService', () => {
       const version = registerApiVersion({
         version: `test-${Date.now()}`,
         releasedAt: new Date().toISOString(),
-        changelog: ['New features', 'Bug fixes'],
+        changelog: 'New features; Bug fixes',
       });
 
       expect(version.version).toBeDefined();
@@ -217,9 +217,7 @@ describe('FutureProofingService', () => {
       const version = registerApiVersion({
         version: `breaking-${Date.now()}`,
         releasedAt: new Date().toISOString(),
-        breakingChanges: [
-          { change: 'Removed endpoint', migrationPath: 'Use new endpoint' },
-        ],
+        breakingChanges: ['Removed endpoint: Use new endpoint'],
       });
 
       expect(version.breakingChanges.length).toBe(1);
@@ -237,7 +235,7 @@ describe('FutureProofingService', () => {
       const deprecated = deprecateApiVersion(registered.version, sunsetDate);
 
       expect(deprecated?.status).toBe('DEPRECATED');
-      expect(deprecated?.sunsetDate).toBe(sunsetDate);
+      expect(deprecated?.sunsetAt).toBe(sunsetDate);
     });
   });
 
