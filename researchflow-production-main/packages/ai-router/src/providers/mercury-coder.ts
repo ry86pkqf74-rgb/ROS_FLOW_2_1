@@ -783,7 +783,6 @@ ${codeToEdit}
   ): Promise<void> {
     try {
       const logEntry: AIUsageLogEntry = {
-        tool: 'mercury-coder',
         provider: 'inception-labs',
         model: result.model,
         taskType: (options?.taskType as AITaskType) ?? 'code',
