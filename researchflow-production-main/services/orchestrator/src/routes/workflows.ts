@@ -37,6 +37,16 @@ import { requireRole, logAuditEvent } from '../middleware/rbac';
 import * as workflowService from '../services/workflowService';
 import { asInt, asString } from '../utils/httpCoerce';
 
+type WorkflowAuditEvent = {
+  eventType: string;
+  userId?: string;
+  resourceType: string;
+  resourceId?: string;
+  action: string;
+  details?: Record<string, unknown>;
+};
+
+const logWorkflowAuditEvent = logAuditEvent as unknown as (event: WorkflowAuditEvent) => void | Promise<void>;
 
 const router = Router();
 
@@ -124,7 +134,7 @@ router.post('/', requireRole('RESEARCHER'), async (req: Request, res: Response) 
       definition,
     });
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_CREATED',
       userId,
       resourceType: 'workflow',
@@ -220,7 +230,7 @@ router.put('/:id', requireRole('STEWARD'), async (req: Request, res: Response) =
 
     const workflow = await workflowService.updateWorkflow(workflowId, parsed.data);
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_UPDATED',
       userId,
       resourceType: 'workflow',
@@ -250,7 +260,7 @@ router.delete('/:id', requireRole('STEWARD'), async (req: Request, res: Response
 
     await workflowService.deleteWorkflow(workflowId);
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_DELETED',
       userId,
       resourceType: 'workflow',
@@ -301,7 +311,7 @@ router.post('/:id/versions', requireRole('STEWARD'), async (req: Request, res: R
       createdBy: userId,
     });
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_VERSION_CREATED',
       userId,
       resourceType: 'workflow_version',
@@ -410,7 +420,7 @@ router.post('/:id/publish', requireRole('STEWARD'), async (req: Request, res: Re
 
     const published = await workflowService.publishWorkflow(workflow.id);
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_PUBLISHED',
       userId,
       resourceType: 'workflow',
@@ -439,7 +449,7 @@ router.post('/:id/archive', requireRole('STEWARD'), async (req: Request, res: Re
 
     const archived = await workflowService.archiveWorkflow(workflow.id);
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_ARCHIVED',
       userId,
       resourceType: 'workflow',
@@ -498,7 +508,7 @@ router.post('/:id/duplicate', requireRole('RESEARCHER'), async (req: Request, re
       );
     }
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_DUPLICATED',
       userId,
       resourceType: 'workflow',
@@ -559,7 +569,7 @@ router.post('/:id/policy', requireRole('STEWARD'), async (req: Request, res: Res
       userId
     );
 
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_POLICY_UPDATED',
       userId,
       resourceType: 'workflow_policy',
@@ -611,7 +621,7 @@ router.post('/:id/execute', requireRole('RESEARCHER'), async (req: Request, res:
     };
 
     // Log execution start
-    await logAuditEvent({
+    await logWorkflowAuditEvent({
       eventType: 'WORKFLOW_EXECUTED',
       userId,
       resourceType: 'workflow',
