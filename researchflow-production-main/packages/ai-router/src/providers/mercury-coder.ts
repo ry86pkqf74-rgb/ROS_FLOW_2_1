@@ -791,6 +791,7 @@ ${codeToEdit}
         totalTokens: result.usage.totalTokens,
         latencyMs: result.metrics.latencyMs,
         estimatedCostUsd: result.usage.estimatedCostUsd,
+        status: 'success',
         researchId: options?.researchId,
         userId: options?.userId,
         sessionId: options?.sessionId,
