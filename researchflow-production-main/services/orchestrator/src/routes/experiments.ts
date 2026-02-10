@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import express from 'express';
 import * as z from 'zod';
 
-import { db } from '../lib/db';
+import { db } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireRole } from '../middleware/rbac';
 import { featureFlagsService } from '../services/featureFlagsService';
