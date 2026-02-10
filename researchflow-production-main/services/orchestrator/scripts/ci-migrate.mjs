@@ -4,10 +4,10 @@
  *
  * Used by CI and local dev. Requires DATABASE_URL and psql on PATH.
  *
- * Usage:
- *   DATABASE_URL=postgresql://user:pass@host:5432/db node researchflow-production-main/services/orchestrator/scripts/ci-migrate.mjs
+ * Usage (from researchflow-production-main/):
+ *   DATABASE_URL=postgresql://user:pass@host:5432/db node services/orchestrator/scripts/ci-migrate.mjs
  *
- * Migrations directory: researchflow-production-main/services/orchestrator/migrations
+ * Migrations directory: services/orchestrator/migrations
  * Applies all *.sql in version order (sort -V). Exits on first error (ON_ERROR_STOP=1).
  */
 import { readdirSync } from 'fs';

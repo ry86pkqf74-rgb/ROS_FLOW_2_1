@@ -1,5 +1,7 @@
 # Step 4 Testing Commands
 
+**Assumption:** Commands are run from `researchflow-production-main/` directory (i.e., already executed `cd researchflow-production-main`).
+
 ## Current Status
 ✅ TypeScript syntax validated (all Step 3 & 4 files compile)
 ✅ Dependencies installed via pnpm
@@ -13,7 +15,6 @@
 The previous build failed due to network timeout. Retry with:
 
 ```bash
-cd researchflow-production-main
 docker compose build orchestrator --no-cache
 ```
 
@@ -28,7 +29,6 @@ docker compose build orchestrator
 ## B. Start Services
 
 ```bash
-cd researchflow-production-main
 docker compose up orchestrator redis -d
 ```
 
@@ -277,7 +277,6 @@ curl -X GET http://localhost:3001/api/workflow/stages/2/jobs/<JOB_ID>/status \
 ## I. View Orchestrator Logs
 
 ```bash
-cd researchflow-production-main
 docker compose logs orchestrator --tail=100 -f
 ```
 
@@ -295,7 +294,7 @@ Look for log lines like:
 If auth is failing, check if mock auth is enabled:
 
 ```bash
-grep ALLOW_MOCK_AUTH researchflow-production-main/.env
+grep ALLOW_MOCK_AUTH .env
 ```
 
 If not set, you may need to:
@@ -307,7 +306,6 @@ If not set, you may need to:
 ## K. Cleanup (After Testing)
 
 ```bash
-cd researchflow-production-main
 docker compose down
 ```
 
@@ -344,7 +342,7 @@ COMPOSE_HTTP_TIMEOUT=600 docker compose build orchestrator
 ### Alternative: Run orchestrator locally (skip Docker for now)
 
 ```bash
-cd researchflow-production-main/services/orchestrator
+cd services/orchestrator
 export REDIS_URL=redis://localhost:6379
 export ALLOW_MOCK_AUTH=true
 export NODE_ENV=development

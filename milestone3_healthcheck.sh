@@ -1,7 +1,9 @@
 #!/bin/bash
 # Milestone 3 - Agent Fleet Health Check
+# Usage: Run from repo root or this script will cd to the correct directory
 
-cd /Users/ros/Desktop/ROS_FLOW_2_1/researchflow-production-main
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/researchflow-production-main"
 
 echo "====================================="
 echo "Agent Health Check - Milestone 3"

@@ -64,7 +64,7 @@ cd /opt/researchflow
 
 **Usage locally:**
 ```bash
-# From project root (/Users/ros/Desktop/ROS_FLOW_2_1)
+# From project root
 ./deploy-remote.sh user@rosflow2
 
 # With custom environment
@@ -88,7 +88,7 @@ ROSFLOW2_DIR=/opt/researchflow \
 
 ```bash
 # Navigate to project root
-cd /Users/ros/Desktop/ROS_FLOW_2_1
+cd "$(git rev-parse --show-toplevel)"
 
 # Execute remote deployment
 ./deploy-remote.sh user@rosflow2
