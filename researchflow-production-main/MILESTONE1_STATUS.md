@@ -166,8 +166,10 @@
 ## 🚀 HOW TO CONTINUE
 
 ### Option A: Retry Docker Build
+
+**From `researchflow-production-main/`:**
+
 ```bash
-cd researchflow-production-main
 docker compose build orchestrator --no-cache
 docker compose up orchestrator redis -d
 ```
@@ -175,8 +177,11 @@ docker compose up orchestrator redis -d
 Then run tests from `STEP4_TEST_COMMANDS.md`
 
 ### Option B: Run Orchestrator Locally (Faster for Testing)
+
+**From `researchflow-production-main/`:**
+
 ```bash
-cd researchflow-production-main/services/orchestrator
+cd services/orchestrator
 export REDIS_URL=redis://localhost:6379
 export ALLOW_MOCK_AUTH=true
 export NODE_ENV=development

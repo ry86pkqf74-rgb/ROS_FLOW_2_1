@@ -13,15 +13,15 @@ This repo uses **direct-to-main** workflow (no PRs). Before pushing to `main`, v
    ```bash
    export DATABASE_URL=postgres://user:password@localhost:5432/researchflow_dev
    ```
-   Or use the ResearchFlow project `.env`:
+   Or use the ResearchFlow project `.env` (from `researchflow-production-main/`):
    ```bash
-   set -a && source researchflow-production-main/.env && set +a
+   set -a && source .env && set +a
    ```
 
 2. **Run migration 020**  
-   From the workspace root:
+   From `researchflow-production-main/`:
    ```bash
-   node researchflow-production-main/services/orchestrator/scripts/run-migration-020.mjs
+   node services/orchestrator/scripts/run-migration-020.mjs
    ```
    Ensure it reports `✅ Migration 020_edit_sessions applied successfully.`
 

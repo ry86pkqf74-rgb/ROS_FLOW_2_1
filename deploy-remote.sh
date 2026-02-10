@@ -42,11 +42,12 @@ echo ""
 
 # Verify local script exists
 if [ ! -f "$LOCAL_SCRIPT" ]; then
-    echo -e "${RED}✗ ERROR: $LOCAL_SCRIPT not found${NC}"
-    echo ""
-    echo "Run this script from: /Users/ros/Desktop/ROS_FLOW_2_1"
-    exit 1
-fi
+          echo -e "${RED}✗ ERROR: $LOCAL_SCRIPT not found${NC}"
+      echo ""
+      echo "Run this script from the repository root directory"
+      echo "  Hint: cd \$(git rev-parse --show-toplevel)"
+      exit 1
+  fi
 
 # Test SSH connectivity
 echo -e "${GREEN}▶ Testing SSH connectivity...${NC}"

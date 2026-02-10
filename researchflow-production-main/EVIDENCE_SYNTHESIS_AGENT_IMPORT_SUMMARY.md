@@ -114,8 +114,7 @@ Updated to include Evidence Synthesis Agent in Stage 2 Pipeline section.
 ### Quick Start (5 minutes)
 
 ```bash
-# 1. Navigate to repo
-cd /Users/ros/Desktop/ROS_FLOW_2_1/researchflow-production-main
+  # 1. From researchflow-production-main/ directory
 
 # 2. Build the agent
 docker compose build agent-evidence-synthesis

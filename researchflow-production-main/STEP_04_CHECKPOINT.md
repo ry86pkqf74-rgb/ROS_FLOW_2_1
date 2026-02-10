@@ -91,6 +91,8 @@ All fields use safe defaults:
 
 ## How to Test
 
+**Assumption:** Commands run from `researchflow-production-main/` directory.
+
 ### 1. TypeScript Compilation
 ```bash
 cd services/orchestrator
@@ -337,9 +339,9 @@ After confirming all tests pass:
 
 If issues arise:
 ```bash
-cd researchflow-production-main
 git checkout HEAD -- services/orchestrator/src/routes/workflow/stages.ts
 cd services/orchestrator
 npm run build
+cd ..
 docker compose restart orchestrator
 ```

@@ -103,8 +103,10 @@ The agent is now available in stages 7, 8, and 9 of the research workflow.
 ## 🧪 Testing
 
 ### Smoke Test
+
+**From `researchflow-production-main/` directory:**
+
 ```bash
-cd researchflow-production-main
 ./scripts/stagewise-smoke.sh
 ```
 
