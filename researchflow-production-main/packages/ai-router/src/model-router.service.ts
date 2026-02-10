@@ -8,6 +8,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 import {
   getConfig,
@@ -635,7 +636,7 @@ export class ModelRouterService {
 
     const startTime = Date.now();
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+    const messages: ChatCompletionMessageParam[] = [];
 
     if (request.systemPrompt) {
       messages.push({
