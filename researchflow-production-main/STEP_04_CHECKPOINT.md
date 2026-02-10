@@ -342,6 +342,6 @@ If issues arise:
 git checkout HEAD -- services/orchestrator/src/routes/workflow/stages.ts
 cd services/orchestrator
 npm run build
-cd ..
+cd ../..
 docker compose restart orchestrator
 ```

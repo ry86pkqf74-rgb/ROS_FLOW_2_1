@@ -204,7 +204,7 @@ curl -X GET http://localhost:3001/api/workflow/stages/2/jobs/$JOB_ID/status \
 **Commands:**
 ```bash
 # 1. Check AGENT_ENDPOINTS_JSON configuration
-docker compose exec orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | python3 -m json.tool
+docker compose exec -T orchestrator sh -c 'echo $AGENT_ENDPOINTS_JSON' | python3 -m json.tool
 
 # 2. Verify agent-stage2-lit is reachable from orchestrator
 docker compose exec orchestrator curl -f http://agent-stage2-lit:8000/health
