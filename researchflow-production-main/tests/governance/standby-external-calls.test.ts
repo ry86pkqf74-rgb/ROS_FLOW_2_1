@@ -8,6 +8,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { BlockReason } from '../../services/orchestrator/src/utils/telemetry';
+
+type AICallAllowedResult = { allowed: true } | { allowed: false; reason: BlockReason };
+
+function isBlocked(result: AICallAllowedResult): result is { allowed: false; reason: BlockReason } {
+  return result.allowed === false;
+}
 
 // Mock the telemetry module to test without actual environment
 const mockEnv = {
@@ -68,7 +75,7 @@ describe('STANDBY Mode External Call Blocking', () => {
       const result = checkAICallAllowed();
 
       expect(result.allowed).toBe(false);
-      if (!result.allowed) {
+      if (isBlocked(result)) {
         expect(result.reason).toBe('standby_mode');
       }
     });
@@ -80,7 +87,7 @@ describe('STANDBY Mode External Call Blocking', () => {
       const result = checkAICallAllowed();
 
       expect(result.allowed).toBe(false);
-      if (!result.allowed) {
+      if (isBlocked(result)) {
         expect(result.reason).toBe('standby_mode');
       }
     });
@@ -92,7 +99,7 @@ describe('STANDBY Mode External Call Blocking', () => {
       const result = checkAICallAllowed();
 
       expect(result.allowed).toBe(false);
-      if (!result.allowed) {
+      if (isBlocked(result)) {
         expect(result.reason).toBe('no_network');
       }
     });
@@ -123,7 +130,7 @@ describe('STANDBY Mode External Call Blocking', () => {
       const result = checkAICallAllowed();
 
       expect(result.allowed).toBe(false);
-      if (!result.allowed) {
+      if (isBlocked(result)) {
         expect(result.reason).toBe('standby_mode');
       }
     });
@@ -286,7 +293,7 @@ describe('STANDBY Mode External Call Blocking', () => {
       const result = checkAICallAllowed();
 
       expect(result.allowed).toBe(false);
-      if (!result.allowed) {
+      if (isBlocked(result)) {
         expect(result.reason).toBe('no_network');
       }
     });
