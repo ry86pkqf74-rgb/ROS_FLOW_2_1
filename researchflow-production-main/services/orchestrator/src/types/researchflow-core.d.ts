@@ -150,19 +150,64 @@ declare module '@packages/core/*' {
 }
 
 declare module '@researchflow/phi-engine' {
-  export const scanForPHI: (text: string) => Promise<any>;
-  export const redact: (text: string, detections: any) => string;
-  export const detectPHI: (data: any) => Promise<any[]>;
-  export const containsPhi: (text: string) => boolean;
-  export const getPhiStats: (text: string) => Record<string, number>;
+  export interface PhiFinding {
+    type: 'SSN' | 'MRN' | 'DOB' | 'PHONE' | 'EMAIL' | 'NAME' | 'ADDRESS'
+         | 'ZIP_CODE' | 'IP_ADDRESS' | 'URL' | 'ACCOUNT' | 'HEALTH_PLAN'
+         | 'LICENSE' | 'DEVICE_ID' | 'AGE_OVER_89' | 'UNKNOWN';
+    value: string;
+    startIndex: number;
+    endIndex: number;
+    confidence: number;
+  }
+
+  export interface PhiScanner {
+    scan(text: string): PhiFinding[];
+    redact(text: string): string;
+    hasPhi(text: string): boolean;
+  }
+
+  export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
+  export type ScanContext = 'upload' | 'export' | 'llm';
+
+  export type PatternDefinition = {
+    type: PhiFinding['type'];
+    regex: RegExp;
+    description: string;
+    hipaaCategory: string;
+    baseConfidence: number;
+  };
+
+  export const scan: (text: string) => PhiFinding[];
+  export const redact: (text: string) => string;
+  export const hasPhi: (text: string) => boolean;
+  export class RegexPhiScanner implements PhiScanner {
+    scan(text: string): PhiFinding[];
+    redact(text: string): string;
+    hasPhi(text: string): boolean;
+  }
+  export const PHI_PATTERNS: PatternDefinition[];
+
   export const scrubLog: (text: string) => string;
   export const scrubObject: (obj: any) => any;
-  export const scan: (text: string) => Promise<any>;
-  export const hasPhi: (text: string) => boolean;
-  export class PHIEngine {
-    scan(text: string): Promise<any>;
-    redact(text: string): Promise<string>;
+  export const containsPhi: (text: string) => boolean;
+  export const getPhiStats: (text: string) => Record<string, number>;
+
+  export type SnippetScanResult = any;
+  export type BatchScanResult = any;
+  export type SnippetScanOptions = any;
+  export type SnippetInput = any;
+  export class PhiSnippetScanner {
+    scanSnippet(input: SnippetInput, options?: SnippetScanOptions): SnippetScanResult;
+    scanBatch(inputs: SnippetInput[], options?: SnippetScanOptions): BatchScanResult;
   }
+  export const createSnippetScanner: () => PhiSnippetScanner;
+
+  export const createScrubbedLogger: (logger?: any, options?: any) => any;
+  export const installConsoleScrubber: () => void;
+  export const removeConsoleScrubber: () => void;
+  export const isConsoleScrubberInstalled: () => boolean;
+
+  export const PHI_ENGINE_VERSION: "1.0.0";
 }
 
 declare module '@researchflow/phi-engine/*' {
