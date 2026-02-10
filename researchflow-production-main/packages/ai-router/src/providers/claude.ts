@@ -6,7 +6,12 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { MessageParam, MessageCreateParams, Message } from '@anthropic-ai/sdk/resources/messages';
+import type {
+  MessageParam,
+  MessageCreateParams,
+  Message,
+  MessageStreamEvent,
+} from '@anthropic-ai/sdk/resources/messages';
 
 import { logAIUsage, type AIUsageLogEntry } from '../notion/notionLogger';
 import type { AITaskType, ModelTier } from '../types';
@@ -169,7 +174,7 @@ export class ClaudeProvider {
   async *streamMessage(
     params: Omit<MessageCreateParams, 'model' | 'stream'> & { model?: string },
     options: ClaudeRequestOptions = {}
-  ): AsyncGenerator<Anthropic.MessageStreamEvent, ClaudeResponse, unknown> {
+  ): AsyncGenerator<MessageStreamEvent, ClaudeResponse, unknown> {
     const model = params.model ?? this.defaultModel;
     const startTime = Date.now();
     let inputTokens = 0;
