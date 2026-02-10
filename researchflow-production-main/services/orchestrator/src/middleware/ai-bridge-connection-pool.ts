@@ -7,9 +7,11 @@
 import http from 'http';
 import https from 'https';
 
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 
 import { createLogger } from '../utils/logger';
+
+type AxiosClient = ReturnType<typeof axios.create>;
 
 const logger = createLogger('ai-bridge-pool');
 
@@ -32,7 +34,7 @@ interface PooledRequest {
 }
 
 class AIBridgeConnectionPool {
-  private client: AxiosInstance;
+  private client: AxiosClient;
   private requestQueue: PooledRequest[] = [];
   private activeRequests = 0;
   private config: ConnectionPoolConfig;
