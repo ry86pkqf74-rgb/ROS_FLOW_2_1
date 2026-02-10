@@ -32,7 +32,8 @@ import { createHash } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { sql, eq, desc, and, ilike, or } from 'drizzle-orm';
+import { sql, eq, desc, and, or } from 'drizzle-orm';
+import { ilike } from "../db/drizzleCompat";
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { nanoid } from 'nanoid';

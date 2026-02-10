@@ -11,7 +11,8 @@ import { createHash } from "crypto";
 
 import { comments, artifacts, artifactVersions } from "@researchflow/core/schema";
 import { scan as scanPhi, hasPhi } from "@researchflow/phi-engine";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { isNull } from "../db/drizzleCompat";
 import { nanoid } from "nanoid";
 
 import { db } from "../../db";

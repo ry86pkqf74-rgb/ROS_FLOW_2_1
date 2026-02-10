@@ -8,7 +8,8 @@
 import crypto from 'crypto';
 
 import { artifacts, artifactEmbeddings } from '@researchflow/core/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { isNull } from "../db/drizzleCompat";
 
 import { db } from '../../db';
 
