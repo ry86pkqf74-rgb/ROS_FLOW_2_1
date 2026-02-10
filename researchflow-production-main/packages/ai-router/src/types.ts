@@ -281,6 +281,13 @@ export const MODEL_CONFIGS: Record<ModelTier, ModelConfig> = {
     temperature: 0.5,
     costPerMToken: resolveCost(FRONTIER_PROVIDER, { input: 15.00, output: 75.00 }),
   },
+  CUSTOM: {
+    provider: MINI_PROVIDER,
+    model: resolveModel('CUSTOM', MINI_PROVIDER, 'claude-sonnet-4-5-20250929'),
+    maxTokens: 4096,
+    temperature: 0.3,
+    costPerMToken: resolveCost(MINI_PROVIDER, { input: 3.00, output: 15.00 }),
+  },
 };
 
 /**
