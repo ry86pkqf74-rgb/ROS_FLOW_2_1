@@ -326,5 +326,3 @@ All commands accept optional JSON parameters for customization:
 - \`context\`: Additional context string
 - Command-specific params (see examples above)
 `;
-
-export { AgentCommand, CursorConfig };
