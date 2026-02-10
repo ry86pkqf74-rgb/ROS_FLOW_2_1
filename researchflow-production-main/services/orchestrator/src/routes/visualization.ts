@@ -20,7 +20,7 @@ import * as z from 'zod';
 
 import { config } from '../config/env';
 import { visualizationConfig, getTimeoutForChartType, validateDataSize } from '../config/visualization.config';
-import { pool } from '../db';
+import { pool } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
 import { VisualizationErrorHandler, validateVisualizationRequest } from '../middleware/visualization-error-handler';
