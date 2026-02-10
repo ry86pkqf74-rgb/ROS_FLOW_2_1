@@ -31,7 +31,6 @@ export class CitationManagerService {
     const fullCitation: Citation = {
       ...citation,
       id,
-      formatted: this.formatCitation(citation as Citation, 'superscript_number'),
     };
 
     this.citations.set(id, fullCitation);
@@ -57,11 +56,12 @@ export class CitationManagerService {
    */
   formatCitation(citation: Citation, style: CitationStyle): Record<CitationStyle, string> {
     return {
-      AMA: this.formatAMA(citation),
-      APA: this.formatAPA(citation),
-      Vancouver: this.formatVancouver(citation),
-      NLM: this.formatNLM(citation),
-      Chicago: this.formatChicago(citation),
+      superscript_number: this.formatAMA(citation),
+      author_year: this.formatAPA(citation),
+      author_year_full: this.formatAPA(citation),
+      number_parentheses: this.formatVancouver(citation),
+      footnote: this.formatNLM(citation),
+      endnote: this.formatChicago(citation),
     };
   }
 
