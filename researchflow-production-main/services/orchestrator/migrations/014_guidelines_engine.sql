@@ -2,6 +2,8 @@
 -- Migration: 014_guidelines_engine.sql
 -- Purpose: Create tables for clinical guidelines, scoring systems, and validation blueprints
 
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
 -- Source Registry: tracks where guidelines come from and licensing
 CREATE TABLE IF NOT EXISTS source_registry (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
