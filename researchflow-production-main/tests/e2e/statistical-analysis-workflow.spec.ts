@@ -313,8 +313,10 @@ test.describe('Statistical Analysis Workflow', () => {
 
     await test.step('Check ARIA labels', async () => {
       // Verify important elements have proper ARIA labels
-      await expect(page.locator('[aria-label]')).toHaveCount({ min: 5 });
-      await expect(page.locator('[role="tab"]')).toHaveCount({ min: 4 });
+      const ariaLabelCount = await page.locator('[aria-label]').count();
+      const tabCount = await page.locator('[role="tab"]').count();
+      expect(ariaLabelCount).toBeGreaterThanOrEqual(5);
+      expect(tabCount).toBeGreaterThanOrEqual(4);
     });
   });
 
