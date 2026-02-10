@@ -9,7 +9,7 @@
 import * as promClient from 'prom-client';
 
 import { visualizationConfig } from '../config/visualization.config';
-import { pool } from '../db';
+import { pool } from '../../db';
 import { createLogger } from '../utils/logger';
 
 import { visualizationCache } from './visualization-cache.service';
