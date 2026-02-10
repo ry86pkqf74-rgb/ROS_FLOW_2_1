@@ -1,4 +1,4 @@
--- Migration: 002_lit_watchers
+-- Migration: 006_lit_watchers
 -- Phase 2.2: Literature watcher tables for automated search monitoring
 
 -- Literature watchers table
