@@ -580,5 +580,3 @@ export const validateVisualizationRequest = (req: Request, res: Response, next: 
     VisualizationErrorHandler.handleVisualizationError(error, req, res, next);
   }
 };
-
-export { VisualizationErrorHandler };

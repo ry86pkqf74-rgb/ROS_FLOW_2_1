@@ -872,7 +872,5 @@ export function resetLangChainBridge(): void {
 // ============================================================================
 
 export {
-  LangChainBridge,
   LangChainCircuitBreaker,
-  RetryOptions,
 };
