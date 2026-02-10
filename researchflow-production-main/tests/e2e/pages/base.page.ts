@@ -90,10 +90,8 @@ export class BasePage {
 
     // On landing pages, default to DEMO if no explicit LIVE indicator
     // (landing pages may not show mode banner but are always DEMO for unauthenticated users)
-    const isLandingPage = await this.page.url().then(url => {
-      const path = new URL(url).pathname;
-      return ['/', '/landing', '/demo', '/login', '/register'].includes(path);
-    });
+    const url = this.page.url();
+    const isLandingPage = ['/', '/landing', '/demo', '/login', '/register'].includes(new URL(url).pathname);
     if (isLandingPage) {
       return 'DEMO';
     }
