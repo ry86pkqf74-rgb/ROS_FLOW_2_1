@@ -947,19 +947,15 @@ export async function registerRoutes(
       req.user = {
         ...req.user,
         id: user.id,
-        username: user.email || user.displayName,
         role: user.role || role,
         email: user.email,
-        isActive: true
       };
     } else {
       // Set default user context for public routes
       req.user = {
         id: 'anonymous',
-        username: 'anonymous',
         role: ROLES.VIEWER,
         email: 'anonymous@localhost',
-        isActive: true
       };
     }
 
