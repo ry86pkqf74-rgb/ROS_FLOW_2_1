@@ -950,7 +950,6 @@ export async function registerRoutes(
         username: user.email || user.displayName,
         role: user.role || role,
         email: user.email,
-        isActive: true
       };
     } else {
       // Set default user context for public routes
@@ -959,7 +958,6 @@ export async function registerRoutes(
         username: 'anonymous',
         role: ROLES.VIEWER,
         email: 'anonymous@localhost',
-        isActive: true
       };
     }
 
