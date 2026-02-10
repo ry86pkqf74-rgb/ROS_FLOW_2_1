@@ -32,7 +32,7 @@ function createApp() {
   return app;
 }
 
-describe('commits endpoints (routes)', { skip: !hasDb ? 'DATABASE_URL not set' : false }, () => {
+describe('commits endpoints (routes)', { skip: !hasDb }, () => {
   let app: ReturnType<typeof createApp>;
   let testBranchId: string;
   let testManuscriptId: string;

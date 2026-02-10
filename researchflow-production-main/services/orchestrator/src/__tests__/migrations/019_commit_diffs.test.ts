@@ -17,7 +17,7 @@ import { dbAvailable } from '../helpers/dbAvailable';
 
 const hasDb = await dbAvailable();
 
-describe('019_commit_diffs', { skip: !hasDb ? 'DB unavailable or unreachable' : false }, () => {
+describe('019_commit_diffs', { skip: !hasDb }, () => {
   let testBranchId: string;
   const testManuscriptId = randomUUID();
 

@@ -74,7 +74,7 @@ async function cleanup(manuscriptId: string, branchId?: string | null, sessionId
   }
 }
 
-describe('EditSession service (integration)', { skip: !hasDb ? 'DATABASE_URL not set' : false }, () => {
+describe('EditSession service (integration)', { skip: !hasDb }, () => {
   beforeAll(async () => {
     if (!hasDb) return;
     dbReady = await checkDbAvailable();

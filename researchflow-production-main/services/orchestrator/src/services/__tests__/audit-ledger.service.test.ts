@@ -20,7 +20,7 @@ let dbReady = false;
 const HEX_HASH_REGEX = /^[a-f0-9]{64}$/;
 
 describe('AuditLedger service (integration)', {
-  skip: !hasDb ? 'DATABASE_URL not set' : false,
+  skip: !hasDb,
 }, () => {
   beforeAll(async () => {
     if (!hasDb) return;
