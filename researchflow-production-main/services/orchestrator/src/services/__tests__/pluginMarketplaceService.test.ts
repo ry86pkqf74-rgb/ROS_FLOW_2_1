@@ -13,7 +13,7 @@ import {
   enablePlugin,
   disablePlugin,
   getInstallation,
-  getAuditLog,
+  getPluginAuditLog,
 } from '../pluginMarketplaceService';
 
 describe('PluginMarketplaceService', () => {
@@ -126,12 +126,12 @@ describe('PluginMarketplaceService', () => {
     });
   });
 
-  describe('getAuditLog', () => {
+  describe('getPluginAuditLog', () => {
     it('should record installation actions', () => {
       const plugins = listPlugins();
       installPlugin(plugins[0].id, `audit-${tenantId}`, userId);
 
-      const logs = getAuditLog({ tenantId: `audit-${tenantId}` });
+      const logs = getPluginAuditLog({ tenantId: `audit-${tenantId}` });
       expect(logs.length).toBeGreaterThan(0);
       expect(logs.some(l => l.action === 'INSTALL')).toBe(true);
     });
@@ -140,7 +140,7 @@ describe('PluginMarketplaceService', () => {
       const plugins = listPlugins();
       installPlugin(plugins[0].id, `filter-${tenantId}`, userId);
 
-      const logs = getAuditLog({ pluginId: plugins[0].id });
+      const logs = getPluginAuditLog({ pluginId: plugins[0].id });
       expect(logs.every(l => l.pluginId === plugins[0].id)).toBe(true);
     });
   });
