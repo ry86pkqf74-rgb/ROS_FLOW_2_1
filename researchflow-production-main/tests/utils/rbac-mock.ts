@@ -10,19 +10,28 @@ import type { Request, Response, NextFunction } from 'express';
 
 import type { Role } from '../../packages/core/types/roles';
 
+type AuthUserRole = 'admin' | 'researcher' | 'reviewer' | 'viewer';
+
+const ROLE_TO_AUTH_ROLE: Record<Role, AuthUserRole> = {
+  VIEWER: 'viewer',
+  RESEARCHER: 'researcher',
+  STEWARD: 'reviewer',
+  ADMIN: 'admin',
+};
+
 export interface MockUser {
   id: string;
   username: string;
-  role: Role;
+  role: AuthUserRole;
   email: string;
   isActive: boolean;
 }
 
 export const TEST_USERS: Record<Role, MockUser> = {
-  VIEWER: { id: 'test-viewer-001', username: 'test_viewer', role: 'VIEWER', email: 'viewer@test.com', isActive: true },
-  RESEARCHER: { id: 'test-researcher-001', username: 'test_researcher', role: 'RESEARCHER', email: 'researcher@test.com', isActive: true },
-  STEWARD: { id: 'test-steward-001', username: 'test_steward', role: 'STEWARD', email: 'steward@test.com', isActive: true },
-  ADMIN: { id: 'test-admin-001', username: 'test_admin', role: 'ADMIN', email: 'admin@test.com', isActive: true },
+  VIEWER: { id: 'test-viewer-001', username: 'test_viewer', role: ROLE_TO_AUTH_ROLE.VIEWER, email: 'viewer@test.com', isActive: true },
+  RESEARCHER: { id: 'test-researcher-001', username: 'test_researcher', role: ROLE_TO_AUTH_ROLE.RESEARCHER, email: 'researcher@test.com', isActive: true },
+  STEWARD: { id: 'test-steward-001', username: 'test_steward', role: ROLE_TO_AUTH_ROLE.STEWARD, email: 'steward@test.com', isActive: true },
+  ADMIN: { id: 'test-admin-001', username: 'test_admin', role: ROLE_TO_AUTH_ROLE.ADMIN, email: 'admin@test.com', isActive: true },
 };
 
 /**
