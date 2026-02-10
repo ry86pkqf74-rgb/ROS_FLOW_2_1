@@ -35,6 +35,9 @@ interface AuditLogEntry {
   resourceId?: string;
   action: string;
   details?: Record<string, any>;
+  metadata?: Record<string, any>;
+  severity?: string;
+  category?: string;
   ipAddress?: string;
   userAgent?: string;
   sessionId?: string;
@@ -57,7 +60,7 @@ export async function logAction(entry: AuditLogEntry): Promise<void> {
       .orderBy(desc(auditLogs.id))
       .limit(1);
 
-  const previousHash = previousEntry?.entryHash || 'GENESIS';
+    const previousHash = previousEntry?.entryHash || 'GENESIS';
 
     // Create hash of current entry
     const entryData = JSON.stringify({
@@ -71,8 +74,10 @@ export async function logAction(entry: AuditLogEntry): Promise<void> {
       .digest('hex');
 
     // Insert audit log with hash chain
+    const { metadata, severity, category, ...entryValues } = entry;
+
     await db.insert(auditLogs).values({
-      ...entry,
+      ...entryValues,
       previousHash,
       entryHash,
       details: entry.details ? entry.details : undefined
