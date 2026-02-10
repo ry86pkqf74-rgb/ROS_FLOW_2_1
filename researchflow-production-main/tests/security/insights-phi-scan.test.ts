@@ -33,8 +33,24 @@ const PHI_PATTERNS = {
   NAME_PATTERN: /\b(patient|name)[:\s]+[A-Z][a-z]+\s+[A-Z][a-z]+\b/i,
 };
 
+type InsightsEvent = {
+  id: string;
+  timestamp: string;
+  governance_mode: 'LIVE' | 'DEMO' | 'STANDBY';
+  project_id: string;
+  tier: string;
+  status: string;
+  run_id: string;
+  stage: number;
+  agent_id: string;
+  user_id: string;
+  tenant_id: string;
+  input?: string;
+  output?: string;
+};
+
 // Sample events for testing
-const createTestEvent = (overrides = {}) => ({
+const createTestEvent = (overrides: Partial<InsightsEvent> = {}): InsightsEvent => ({
   id: 'evt_123',
   timestamp: new Date().toISOString(),
   governance_mode: 'LIVE' as const,
