@@ -7,7 +7,7 @@
 import http from 'http';
 import https from 'https';
 
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 
 import { createLogger } from '../utils/logger';
 
@@ -32,7 +32,7 @@ interface PooledRequest {
 }
 
 class AIBridgeConnectionPool {
-  private client: AxiosInstance;
+  private client: axios.AxiosInstance;
   private requestQueue: PooledRequest[] = [];
   private activeRequests = 0;
   private config: ConnectionPoolConfig;
