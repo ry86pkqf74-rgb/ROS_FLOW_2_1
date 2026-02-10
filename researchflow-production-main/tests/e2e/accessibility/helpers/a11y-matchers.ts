@@ -3,26 +3,14 @@
  * Wraps axe results and DOM checks for WCAG 2.1 AA compliance.
  */
 
-import type { Result as AxeResult } from 'axe-core';
+import type { Result as AxeResult, AxeResults as AxeCoreResults } from 'axe-core';
 import { expect } from '@playwright/test';
 
 export type AxeImpact = 'critical' | 'serious' | 'moderate' | 'minor';
 
-export interface AxeViolation {
-  id: string;
-  impact?: AxeImpact;
-  description: string;
-  help: string;
-  helpUrl: string;
-  nodes: Array<{ html: string; target: string[] }>;
-}
+export type AxeViolation = AxeResult;
 
-export interface AxeResults {
-  violations: AxeViolation[];
-  passes: AxeResult[];
-  incomplete: AxeResult[];
-  inapplicable: AxeResult[];
-}
+export type AxeResults = AxeCoreResults;
 
 /** Thresholds: 0 critical, 0 serious per WCAG 2.1 AA */
 export const A11Y_THRESHOLDS = {
