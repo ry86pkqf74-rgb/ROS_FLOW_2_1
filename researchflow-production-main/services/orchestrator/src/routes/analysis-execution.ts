@@ -125,6 +125,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'CLINICAL_EXTRACTION',
+        eventType: 'CLINICAL_EXTRACTION',
         resourceType: 'analysis',
         resourceId: requestId,
         metadata: {
@@ -223,6 +224,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'RUN_ANALYSIS',
+        eventType: 'RUN_ANALYSIS',
         resourceType: 'analysis',
         resourceId: requestId,
         metadata: {

@@ -80,6 +80,7 @@ router.post(
         await logAction({
           userId: req.user?.id || 'anonymous',
           action: 'PHI_BLOCKED',
+          eventType: 'PHI_BLOCKED',
           resourceType: 'ai_extraction',
           resourceId: requestId,
           metadata: {
@@ -144,6 +145,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'AI_EXTRACTION',
+        eventType: 'AI_EXTRACTION',
         resourceType: 'ai_extraction',
         resourceId: requestId,
         metadata: {

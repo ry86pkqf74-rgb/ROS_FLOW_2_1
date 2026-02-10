@@ -177,6 +177,7 @@ router.post(
     await logAction({
       userId: user.id,
       action: 'EXPORT_RIS',
+      eventType: 'EXPORT_RIS',
       resourceType: 'literature',
       resourceId: `export_${Date.now()}`,
       metadata: {

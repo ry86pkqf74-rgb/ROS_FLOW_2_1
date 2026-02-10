@@ -138,6 +138,7 @@ router.post(
     await logAction({
       userId: user.id,
       action: 'UPLOAD_TO_BOX',
+      eventType: 'UPLOAD_TO_BOX',
       resourceType: 'file',
       resourceId: fileEntry.id,
       metadata: {
@@ -277,6 +278,7 @@ router.post(
     await logAction({
       userId: user.id,
       action: 'UPLOAD_TO_DROPBOX',
+      eventType: 'UPLOAD_TO_DROPBOX',
       resourceType: 'file',
       resourceId: uploadData.id,
       metadata: {

@@ -103,6 +103,7 @@ router.post(
     await logAction({
       userId: req.user?.id || 'anonymous',
       action: 'MESH_LOOKUP',
+      eventType: 'MESH_LOOKUP',
       resourceType: 'literature',
       resourceId: `mesh_batch_${Date.now()}`,
       metadata: {

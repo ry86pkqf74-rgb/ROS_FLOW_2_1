@@ -176,6 +176,7 @@ export async function trackEvent(event: AnalyticsEventInput): Promise<boolean> {
     // Log PHI detection (without the actual values)
     await logAction({
       action: 'ANALYTICS_PHI_REDACTED',
+      eventType: 'ANALYTICS_PHI_REDACTED',
       userId: event.userId,
       details: {
         eventName: event.eventName,

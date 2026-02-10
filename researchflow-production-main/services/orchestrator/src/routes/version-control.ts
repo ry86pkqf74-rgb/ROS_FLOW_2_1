@@ -147,6 +147,7 @@ router.post(
       await logAction({
         userId: req.user?.id || parseResult.data.owner_id,
         action: 'CREATE_VERSION_PROJECT',
+        eventType: 'CREATE_VERSION_PROJECT',
         resourceType: 'version_project',
         resourceId: parseResult.data.project_id,
         metadata: {
@@ -269,6 +270,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'VERSION_COMMIT',
+        eventType: 'VERSION_COMMIT',
         resourceType: 'version_project',
         resourceId: parseResult.data.project_id,
         metadata: {
@@ -408,6 +410,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'VERSION_RESTORE',
+        eventType: 'VERSION_RESTORE',
         resourceType: 'version_project',
         resourceId: parseResult.data.project_id,
         metadata: {
@@ -467,6 +470,7 @@ router.post(
       await logAction({
         userId: req.user?.id || 'anonymous',
         action: 'VERSION_SAVE_FILE',
+        eventType: 'VERSION_SAVE_FILE',
         resourceType: 'version_project',
         resourceId: projectId,
         metadata: {
