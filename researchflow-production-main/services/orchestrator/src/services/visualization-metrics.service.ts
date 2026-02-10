@@ -6,7 +6,7 @@
  * and custom dashboard data for production monitoring.
  */
 
-import { Registry, Counter, Histogram, Gauge, Summary } from 'prom-client';
+import * as promClient from 'prom-client';
 
 import { visualizationConfig } from '../config/visualization.config';
 import { pool } from '../db';
@@ -52,28 +52,28 @@ export interface AlertCondition {
 }
 
 export class VisualizationMetricsService {
-  private registry: Registry;
+  private registry: InstanceType<typeof promClient.Registry>;
   private startTime: Date;
   
   // Prometheus metrics
-  private chartsGenerated: Counter<string>;
-  private generationDuration: Histogram<string>;
-  private activeJobs: Gauge<string>;
-  private errorCount: Counter<string>;
-  private cacheOperations: Counter<string>;
-  private databaseOperations: Histogram<string>;
-  private requestSize: Histogram<string>;
-  private responseSize: Histogram<string>;
-  private workerRequests: Counter<string>;
-  private queueDepth: Gauge<string>;
-  private systemResources: Gauge<string>;
+  private chartsGenerated: InstanceType<typeof promClient.Counter>;
+  private generationDuration: InstanceType<typeof promClient.Histogram>;
+  private activeJobs: InstanceType<typeof promClient.Gauge>;
+  private errorCount: InstanceType<typeof promClient.Counter>;
+  private cacheOperations: InstanceType<typeof promClient.Counter>;
+  private databaseOperations: InstanceType<typeof promClient.Histogram>;
+  private requestSize: InstanceType<typeof promClient.Histogram>;
+  private responseSize: InstanceType<typeof promClient.Histogram>;
+  private workerRequests: InstanceType<typeof promClient.Counter>;
+  private queueDepth: InstanceType<typeof promClient.Gauge>;
+  private systemResources: InstanceType<typeof promClient.Gauge>;
   
   // Internal tracking
   private recentMetrics: Map<string, any[]> = new Map();
   private alertHistory: Array<{ alert: AlertCondition; timestamp: Date; value: number }> = [];
   
   constructor() {
-    this.registry = new Registry();
+    this.registry = new promClient.Registry();
     this.startTime = new Date();
     this.initializeMetrics();
     this.startBackgroundTasks();
@@ -84,14 +84,14 @@ export class VisualizationMetricsService {
    */
   private initializeMetrics(): void {
     // Chart generation metrics
-    this.chartsGenerated = new Counter({
+    this.chartsGenerated = new promClient.Counter({
       name: 'viz_charts_generated_total',
       help: 'Total number of charts generated',
       labelNames: ['chart_type', 'journal_style', 'status', 'quality_profile'],
       registers: [this.registry],
     });
     
-    this.generationDuration = new Histogram({
+    this.generationDuration = new promClient.Histogram({
       name: 'viz_generation_duration_seconds',
       help: 'Time taken to generate charts',
       labelNames: ['chart_type', 'chart_complexity'],
@@ -99,7 +99,7 @@ export class VisualizationMetricsService {
       registers: [this.registry],
     });
     
-    this.activeJobs = new Gauge({
+    this.activeJobs = new promClient.Gauge({
       name: 'viz_active_jobs',
       help: 'Number of active chart generation jobs',
       labelNames: ['job_type'],
@@ -107,7 +107,7 @@ export class VisualizationMetricsService {
     });
     
     // Error tracking
-    this.errorCount = new Counter({
+    this.errorCount = new promClient.Counter({
       name: 'viz_errors_total',
       help: 'Total number of errors by type',
       labelNames: ['error_type', 'error_severity', 'component'],
@@ -115,7 +115,7 @@ export class VisualizationMetricsService {
     });
     
     // Cache metrics
-    this.cacheOperations = new Counter({
+    this.cacheOperations = new promClient.Counter({
       name: 'viz_cache_operations_total',
       help: 'Cache operations (hits, misses, sets)',
       labelNames: ['operation', 'result'],
@@ -123,7 +123,7 @@ export class VisualizationMetricsService {
     });
     
     // Database operations
-    this.databaseOperations = new Histogram({
+    this.databaseOperations = new promClient.Histogram({
       name: 'viz_database_operation_duration_seconds',
       help: 'Database operation duration',
       labelNames: ['operation', 'table'],
@@ -132,14 +132,14 @@ export class VisualizationMetricsService {
     });
     
     // Request/Response size tracking
-    this.requestSize = new Histogram({
+    this.requestSize = new promClient.Histogram({
       name: 'viz_request_size_bytes',
       help: 'Size of chart generation requests',
       buckets: [1024, 10240, 51200, 102400, 512000, 1048576, 5242880], // 1KB to 5MB
       registers: [this.registry],
     });
     
-    this.responseSize = new Histogram({
+    this.responseSize = new promClient.Histogram({
       name: 'viz_response_size_bytes',
       help: 'Size of generated chart responses',
       buckets: [10240, 51200, 102400, 512000, 1048576, 5242880, 10485760], // 10KB to 10MB
@@ -147,7 +147,7 @@ export class VisualizationMetricsService {
     });
     
     // Worker communication
-    this.workerRequests = new Counter({
+    this.workerRequests = new promClient.Counter({
       name: 'viz_worker_requests_total',
       help: 'Requests sent to worker service',
       labelNames: ['endpoint', 'status'],
@@ -155,7 +155,7 @@ export class VisualizationMetricsService {
     });
     
     // Queue metrics
-    this.queueDepth = new Gauge({
+    this.queueDepth = new promClient.Gauge({
       name: 'viz_queue_depth',
       help: 'Number of jobs waiting in queue',
       labelNames: ['priority'],
@@ -163,7 +163,7 @@ export class VisualizationMetricsService {
     });
     
     // System resource usage
-    this.systemResources = new Gauge({
+    this.systemResources = new promClient.Gauge({
       name: 'viz_system_resources',
       help: 'System resource usage',
       labelNames: ['resource_type'],
