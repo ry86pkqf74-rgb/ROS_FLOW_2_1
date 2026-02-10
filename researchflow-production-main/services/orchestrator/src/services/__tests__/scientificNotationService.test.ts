@@ -57,6 +57,7 @@ describe('ScientificNotationService', () => {
         style: 'PLAIN',
         useGrouping: true,
         locale: 'en-US',
+        significantDigits: 7,
       });
       expect(result).toBe('1,234,567');
     });
@@ -65,6 +66,8 @@ describe('ScientificNotationService', () => {
       const result = formatScientific(1234.56, {
         style: 'PLAIN',
         locale: 'de-DE',
+        significantDigits: 10,
+        useGrouping: false,
       });
       expect(result).toBe('1234,56');
     });
