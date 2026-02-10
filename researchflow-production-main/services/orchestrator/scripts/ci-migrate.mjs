@@ -36,6 +36,29 @@ files = files
   .filter(f => f.endsWith('.sql'))
   .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
+// Guard: detect duplicate numeric prefixes
+const prefixMap = new Map();
+for (const name of files) {
+  const match = name.match(/^(\d+)/);
+  if (match) {
+    const prefix = match[1];
+    if (!prefixMap.has(prefix)) {
+      prefixMap.set(prefix, []);
+    }
+    prefixMap.get(prefix).push(name);
+  }
+}
+
+for (const [prefix, names] of prefixMap) {
+  if (names.length > 1) {
+    console.error('ci-migrate: Duplicate numeric prefix detected:', prefix);
+    console.error('Conflicting files:');
+    names.forEach(n => console.error('  -', n));
+    console.error('Each migration must have a unique numeric prefix.');
+    process.exit(1);
+  }
+}
+
 if (files.length === 0) {
   console.log('ci-migrate: No .sql files in', MIGRATIONS_DIR);
   process.exit(0);
