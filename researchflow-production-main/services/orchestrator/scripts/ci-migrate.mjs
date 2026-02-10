@@ -48,8 +48,23 @@ for (const name of files) {
     stdio: 'inherit',
     env: process.env,
   });
+  
+  // Handle spawn errors (e.g., psql not found)
+  if (result.error) {
+    console.error('ci-migrate: Failed to execute psql (spawn error):', result.error.message);
+    if (result.error.code === 'ENOENT') {
+      console.error('psql not found on PATH');
+    }
+    process.exit(1);
+  }
+  
+  // Handle non-zero exit status
   if (result.status !== 0) {
     console.error('ci-migrate: Failed applying', name);
+    console.error('Exit status:', result.status);
+    if (result.signal) {
+      console.error('Signal:', result.signal);
+    }
     process.exit(result.status || 1);
   }
 }
