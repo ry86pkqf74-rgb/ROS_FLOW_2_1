@@ -947,6 +947,7 @@ export async function registerRoutes(
       req.user = {
         ...req.user,
         id: user.id,
+        username: user.email || user.displayName,
         role: user.role || role,
         email: user.email,
       };
@@ -954,6 +955,7 @@ export async function registerRoutes(
       // Set default user context for public routes
       req.user = {
         id: 'anonymous',
+        username: 'anonymous',
         role: ROLES.VIEWER,
         email: 'anonymous@localhost',
       };
