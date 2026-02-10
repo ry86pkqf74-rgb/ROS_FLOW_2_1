@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { AppMode, MODE_CONFIGS } from '@researchflow/core';
+import { AppMode, MODE_CONFIGS } from '../../packages/core/types/governance';
 
 describe('App Mode Type Definitions', () => {
   it('should define exactly three modes: DEMO, LIVE, and STANDBY', () => {
