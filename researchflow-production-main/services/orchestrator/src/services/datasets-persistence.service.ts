@@ -120,7 +120,7 @@ export async function getDatasets(filters?: {
   }
 
   try {
-    const conditions = [];
+    const conditions: ReturnType<typeof eq>[] = [];
 
     if (filters?.classification) {
       conditions.push(eq(datasets.classification, filters.classification.toUpperCase()));

@@ -95,7 +95,7 @@ router.get('/history', async (req: Request, res: Response) => {
     const numMonths = parseInt(months as string, 10);
 
     // Generate mock historical data
-    const history = [];
+    const history: Array<{ period: string; totalCO2Kg: number; aiUsage: number; storage: number; compute: number; dataTransfer: number }> = [];
     const now = new Date();
 
     for (let i = numMonths - 1; i >= 0; i--) {
