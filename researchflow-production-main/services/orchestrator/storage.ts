@@ -46,6 +46,7 @@ import {
   fileUploads,
   researchSessions,
 } from "@researchflow/core/schema";
+import type { SQL } from "drizzle-orm/sql";
 import { eq, and, desc } from "drizzle-orm";
 
 import { db } from "./db";
@@ -424,7 +425,7 @@ export class DatabaseStorage implements IStorage {
     if (!db) {
       throw new Error('Database not initialized');
     }
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (filters?.resourceId) conditions.push(eq(approvalGates.resourceId, filters.resourceId));
     if (filters?.status) conditions.push(eq(approvalGates.status, filters.status));
     if (filters?.requestedById) conditions.push(eq(approvalGates.requestedById, filters.requestedById));
@@ -498,7 +499,7 @@ export class DatabaseStorage implements IStorage {
     if (!db) {
       throw new Error('Database not initialized');
     }
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
     if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
     if (filters?.resourceType) conditions.push(eq(auditLogs.resourceType, filters.resourceType));
