@@ -149,12 +149,17 @@ router.post(
 
     // Emit alert if severity is HIGH or CRITICAL
     if (severity === 'HIGH' || severity === 'CRITICAL') {
-      eventBus.emit('monitoring:drift_alert', {
-        modelId: validated.model_id,
-        metricType: validated.metric_type,
-        severity,
-        psiValue: validated.psi_value,
-        featureName: validated.feature_name,
+      eventBus.publish({
+        type: 'monitoring:drift_alert',
+        ts: new Date().toISOString(),
+        topic: 'governance',
+        payload: {
+          modelId: validated.model_id,
+          metricType: validated.metric_type,
+          severity,
+          psiValue: validated.psi_value,
+          featureName: validated.feature_name,
+        },
       });
     }
 
@@ -288,12 +293,17 @@ router.post(
 
     // Emit alert if bias threshold violated
     if (validated.violated) {
-      eventBus.emit('monitoring:bias_alert', {
-        modelId: validated.model_id,
-        protectedAttribute: validated.protected_attribute,
-        metricName: validated.metric_name,
-        currentValue: validated.current_value,
-        threshold: validated.threshold,
+      eventBus.publish({
+        type: 'monitoring:bias_alert',
+        ts: new Date().toISOString(),
+        topic: 'governance',
+        payload: {
+          modelId: validated.model_id,
+          protectedAttribute: validated.protected_attribute,
+          metricName: validated.metric_name,
+          currentValue: validated.current_value,
+          threshold: validated.threshold,
+        },
       });
     }
 
@@ -381,20 +391,30 @@ router.post(
     `);
 
     // Emit safety event
-    eventBus.emit('monitoring:safety_event', {
-      eventId: result.rows[0].id,
-      modelId: validated.model_id,
-      eventType: validated.event_type,
-      severity: validated.severity,
-      description: validated.description,
+    eventBus.publish({
+      type: 'monitoring:safety_event',
+      ts: new Date().toISOString(),
+      topic: 'governance',
+      payload: {
+        eventId: result.rows[0].id,
+        modelId: validated.model_id,
+        eventType: validated.event_type,
+        severity: validated.severity,
+        description: validated.description,
+      },
     });
 
     // Auto-trigger FAVES re-evaluation for CRITICAL events
     if (validated.severity === 'CRITICAL') {
-      eventBus.emit('faves:trigger_evaluation', {
-        modelId: validated.model_id,
-        trigger: 'SAFETY_EVENT',
-        eventId: result.rows[0].id,
+      eventBus.publish({
+        type: 'faves:trigger_evaluation',
+        ts: new Date().toISOString(),
+        topic: 'governance',
+        payload: {
+          modelId: validated.model_id,
+          trigger: 'SAFETY_EVENT',
+          eventId: result.rows[0].id,
+        },
       });
     }
 
@@ -491,10 +511,15 @@ router.patch(
       return;
     }
 
-    eventBus.emit('monitoring:safety_event_updated', {
-      eventId: id,
-      newStatus: remediation_status,
-      updatedBy: userId,
+    eventBus.publish({
+      type: 'monitoring:safety_event_updated',
+      ts: new Date().toISOString(),
+      topic: 'governance',
+      payload: {
+        eventId: id,
+        newStatus: remediation_status,
+        updatedBy: userId,
+      },
     });
 
     res.json(result.rows[0]);
