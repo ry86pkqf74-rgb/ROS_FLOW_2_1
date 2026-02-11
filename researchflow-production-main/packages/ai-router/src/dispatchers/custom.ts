@@ -26,18 +26,22 @@ import { MODEL_CONFIGS, TASK_TIER_MAPPING } from '../types';
 interface IAgent {
   execute(input: AgentInput): Promise<AgentOutput>;
   getConfig(): AgentConfig;
+  validateInput?(input: AgentInput): boolean;
+  config?: AgentConfig;
 }
 
 interface AgentInput {
   query: string;
   context?: Record<string, unknown>;
   options?: Record<string, unknown>;
+  workflowStage?: number;
 }
 
 interface AgentOutput {
   content: string;
   metadata?: Record<string, unknown>;
   success: boolean;
+  citations?: Array<{ source: string; text: string; url?: string }>;
 }
 
 interface AgentConfig {
@@ -350,6 +354,9 @@ export class CustomDispatcher {
         phiScanRequired: registry.phiRequired,
         maxTokens: registry.maxTokens,
       } as AgentConfig,
+      getConfig(): AgentConfig {
+        return this.config as AgentConfig;
+      },
       async execute(input: AgentInput): Promise<AgentOutput> {
         // Echo input.query if it's valid JSON, otherwise return default response
         let content = `Response from ${agentType} agent`;
@@ -369,6 +376,7 @@ export class CustomDispatcher {
             phiDetected: false,
             processingTimeMs: 100,
           },
+          success: true,
         };
       },
       validateInput(input: AgentInput): boolean {
@@ -406,9 +414,9 @@ export class CustomDispatcher {
       },
       usage: {
         inputTokens: this.estimateTokens(request.prompt),
-        outputTokens: agentOutput.metadata.tokensUsed,
+        outputTokens: Number(agentOutput.metadata?.tokensUsed ?? 0),
         totalTokens:
-          this.estimateTokens(request.prompt) + agentOutput.metadata.tokensUsed,
+          this.estimateTokens(request.prompt) + Number(agentOutput.metadata?.tokensUsed ?? 0),
         estimatedCostUsd: this.estimateCost(
           request.prompt,
           agentOutput.content,
@@ -416,20 +424,20 @@ export class CustomDispatcher {
         ),
       },
       qualityGate: {
-        passed: agentOutput.metadata.phiDetected === false,
+        passed: agentOutput.metadata?.phiDetected === false,
         checks: [
           {
             name: 'phi_scan',
-            passed: !agentOutput.metadata.phiDetected,
-            severity: agentOutput.metadata.phiDetected ? 'error' : 'info',
+            passed: !agentOutput.metadata?.phiDetected,
+            severity: agentOutput.metadata?.phiDetected ? 'error' : 'info',
             category: 'completeness',
-            score: agentOutput.metadata.phiDetected ? 0 : 1,
+            score: agentOutput.metadata?.phiDetected ? 0 : 1,
           },
         ],
       },
       metrics: {
         latencyMs,
-        processingTimeMs: agentOutput.metadata.processingTimeMs,
+        processingTimeMs: Number(agentOutput.metadata?.processingTimeMs ?? 0),
       },
     };
   }
@@ -553,7 +561,10 @@ export class CustomDispatcher {
   }
 
   getAgentRegistry(): Record<CustomAgentType, CustomAgentRegistry> {
-    return Object.fromEntries(this.agentRegistry);
+    return Object.fromEntries(this.agentRegistry) as Record<
+      CustomAgentType,
+      CustomAgentRegistry
+    >;
   }
 
   getMetrics() {
