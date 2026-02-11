@@ -53,7 +53,7 @@ describe('ClusterStatusService (Task 116, 122)', () => {
       reason: 'High CPU usage',
     });
 
-    const history = clusterStatusService.getScalingHistory(10);
+    const history = clusterStatusService.getScalingEvents(10);
     expect(history.length).toBeGreaterThan(0);
   });
 });
@@ -68,7 +68,7 @@ describe('PredictiveScalingService (Task 117)', () => {
     expect(prediction).toBeDefined();
     expect(prediction.scenario).toBeDefined();
     expect(prediction.predictions).toBeInstanceOf(Array);
-    expect(prediction.totalAdditionalCost).toBeDefined();
+    expect(prediction.summary?.costImpact).toBeDefined();
   });
 
   it('should provide preset scenarios', () => {
@@ -79,9 +79,11 @@ describe('PredictiveScalingService (Task 117)', () => {
     expect(scenarios['marketing-campaign']).toBeDefined();
   });
 
-  it('should track prediction history', () => {
-    const history = predictiveScalingService.getPredictionHistory(10);
-    expect(history).toBeInstanceOf(Array);
+  it('should compare scenarios', async () => {
+    const results = await predictiveScalingService.compareScenarios([
+      { loadIncrease: 50, affectedServices: ['web'] },
+    ]);
+    expect(results).toBeInstanceOf(Array);
   });
 });
 
@@ -90,7 +92,7 @@ describe('MetricsCollectorService (Tasks 118, 129, 130)', () => {
     // Record some test metrics
     for (let i = 0; i < 10; i++) {
       metricsCollectorService.recordLatency(Math.random() * 200);
-      metricsCollectorService.recordCacheOperation(Math.random() > 0.3);
+      metricsCollectorService.recordJobDuration('test-job', Math.random() * 500);
     }
   });
 
@@ -119,15 +121,15 @@ describe('MetricsCollectorService (Tasks 118, 129, 130)', () => {
 
     expect(heatmap).toBeDefined();
     expect(heatmap.services).toBeInstanceOf(Array);
-    expect(heatmap.timeSlots).toBeInstanceOf(Array);
+    expect(heatmap.timestamps).toBeInstanceOf(Array);
   });
 
   it('should provide latency histogram', () => {
-    const histogram = metricsCollectorService.getLatencyHistogram(60);
+    const stats = metricsCollectorService.getLatencyStats(60);
 
-    expect(histogram).toBeDefined();
-    expect(histogram.buckets).toBeInstanceOf(Array);
-    expect(histogram.totalRequests).toBeGreaterThanOrEqual(0);
+    expect(stats).toBeDefined();
+    expect(stats.histogram).toBeDefined();
+    expect(stats.count).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -142,14 +144,14 @@ describe('DataShardingService (Task 123)', () => {
 
     expect(result.success).toBe(true);
     expect(result.artifactId).toBe('test-artifact-123');
-    expect(result.totalShards).toBeGreaterThan(0);
+    expect(result.manifest?.totalShards).toBeGreaterThan(0);
   });
 
   it('should retrieve manifest for sharded artifact', async () => {
     const testData = Buffer.from('B'.repeat(50000));
     await dataShardingService.shardData(testData, 'test-artifact-456');
 
-    const manifest = dataShardingService.getManifest('test-artifact-456');
+    const manifest = await dataShardingService.getManifest('test-artifact-456');
 
     expect(manifest).toBeDefined();
     expect(manifest?.artifactId).toBe('test-artifact-456');
@@ -157,7 +159,7 @@ describe('DataShardingService (Task 123)', () => {
   });
 
   it('should provide storage statistics', () => {
-    const stats = dataShardingService.getStorageStats();
+    const stats = dataShardingService.getStats();
 
     expect(stats).toBeDefined();
     expect(stats.totalArtifacts).toBeGreaterThanOrEqual(0);
@@ -286,11 +288,11 @@ describe('PerformanceAnalyzerService (Task 125)', () => {
   });
 
   it('should provide critical path', async () => {
-    const criticalPath = await performanceAnalyzerService.getCriticalPath();
+    const report = await performanceAnalyzerService.analyzePerformance(60);
 
-    expect(criticalPath).toBeDefined();
-    expect(criticalPath.stages).toBeInstanceOf(Array);
-    expect(criticalPath.totalDurationMs).toBeGreaterThanOrEqual(0);
+    expect(report).toBeDefined();
+    expect(report.criticalPath).toBeInstanceOf(Array);
+    expect(report.totalWorkflowAvgMs).toBeGreaterThanOrEqual(0);
   });
 });
 
