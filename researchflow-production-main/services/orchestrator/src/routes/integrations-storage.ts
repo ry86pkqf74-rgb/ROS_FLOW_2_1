@@ -82,24 +82,31 @@ router.post(
     // Decode base64 content
     const contentBytes = Buffer.from(content, 'base64');
 
-    // Call Box API
-    const FormData = (await import('form-data')).default;
-    const fetch = (await import('node-fetch')).default;
+    // Call Box API — use form-data npm package (not native FormData)
+    // for its .getHeaders() and 3-arg .append(name, value, options).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const FormDataCtor = (await import('form-data' as string)).default as {
+      new (): {
+        append(key: string, value: unknown, options?: { filename: string } | string): void;
+        getHeaders(userHeaders?: Record<string, string>): Record<string, string>;
+      };
+    };
+    const fetchFn = (await import('node-fetch' as string)).default as typeof globalThis.fetch;
 
-    const form = new FormData();
+    const form = new FormDataCtor();
     form.append('attributes', JSON.stringify({
       name: filename,
       parent: { id: folderId }
     }));
     form.append('file', contentBytes, { filename });
 
-    const uploadResponse = await fetch('https://upload.box.com/api/2.0/files/content', {
+    const uploadResponse = await fetchFn('https://upload.box.com/api/2.0/files/content', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         ...form.getHeaders()
       },
-      body: form
+      body: form as any
     });
 
     if (!uploadResponse.ok) {
