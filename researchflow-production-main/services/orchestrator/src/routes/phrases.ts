@@ -17,6 +17,7 @@
 import { Router, Request, Response } from 'express';
 
 import { phraseLibraryService, PHRASE_CATEGORIES } from '../services/PhraseLibraryService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -89,7 +90,7 @@ router.get('/categories', async (req: Request, res: Response) => {
  */
 router.get('/category/:category', async (req: Request, res: Response) => {
   try {
-    const { category } = req.params;
+    const category = asString(req.params.category);
     const limit = parseInt(req.query.limit as string) || 50;
     
     const phrases = await phraseLibraryService.getByCategory(category, limit);
@@ -110,7 +111,7 @@ router.get('/category/:category', async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const phrase = await phraseLibraryService.getById(id);
     
     if (!phrase) {
@@ -161,7 +162,7 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { phrase, category, tags, rationale } = req.body;
     const userId = (req as any).user?.id;
     
@@ -195,7 +196,7 @@ router.put('/:id', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const userId = (req as any).user?.id;
     
     const deleted = await phraseLibraryService.delete(id, userId);
@@ -216,7 +217,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  */
 router.post('/:id/use', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const userId = (req as any).user?.id;
     
     // Verify phrase exists

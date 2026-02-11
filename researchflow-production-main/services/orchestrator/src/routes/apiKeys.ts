@@ -18,6 +18,7 @@ import {
   getUserKeyHistory,
   ApiKeyScopeSchema,
 } from '../services/apiKeyRotationService';
+import { asString } from '../utils/asString';
 
 export const apiKeysRouter = Router();
 
@@ -140,7 +141,7 @@ apiKeysRouter.post('/', (req: Request, res: Response) => {
  */
 apiKeysRouter.get('/:id', (req: Request, res: Response) => {
   try {
-    const key = getApiKey(req.params.id);
+    const key = getApiKey(asString(req.params.id));
     if (!key) {
       return res.status(404).json({ error: 'API key not found' });
     }
@@ -178,7 +179,7 @@ apiKeysRouter.get('/:id', (req: Request, res: Response) => {
 apiKeysRouter.post('/:id/rotate', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'demo-user';
-    const key = getApiKey(req.params.id);
+    const key = getApiKey(asString(req.params.id));
 
     if (!key) {
       return res.status(404).json({ error: 'API key not found' });
@@ -188,7 +189,7 @@ apiKeysRouter.post('/:id/rotate', (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const result = rotateApiKey(req.params.id, userId);
+    const result = rotateApiKey(asString(req.params.id), userId);
     if (!result) {
       return res.status(400).json({ error: 'Failed to rotate key' });
     }
@@ -214,7 +215,7 @@ apiKeysRouter.post('/:id/rotate', (req: Request, res: Response) => {
 apiKeysRouter.post('/:id/revoke', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'demo-user';
-    const key = getApiKey(req.params.id);
+    const key = getApiKey(asString(req.params.id));
 
     if (!key) {
       return res.status(404).json({ error: 'API key not found' });
@@ -225,7 +226,7 @@ apiKeysRouter.post('/:id/revoke', (req: Request, res: Response) => {
     }
 
     const { reason } = req.body;
-    const success = revokeApiKey(req.params.id, userId, reason);
+    const success = revokeApiKey(asString(req.params.id), userId, reason);
 
     if (!success) {
       return res.status(400).json({ error: 'Failed to revoke key' });
@@ -245,7 +246,7 @@ apiKeysRouter.post('/:id/revoke', (req: Request, res: Response) => {
 apiKeysRouter.put('/:id/scopes', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'demo-user';
-    const key = getApiKey(req.params.id);
+    const key = getApiKey(asString(req.params.id));
 
     if (!key) {
       return res.status(404).json({ error: 'API key not found' });
@@ -264,7 +265,7 @@ apiKeysRouter.put('/:id/scopes', (req: Request, res: Response) => {
       ApiKeyScopeSchema.safeParse(s).success
     );
 
-    const updated = updateKeyScopes(req.params.id, validScopes, userId);
+    const updated = updateKeyScopes(asString(req.params.id), validScopes, userId);
     if (!updated) {
       return res.status(400).json({ error: 'Failed to update scopes' });
     }
@@ -286,7 +287,7 @@ apiKeysRouter.put('/:id/scopes', (req: Request, res: Response) => {
 apiKeysRouter.get('/:id/history', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'demo-user';
-    const key = getApiKey(req.params.id);
+    const key = getApiKey(asString(req.params.id));
 
     if (!key) {
       return res.status(404).json({ error: 'API key not found' });
@@ -297,7 +298,7 @@ apiKeysRouter.get('/:id/history', (req: Request, res: Response) => {
     }
 
     const limit = parseInt(req.query.limit as string) || 50;
-    const history = getKeyHistory(req.params.id, limit);
+    const history = getKeyHistory(asString(req.params.id), limit);
     res.json(history);
   } catch (error) {
     console.error('Error getting history:', error);

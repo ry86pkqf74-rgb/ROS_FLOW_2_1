@@ -20,6 +20,7 @@ import {
   getPluginAuditLog,
   listStageExtensions,
 } from '../services/pluginMarketplaceService';
+import { asString } from '../utils/asString';
 
 export const pluginsRouter = Router();
 
@@ -99,7 +100,7 @@ pluginsRouter.get('/extensions', (_req: Request, res: Response) => {
  */
 pluginsRouter.get('/:id', (req: Request, res: Response) => {
   try {
-    const plugin = getPlugin(req.params.id);
+    const plugin = getPlugin(asString(req.params.id));
     if (!plugin) {
       return res.status(404).json({ error: 'Plugin not found' });
     }
@@ -137,7 +138,7 @@ pluginsRouter.get('/tenant/installed', (req: Request, res: Response) => {
 pluginsRouter.get('/:id/installation', (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
-    const installation = getInstallation(req.params.id, tenantId);
+    const installation = getInstallation(asString(req.params.id), tenantId);
 
     if (!installation) {
       return res.status(404).json({ error: 'Plugin not installed' });
@@ -160,7 +161,7 @@ pluginsRouter.post('/:id/install', (req: Request, res: Response) => {
     const userId = (req as any).userId ?? 'system';
     const { config } = req.body;
 
-    const installation = installPlugin(req.params.id, tenantId, userId, config);
+    const installation = installPlugin(asString(req.params.id), tenantId, userId, config);
     res.status(201).json(installation);
   } catch (error: any) {
     console.error('Error installing plugin:', error);
@@ -177,7 +178,7 @@ pluginsRouter.post('/:id/uninstall', (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
     const userId = (req as any).userId ?? 'system';
 
-    const success = uninstallPlugin(req.params.id, tenantId, userId);
+    const success = uninstallPlugin(asString(req.params.id), tenantId, userId);
     if (!success) {
       return res.status(404).json({ error: 'Plugin not installed' });
     }
@@ -198,7 +199,7 @@ pluginsRouter.post('/:id/enable', (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
     const userId = (req as any).userId ?? 'system';
 
-    const installation = enablePlugin(req.params.id, tenantId, userId);
+    const installation = enablePlugin(asString(req.params.id), tenantId, userId);
     if (!installation) {
       return res.status(404).json({ error: 'Plugin not installed' });
     }
@@ -219,7 +220,7 @@ pluginsRouter.post('/:id/disable', (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId ?? 'default-tenant';
     const userId = (req as any).userId ?? 'system';
 
-    const installation = disablePlugin(req.params.id, tenantId, userId);
+    const installation = disablePlugin(asString(req.params.id), tenantId, userId);
     if (!installation) {
       return res.status(404).json({ error: 'Plugin not installed' });
     }
@@ -245,7 +246,7 @@ pluginsRouter.put('/:id/config', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid config object' });
     }
 
-    const installation = configurePlugin(req.params.id, tenantId, userId, config);
+    const installation = configurePlugin(asString(req.params.id), tenantId, userId, config);
     if (!installation) {
       return res.status(404).json({ error: 'Plugin not installed' });
     }
@@ -271,7 +272,7 @@ pluginsRouter.get('/:id/audit', (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
 
     const events = getPluginAuditLog({
-      pluginId: req.params.id,
+      pluginId: asString(req.params.id),
       tenantId,
       limit,
     });

@@ -35,6 +35,7 @@ import {
   getMockManuscript,
   ManuscriptExportOptionsSchema,
 } from '../services/overleafService';
+import { asString } from '../utils/asString';
 
 export const ecosystemIntegrationsRouter = Router();
 
@@ -101,7 +102,7 @@ ecosystemIntegrationsRouter.post('/overleaf/export', async (req: Request, res: R
 ecosystemIntegrationsRouter.get('/overleaf/history/:manuscriptId', (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
-    const history = getExportHistory(req.params.manuscriptId, limit);
+    const history = getExportHistory(asString(req.params.manuscriptId), limit);
     res.json(history);
   } catch (error) {
     console.error('Error getting export history:', error);
@@ -209,7 +210,7 @@ ecosystemIntegrationsRouter.post('/git', (req: Request, res: Response) => {
  */
 ecosystemIntegrationsRouter.get('/git/:id', (req: Request, res: Response) => {
   try {
-    const integration = getIntegration(req.params.id);
+    const integration = getIntegration(asString(req.params.id));
     if (!integration) {
       return res.status(404).json({ error: 'Integration not found' });
     }
@@ -228,7 +229,7 @@ ecosystemIntegrationsRouter.patch('/git/:id', (req: Request, res: Response) => {
   try {
     const { defaultBranch, pathPrefix, autoSync, syncOnPublish } = req.body;
 
-    const integration = updateIntegration(req.params.id, {
+    const integration = updateIntegration(asString(req.params.id), {
       defaultBranch,
       pathPrefix,
       autoSync,
@@ -252,7 +253,7 @@ ecosystemIntegrationsRouter.patch('/git/:id', (req: Request, res: Response) => {
  */
 ecosystemIntegrationsRouter.delete('/git/:id', (req: Request, res: Response) => {
   try {
-    const success = deleteIntegration(req.params.id);
+    const success = deleteIntegration(asString(req.params.id));
     if (!success) {
       return res.status(404).json({ error: 'Integration not found' });
     }
@@ -271,7 +272,7 @@ ecosystemIntegrationsRouter.post('/git/:id/sync', async (req: Request, res: Resp
   try {
     const { branch, commitMessage, artifacts } = req.body;
 
-    const integration = getIntegration(req.params.id);
+    const integration = getIntegration(asString(req.params.id));
     if (!integration) {
       return res.status(404).json({ error: 'Integration not found' });
     }
@@ -282,7 +283,7 @@ ecosystemIntegrationsRouter.post('/git/:id/sync', async (req: Request, res: Resp
       integration.pathPrefix
     ) : [];
 
-    const result = await syncToRepository(req.params.id, files, {
+    const result = await syncToRepository(asString(req.params.id), files, {
       branch,
       commitMessage: commitMessage ?? 'Sync from ResearchFlow',
     });
@@ -301,7 +302,7 @@ ecosystemIntegrationsRouter.post('/git/:id/sync', async (req: Request, res: Resp
 ecosystemIntegrationsRouter.get('/git/:id/history', (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
-    const history = getSyncHistory(req.params.id, limit);
+    const history = getSyncHistory(asString(req.params.id), limit);
     res.json(history);
   } catch (error) {
     console.error('Error getting sync history:', error);
@@ -396,7 +397,7 @@ ecosystemIntegrationsRouter.get('/import/jobs', (req: Request, res: Response) =>
  */
 ecosystemIntegrationsRouter.get('/import/jobs/:id', (req: Request, res: Response) => {
   try {
-    const job = getImportJob(req.params.id);
+    const job = getImportJob(asString(req.params.id));
     if (!job) {
       return res.status(404).json({ error: 'Import job not found' });
     }
@@ -413,7 +414,7 @@ ecosystemIntegrationsRouter.get('/import/jobs/:id', (req: Request, res: Response
  */
 ecosystemIntegrationsRouter.post('/import/jobs/:id/execute', async (req: Request, res: Response) => {
   try {
-    const job = await executeImport(req.params.id);
+    const job = await executeImport(asString(req.params.id));
     res.json(job);
   } catch (error: any) {
     console.error('Error executing import job:', error);
@@ -427,7 +428,7 @@ ecosystemIntegrationsRouter.post('/import/jobs/:id/execute', async (req: Request
  */
 ecosystemIntegrationsRouter.post('/import/jobs/:id/cancel', (req: Request, res: Response) => {
   try {
-    const success = cancelImportJob(req.params.id);
+    const success = cancelImportJob(asString(req.params.id));
     if (!success) {
       return res.status(400).json({ error: 'Cannot cancel job' });
     }

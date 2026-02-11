@@ -31,6 +31,7 @@ import {
   revokeInvite,
   getOrgPendingInvites,
 } from "../services/inviteService";
+import { asString } from "../utils/asString";
 
 const router = Router();
 
@@ -44,7 +45,7 @@ router.post(
   requireOrgId(),
   requireOrgCapability("invite"),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
     const userId = (req.user as any)?.id;
 
     if (!db) {
@@ -134,7 +135,7 @@ router.get(
   requireOrgId(),
   requireOrgCapability("invite"),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
 
     const invites = await getOrgPendingInvites(orgId);
 
@@ -152,7 +153,8 @@ router.delete(
   requireOrgId(),
   requireOrgCapability("invite"),
   asyncHandler(async (req: Request, res: Response) => {
-    const { orgId, inviteId } = req.params;
+    const orgId = asString(req.params.orgId);
+    const inviteId = asString(req.params.inviteId);
     const userId = (req.user as any)?.id;
 
     await revokeInvite(inviteId, orgId);
@@ -176,7 +178,7 @@ router.delete(
 router.get(
   "/invites/validate/:token",
   asyncHandler(async (req: Request, res: Response) => {
-    const { token } = req.params;
+    const token = asString(req.params.token);
 
     if (!db) {
       return res.status(503).json({ error: "Database not available" });

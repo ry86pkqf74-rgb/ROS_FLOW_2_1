@@ -21,6 +21,7 @@ import {
   listApiVersions,
   getCurrentApiVersion,
 } from '../services/futureProofingService';
+import { asString } from '../utils/asString';
 
 export const futureProofingRouter = Router();
 
@@ -72,7 +73,7 @@ futureProofingRouter.post('/checklists', (req: Request, res: Response) => {
  */
 futureProofingRouter.get('/checklists/:id', (req: Request, res: Response) => {
   try {
-    const checklist = getChecklist(req.params.id);
+    const checklist = getChecklist(asString(req.params.id));
     if (!checklist) {
       return res.status(404).json({ error: 'Checklist not found' });
     }
@@ -89,7 +90,7 @@ futureProofingRouter.get('/checklists/:id', (req: Request, res: Response) => {
  */
 futureProofingRouter.get('/checklists/:id/progress', (req: Request, res: Response) => {
   try {
-    const progress = getChecklistProgress(req.params.id);
+    const progress = getChecklistProgress(asString(req.params.id));
     res.json(progress);
   } catch (error: any) {
     console.error('Error getting progress:', error);
@@ -110,7 +111,7 @@ futureProofingRouter.put('/checklists/:id/items/:itemId', (req: Request, res: Re
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const checklist = updateChecklistItem(req.params.id, req.params.itemId, {
+    const checklist = updateChecklistItem(asString(req.params.id), asString(req.params.itemId), {
       status,
       result,
       checkedBy: userId,
@@ -134,7 +135,7 @@ futureProofingRouter.put('/checklists/:id/items/:itemId', (req: Request, res: Re
 futureProofingRouter.post('/checklists/:id/run-automated', async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'admin';
-    const result = await runAutomatedChecks(req.params.id, userId);
+    const result = await runAutomatedChecks(asString(req.params.id), userId);
     res.json(result);
   } catch (error: any) {
     console.error('Error running checks:', error);
@@ -149,7 +150,7 @@ futureProofingRouter.post('/checklists/:id/run-automated', async (req: Request, 
 futureProofingRouter.post('/checklists/:id/approve', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'admin';
-    const checklist = approveChecklist(req.params.id, userId);
+    const checklist = approveChecklist(asString(req.params.id), userId);
 
     if (!checklist) {
       return res.status(404).json({ error: 'Checklist not found' });
@@ -299,7 +300,7 @@ futureProofingRouter.post('/api-versions/:version/deprecate', (req: Request, res
       return res.status(400).json({ error: 'sunsetDate is required' });
     }
 
-    const version = deprecateApiVersion(req.params.version, sunsetDate);
+    const version = deprecateApiVersion(asString(req.params.version), sunsetDate);
     if (!version) {
       return res.status(404).json({ error: 'Version not found' });
     }
