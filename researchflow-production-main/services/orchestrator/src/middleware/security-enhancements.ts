@@ -57,8 +57,22 @@ const resolveAuth = (req: SecurityRequest): SecurityAuth | undefined =>
 const errName = (e: unknown): unknown =>
   e && typeof e === 'object' && 'name' in e ? (e as { name: unknown }).name : undefined;
 
+/** Role type matching AuthUser interface */
+type AuthRole = 'admin' | 'researcher' | 'reviewer' | 'viewer';
+
+/**
+ * Extended user type that combines TokenPayload with AuthUser-compatible fields.
+ * Maps `userId` to `id` for compatibility with Express.Request.user (AuthUser).
+ */
+type SecurityUser = Omit<TokenPayload, 'role'> & {
+  /** Alias for userId to satisfy AuthUser interface */
+  id: string;
+  /** Role cast to AuthUser-compatible type */
+  role: AuthRole;
+};
+
 type SecurityRequest = Request & {
-  user?: TokenPayload;
+  user?: SecurityUser;
   securityAuth?: SecurityAuth;
   rateLimitInfo?: {
     limit: number;
@@ -189,7 +203,14 @@ export class SecurityEnhancementMiddleware {
             message: authResult.message
           });
         }
-        req.user = authResult.user;
+        // Map TokenPayload to SecurityUser (adds id alias for AuthUser compatibility)
+        if (authResult.user) {
+          req.user = {
+            ...authResult.user,
+            id: authResult.user.userId,
+            role: authResult.user.role as 'admin' | 'researcher' | 'reviewer' | 'viewer',
+          };
+        }
         req.securityContext!.authenticated = true;
       }
 
@@ -222,7 +243,7 @@ export class SecurityEnhancementMiddleware {
    * DDoS Protection - Track and block suspicious traffic
    */
   private checkDDoSProtection(req: SecurityRequest): { blocked: boolean; retryAfter?: number } {
-    const clientIP = req.ip;
+    const clientIP = req.ip ?? 'unknown';
     const now = Date.now();
     
     // Check if IP is already flagged as suspicious
@@ -266,7 +287,7 @@ export class SecurityEnhancementMiddleware {
     remaining: number;
     reset: Date;
   } {
-    const identifier = req.user?.userId || req.ip;
+    const identifier = req.user?.userId || req.ip || 'unknown';
     const now = Date.now();
     const windowStart = now - this.config.rateLimitWindow;
     
@@ -591,7 +612,7 @@ export class SecurityEnhancementMiddleware {
     let threatScore = 0;
     
     // Check for suspicious patterns
-    if (this.suspiciousIPs.has(req.ip)) threatScore += 30;
+    if (this.suspiciousIPs.has(req.ip ?? 'unknown')) threatScore += 30;
     if (req.securityContext?.rateLimited) threatScore += 20;
     if (!req.secure) threatScore += 10;
     if (this.hasKnownAttackPatterns(req)) threatScore += 40;
@@ -668,14 +689,15 @@ export class SecurityEnhancementMiddleware {
     if (resolveAuth(req)?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
       return;
     }
-    if (req.securityContext?.threatLevel !== 'low') {
+    const ctx = req.securityContext;
+    if (ctx && ctx.threatLevel !== 'low') {
       this.logger.warn('Security event detected', {
         ip: req.ip,
         path: req.path,
         method: req.method,
-        threatLevel: req.securityContext.threatLevel,
-        authenticated: req.securityContext.authenticated,
-        rateLimited: req.securityContext.rateLimited,
+        threatLevel: ctx.threatLevel,
+        authenticated: ctx.authenticated,
+        rateLimited: ctx.rateLimited,
         userAgent: req.get('user-agent'),
         timestamp: Date.now()
       });
