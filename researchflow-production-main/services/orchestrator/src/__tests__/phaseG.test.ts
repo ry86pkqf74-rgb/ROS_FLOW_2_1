@@ -38,7 +38,8 @@ describe('ClusterStatusService (Task 116, 122)', () => {
   });
 
   it('should return services status', async () => {
-    const services = await clusterStatusService.getServicesStatus();
+    const status = await clusterStatusService.getClusterStatus();
+    const services = status.services;
 
     expect(services).toBeInstanceOf(Object);
     expect(Object.keys(services).length).toBeGreaterThan(0);

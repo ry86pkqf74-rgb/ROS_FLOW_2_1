@@ -50,7 +50,8 @@ router.get('/cluster/status', ...protectWithRole('STEWARD'), async (_req: Reques
 
 router.get('/cluster/services', ...protectWithRole('STEWARD'), async (_req: Request, res: Response) => {
   try {
-    const services = await clusterStatusService.getServicesStatus();
+    const status = await clusterStatusService.getClusterStatus();
+    const services = status.services;
     res.json({ success: true, data: services });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
