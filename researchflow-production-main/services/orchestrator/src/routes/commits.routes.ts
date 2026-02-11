@@ -9,7 +9,8 @@
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
-import { query as dbQuery } from '../../db';
+import { query as dbQuery, pool } from '../../db';
+import { appendEvent } from '../services/audit.service';
 import { requireRole } from '../middleware/rbac';
 import branchPersistenceService from '../services/branch-persistence.service';
 import * as diffService from '../services/diffService';

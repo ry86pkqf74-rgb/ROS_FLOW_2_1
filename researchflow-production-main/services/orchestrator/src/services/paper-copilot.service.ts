@@ -12,6 +12,7 @@ import { createHash } from 'crypto';
 
 import { sql } from 'drizzle-orm';
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 import { db } from '../../db';
 
@@ -362,7 +363,7 @@ export class PaperCopilotService {
       : 'No relevant context found in the paper.';
 
     // Build messages array
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const messages: ChatCompletionMessageParam[] = [
       {
         role: 'system',
         content: `You are a research assistant helping analyze a scientific paper.
