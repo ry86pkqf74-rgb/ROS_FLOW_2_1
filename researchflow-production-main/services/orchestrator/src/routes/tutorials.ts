@@ -17,6 +17,16 @@ import { asString } from '../utils/asString';
 const router = express.Router();
 
 /**
+ * Zod schema matching the TutorialStep interface
+ */
+const tutorialStepSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  targetSelector: z.string().optional(),
+  videoUrl: z.string().url().optional(),
+});
+
+/**
  * Middleware to check feature flag for tutorials
  */
 const requireTutorialsEnabled = asyncHandler(async (req, res, next) => {
@@ -230,14 +240,7 @@ const createTutorialSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   videoUrl: z.string().url().optional(),
-  steps: z.array(
-    z.object({
-      title: z.string().min(1),
-      content: z.string().min(1),
-      targetSelector: z.string().optional(),
-      videoUrl: z.string().url().optional(),
-    })
-  ),
+  steps: z.array(tutorialStepSchema),
   enabled: z.boolean().optional(),
   orgId: z.string().nullable().optional(),
 });
@@ -257,7 +260,15 @@ router.post(
       });
     }
 
-    const tutorial = await tutorialService.createTutorial(validation.data);
+    const tutorial = await tutorialService.createTutorial({
+      tutorialKey: validation.data.tutorialKey,
+      title: validation.data.title,
+      description: validation.data.description,
+      videoUrl: validation.data.videoUrl,
+      steps: validation.data.steps,
+      enabled: validation.data.enabled,
+      orgId: validation.data.orgId,
+    });
 
     res.status(201).json({
       success: true,
@@ -276,16 +287,7 @@ const updateTutorialSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   videoUrl: z.string().url().optional(),
-  steps: z
-    .array(
-      z.object({
-        title: z.string().min(1),
-        content: z.string().min(1),
-        targetSelector: z.string().optional(),
-        videoUrl: z.string().url().optional(),
-      })
-    )
-    .optional(),
+  steps: z.array(tutorialStepSchema).optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -306,7 +308,13 @@ router.put(
       });
     }
 
-    const tutorial = await tutorialService.updateTutorial(key, validation.data);
+    const tutorial = await tutorialService.updateTutorial(key, {
+      title: validation.data.title,
+      description: validation.data.description,
+      videoUrl: validation.data.videoUrl,
+      steps: validation.data.steps,
+      enabled: validation.data.enabled,
+    });
 
     if (!tutorial) {
       return res.status(404).json({
