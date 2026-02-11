@@ -15,18 +15,24 @@
 import axios from 'axios';
 import * as z from 'zod';
 
-// Type definitions
-export interface ModelOptions {
-  taskType: string;
-  stageId?: number;
-  modelTier?: 'ECONOMY' | 'STANDARD' | 'PREMIUM';
-  governanceMode?: 'DEMO' | 'LIVE';
-  requirePhiCompliance?: boolean;
-  budgetLimit?: number;
-  maxTokens?: number;
-  temperature?: number;
-  streamResponse?: boolean;
-}
+// Validation schemas — single source of truth for tier values
+const ModelTierSchema = z.enum(['LOCAL', 'NANO', 'MINI', 'FRONTIER', 'CUSTOM']);
+export type ModelTier = z.infer<typeof ModelTierSchema>;
+
+const ModelOptionsSchema = z.object({
+  taskType: z.string(),
+  stageId: z.number().optional(),
+  modelTier: ModelTierSchema.optional(),
+  governanceMode: z.enum(['DEMO', 'LIVE']).optional(),
+  requirePhiCompliance: z.boolean().optional(),
+  budgetLimit: z.number().positive().optional(),
+  maxTokens: z.number().positive().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  streamResponse: z.boolean().optional(),
+});
+
+// Derive ModelOptions from the Zod schema — single source of truth
+export type ModelOptions = z.infer<typeof ModelOptionsSchema>;
 
 export interface LLMResponse {
   content: string;
@@ -48,7 +54,7 @@ export interface LLMResponse {
 
 export interface BridgeConfig {
   orchestratorUrl: string;
-  defaultTier: 'ECONOMY' | 'STANDARD' | 'PREMIUM';
+  defaultTier: ModelTier;
   phiCompliantOnly: boolean;
   maxRetries: number;
   timeoutMs: number;
@@ -56,18 +62,14 @@ export interface BridgeConfig {
   streamingEnabled: boolean;
 }
 
-// Validation schemas
-const ModelOptionsSchema = z.object({
-  taskType: z.string(),
-  stageId: z.number().optional(),
-  modelTier: z.enum(['ECONOMY', 'STANDARD', 'PREMIUM']).optional(),
-  governanceMode: z.enum(['DEMO', 'LIVE']).optional(),
-  requirePhiCompliance: z.boolean().optional(),
-  budgetLimit: z.number().positive().optional(),
-  maxTokens: z.number().positive().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  streamResponse: z.boolean().optional(),
+// Typed response from the AI Router routing endpoint
+const RoutingApiResponseSchema = z.object({
+  selectedTier: ModelTierSchema,
+  model: z.string(),
+  costEstimate: z.object({ total: z.number() }),
 });
+
+// ModelOptionsSchema and ModelOptions type are defined above the interfaces
 
 const LLMResponseSchema = z.object({
   content: z.string(),
@@ -101,7 +103,7 @@ export class AIRouterBridge {
   constructor(config: Partial<BridgeConfig> = {}) {
     this.config = {
       orchestratorUrl: config.orchestratorUrl || 'http://localhost:3001',
-      defaultTier: config.defaultTier || 'STANDARD',
+      defaultTier: config.defaultTier || 'MINI',
       phiCompliantOnly: config.phiCompliantOnly ?? true,
       maxRetries: config.maxRetries || 3,
       timeoutMs: config.timeoutMs || 30000,
@@ -329,7 +331,7 @@ export class AIRouterBridge {
     prompt: string,
     options: ModelOptions
   ): Promise<{
-    selectedTier: string;
+    selectedTier: ModelTier;
     model: string;
     estimatedCost: number;
   }> {
@@ -352,10 +354,11 @@ export class AIRouterBridge {
         { timeout: this.config.timeoutMs }
       );
 
+      const parsed = RoutingApiResponseSchema.parse(response.data);
       return {
-        selectedTier: response.data.selectedTier,
-        model: response.data.model,
-        estimatedCost: response.data.costEstimate.total,
+        selectedTier: parsed.selectedTier,
+        model: parsed.model,
+        estimatedCost: parsed.costEstimate.total,
       };
     } catch (error) {
       console.warn('[AIRouterBridge] Routing failed, using defaults:', error);
@@ -427,9 +430,10 @@ export class AIRouterBridge {
 export function createAIRouterBridge(
   config: Partial<BridgeConfig> = {}
 ): AIRouterBridge {
+  const parsedTier = ModelTierSchema.safeParse(process.env.AI_DEFAULT_TIER);
   const envConfig: Partial<BridgeConfig> = {
     orchestratorUrl: process.env.AI_ROUTER_URL || 'http://localhost:3001',
-    defaultTier: (process.env.AI_DEFAULT_TIER as any) || 'STANDARD',
+    defaultTier: parsedTier.success ? parsedTier.data : 'MINI',
     phiCompliantOnly: process.env.PHI_COMPLIANT_ONLY === 'true',
     maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3'),
     timeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '30000'),
