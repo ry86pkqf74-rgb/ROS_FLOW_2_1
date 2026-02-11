@@ -15,6 +15,7 @@ import * as z from 'zod';
 
 import { requireAuth } from '../../middleware/auth';
 import { getEvents, isDone } from '../../services/sse-event-store';
+import { asString } from '../../utils/asString';
 
 const router = Router();
 
@@ -198,7 +199,8 @@ router.post('/2/execute', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/:stage/jobs/:job_id/status', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { stage, job_id } = req.params;
+    const stage = asString(req.params.stage);
+    const job_id = asString(req.params.job_id);
     
     // Get queue instance
     const queue = getWorkflowStagesQueue();
@@ -245,9 +247,9 @@ router.get('/:stage/jobs/:job_id/status', requireAuth, async (req: Request, res:
  * until :done marker (Stage 2) or BullMQ terminal state or timeout.
  */
 router.get('/:stage/jobs/:job_id/stream', requireAuth, async (req: Request, res: Response) => {
-  const stage = req.params.stage as string;
+  const stage = asString(req.params.stage);
   const stageNum = parseInt(stage, 10);
-  const job_id = req.params.job_id as string;
+  const job_id = asString(req.params.job_id);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');

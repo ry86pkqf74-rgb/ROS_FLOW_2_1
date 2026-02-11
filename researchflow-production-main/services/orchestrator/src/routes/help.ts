@@ -17,6 +17,7 @@ import {
   getHelpCenterConfig,
 } from '../services/communityService';
 import { generateOpenApiSpec } from '../services/openApiService';
+import { asString } from '../utils/asString';
 
 export const helpRouter = Router();
 
@@ -136,7 +137,7 @@ helpRouter.get('/community', (req: Request, res: Response) => {
  */
 helpRouter.get('/community/:id', (req: Request, res: Response) => {
   try {
-    const link = getCommunityLink(req.params.id);
+    const link = getCommunityLink(asString(req.params.id));
     if (!link) {
       return res.status(404).json({ error: 'Community link not found' });
     }
@@ -199,7 +200,7 @@ helpRouter.get('/contributing', (req: Request, res: Response) => {
  */
 helpRouter.get('/contributing/:slug', (req: Request, res: Response) => {
   try {
-    const guide = getContributionGuide(req.params.slug);
+    const guide = getContributionGuide(asString(req.params.slug));
     if (!guide) {
       return res.status(404).json({ error: 'Contribution guide not found' });
     }
@@ -254,7 +255,7 @@ helpRouter.get('/config', (_req: Request, res: Response) => {
  * Serve static documentation files (CONTRIBUTING.md, etc.)
  */
 helpRouter.get('/docs/:name', (req: Request, res: Response) => {
-  const docName = req.params.name.toLowerCase().replace(/\.md$/, '');
+  const docName = asString(req.params.name).toLowerCase().replace(/\.md$/, '');
 
   // Map doc names to contribution guide types
   const docMap: Record<string, string> = {

@@ -24,6 +24,7 @@ import * as z from "zod";
 import { requireRole } from "../middleware/rbac";
 import { createAuditEntry } from "../services/auditService";
 import * as submissionService from "../services/submissionService";
+import { asString } from "../utils/asString";
 
 const router = Router();
 
@@ -151,7 +152,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { targetId } = req.params;
+      const targetId = asString(req.params.targetId);
 
       const target = await submissionService.getTarget(targetId);
 
@@ -285,7 +286,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
 
       const submission = await submissionService.getSubmission(submissionId);
 
@@ -311,7 +312,7 @@ router.patch(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
       const userId = (req as any).user?.id || "system";
 
       const parseResult = updateStatusSchema.safeParse(req.body);
@@ -368,7 +369,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
       const userId = (req as any).user?.id || "system";
       const userRole = (req as any).user?.role;
 
@@ -435,7 +436,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
       const { status, reviewerLabel } = req.query;
 
       const points = await submissionService.listReviewerPoints(submissionId, {
@@ -461,7 +462,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { pointId } = req.params;
+      const pointId = asString(req.params.pointId);
       const userId = (req as any).user?.id || "system";
 
       const existing = await submissionService.getReviewerPoint(pointId);
@@ -500,7 +501,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { pointId } = req.params;
+      const pointId = asString(req.params.pointId);
       const userId = (req as any).user?.id || "system";
       const userRole = (req as any).user?.role;
 
@@ -564,7 +565,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { pointId } = req.params;
+      const pointId = asString(req.params.pointId);
 
       const rebuttals = await submissionService.listRebuttals(pointId);
 
@@ -588,7 +589,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
       const userId = (req as any).user?.id || "system";
 
       const parseResult = createPackageSchema.safeParse(req.body);
@@ -645,7 +646,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { submissionId } = req.params;
+      const submissionId = asString(req.params.submissionId);
 
       const packages = await submissionService.listPackages(submissionId);
 
