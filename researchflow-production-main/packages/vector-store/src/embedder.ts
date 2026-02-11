@@ -6,7 +6,8 @@
 
 import OpenAI from 'openai';
 
-import type { EmbeddingConfig, ChunkConfig, DEFAULT_CHUNK_CONFIG, DEFAULT_EMBEDDING_CONFIG } from './types.js';
+import type { EmbeddingConfig, ChunkConfig } from './types.js';
+import { DEFAULT_CHUNK_CONFIG, DEFAULT_EMBEDDING_CONFIG } from './types.js';
 
 export class DocumentEmbedder {
   private openai: OpenAI | null = null;

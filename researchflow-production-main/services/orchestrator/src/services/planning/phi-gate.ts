@@ -6,7 +6,7 @@
  * In DEMO mode, PHI is sanitized and warnings are issued.
  */
 
-import { scanForPHI, redactPHI, isPHIScanEnabled, getGovernanceMode } from '../../utils/phi-scanner';
+import phiScanner from '../../utils/phi-scanner';
 
 export interface PHIGateResult {
   allowed: boolean;
@@ -34,13 +34,13 @@ export class PHIGate {
    * In DEMO mode + PHI detected = WARN but allow (with sanitization).
    */
   checkForExternalAI(content: string): PHIGateResult {
-    const mode = getGovernanceMode() as 'LIVE' | 'DEMO';
+    const mode = phiScanner.getGovernanceMode() as 'LIVE' | 'DEMO';
 
-    if (!isPHIScanEnabled()) {
+    if (!phiScanner.isPHIScanEnabled()) {
       return { allowed: true, phiDetected: false, patterns: [], mode };
     }
 
-    const scanResult = scanForPHI(content);
+    const scanResult = phiScanner.scanForPHI(content);
 
     if (!scanResult.hasPHI) {
       return { allowed: true, phiDetected: false, patterns: [], mode };
@@ -63,7 +63,7 @@ export class PHIGate {
       allowed: true,
       phiDetected: true,
       patterns: detectedPatterns,
-      sanitizedContent: redactPHI(content),
+      sanitizedContent: phiScanner.redactPHI(content),
       mode,
     };
   }

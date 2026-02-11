@@ -11,6 +11,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 
 // Type alias for axios request config (avoids TS2614 on named import)
 type AxiosRequestConfig = Parameters<typeof axios.request>[0];
+type AxiosError = { response?: any; request?: any; message: string };
 
 const router = Router();
 
@@ -51,7 +52,7 @@ async function proxyRequest(
     const response = await engineClient.request(config);
     res.status(response.status).json(response.data);
   } catch (error) {
-    const axiosError = error as axios.AxiosError;
+    const axiosError = error as AxiosError;
     if (axiosError.response) {
       // Forward error response from engine
       res.status(axiosError.response.status).json(axiosError.response.data);

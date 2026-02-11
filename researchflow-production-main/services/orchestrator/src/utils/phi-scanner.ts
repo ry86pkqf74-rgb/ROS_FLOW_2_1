@@ -174,9 +174,35 @@ export function getGovernanceDecision(
   };
 }
 
+/**
+ * Alias for redactText (for backward compatibility)
+ */
+export function redactPHI(text: string): string {
+  const scanResult = scanForPHI(text);
+  return scanResult.redactedText || text;
+}
+
+/**
+ * Check if PHI scanning is enabled (always true in this implementation)
+ */
+export function isPHIScanEnabled(): boolean {
+  return true;
+}
+
+/**
+ * Get current governance mode from environment
+ */
+export function getGovernanceMode(): 'DEMO' | 'LIVE' {
+  // Default to DEMO for safety
+  return (process.env.GOVERNANCE_MODE as 'DEMO' | 'LIVE') || 'DEMO';
+}
+
 export default {
   scanForPHI,
   redactText,
+  redactPHI,
   shouldBlockPHI,
   getGovernanceDecision,
+  isPHIScanEnabled,
+  getGovernanceMode,
 };

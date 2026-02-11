@@ -14,6 +14,7 @@ import crypto from "crypto";
 
 import * as schema from "@researchflow/core/schema";
 import archiver from "archiver";
+import type { Archiver } from "archiver";
 import { eq, and, desc, asc } from "drizzle-orm";
 
 import { db } from "../../db";
@@ -840,7 +841,7 @@ This bundle was generated from ResearchFlow Canvas v${manifest.environment.rosVe
  */
 export async function generateBundleArchive(
   requestId: string
-): Promise<{ archive: archiver.Archiver; manifest: BundleManifest }> {
+): Promise<{ archive: Archiver; manifest: BundleManifest }> {
   // Get the request status
   const status = await getBundleRequestStatus(requestId);
   if (!status) {
