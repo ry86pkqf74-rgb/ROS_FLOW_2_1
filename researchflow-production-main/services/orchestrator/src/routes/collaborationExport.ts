@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
 import * as collaborationExportService from '../services/collaborationExportService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ const router = Router();
  */
 router.post('/research/:researchId/collaboration/export', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -66,7 +67,7 @@ router.post('/research/:researchId/collaboration/export', async (req: Request, r
  */
 router.get('/research/:researchId/collaboration/summary', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const { startDate, endDate } = req.query;
 
     const summary = collaborationExportService.getCollaborationSummary(
@@ -88,7 +89,7 @@ router.get('/research/:researchId/collaboration/summary', async (req: Request, r
  */
 router.get('/research/:researchId/collaboration/events', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
 
     const options = z.object({
       startDate: z.string().datetime().optional(),
@@ -154,7 +155,7 @@ router.post('/collaboration/verify', async (req: Request, res: Response) => {
  */
 router.post('/research/:researchId/collaboration/verify-chain', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
 
     const events = collaborationExportService.getEvents({ researchId, includePresence: false });
     const result = collaborationExportService.verifyHashChain(events);

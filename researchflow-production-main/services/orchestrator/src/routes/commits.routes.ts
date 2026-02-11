@@ -13,6 +13,7 @@ import { query as dbQuery } from '../../db';
 import { requireRole } from '../middleware/rbac';
 import branchPersistenceService from '../services/branch-persistence.service';
 import * as diffService from '../services/diffService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get(
   requireRole('VIEWER'),
   async (req: Request, res: Response) => {
     try {
-      const { branchId } = req.params;
+      const branchId = asString(req.params.branchId);
       const parsed = ListCommitsQuerySchema.safeParse(req.query);
       if (!parsed.success) {
         return res.status(400).json({ error: 'Invalid query', details: parsed.error.flatten() });
@@ -102,7 +103,7 @@ router.get(
   requireRole('VIEWER'),
   async (req: Request, res: Response) => {
     try {
-      const { branchId } = req.params;
+      const branchId = asString(req.params.branchId);
       const parsed = DiffQuerySchema.safeParse(req.query);
       if (!parsed.success) {
         return res.status(400).json({ error: 'Invalid query', details: parsed.error.flatten() });
@@ -204,7 +205,7 @@ router.post(
   requireRole('RESEARCHER'),
   async (req: Request, res: Response) => {
     try {
-      const { branchId } = req.params;
+      const branchId = asString(req.params.branchId);
       const userId = (req as unknown as { user?: { id?: string } }).user?.id ?? 'system';
       const parsed = RollbackBodySchema.safeParse(req.body);
       if (!parsed.success) {

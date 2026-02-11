@@ -16,6 +16,7 @@
 import { Router, Request, Response } from 'express';
 
 import { branchPersistenceService } from '../services/branch-persistence.service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.get('/:manuscriptId', async (req: Request, res: Response) => {
   try {
-    const { manuscriptId } = req.params;
+    const manuscriptId = asString(req.params.manuscriptId);
     const includeArchived = req.query.includeArchived === 'true';
     
     const branches = await branchPersistenceService.listBranches(manuscriptId, includeArchived);
@@ -75,7 +76,8 @@ router.get('/:manuscriptId', async (req: Request, res: Response) => {
  */
 router.get('/:manuscriptId/:branchName', async (req: Request, res: Response) => {
   try {
-    const { manuscriptId, branchName } = req.params;
+    const manuscriptId = asString(req.params.manuscriptId);
+    const branchName = asString(req.params.branchName);
     
     const branch = await branchPersistenceService.getBranchByName(manuscriptId, branchName);
     
@@ -106,7 +108,7 @@ router.get('/:manuscriptId/:branchName', async (req: Request, res: Response) => 
  */
 router.post('/:branchId/revisions', async (req: Request, res: Response) => {
   try {
-    const { branchId } = req.params;
+    const branchId = asString(req.params.branchId);
     const { content, commitMessage } = req.body;
     const userId = (req as any).user?.id;
     
@@ -133,7 +135,7 @@ router.post('/:branchId/revisions', async (req: Request, res: Response) => {
  */
 router.get('/:branchId/revisions', async (req: Request, res: Response) => {
   try {
-    const { branchId } = req.params;
+    const branchId = asString(req.params.branchId);
     const limit = parseInt(req.query.limit as string) || 50;
     
     const revisions = await branchPersistenceService.listRevisions(branchId, limit);
@@ -154,7 +156,8 @@ router.get('/:branchId/revisions', async (req: Request, res: Response) => {
  */
 router.get('/:branchId/revisions/:revisionNumber', async (req: Request, res: Response) => {
   try {
-    const { branchId, revisionNumber } = req.params;
+    const branchId = asString(req.params.branchId);
+    const revisionNumber = asString(req.params.revisionNumber);
     
     const revision = await branchPersistenceService.getRevision(
       branchId, 
@@ -177,7 +180,7 @@ router.get('/:branchId/revisions/:revisionNumber', async (req: Request, res: Res
  */
 router.post('/:branchId/merge', async (req: Request, res: Response) => {
   try {
-    const { branchId } = req.params;
+    const branchId = asString(req.params.branchId);
     const { targetBranchId, mergeType } = req.body;
     const userId = (req as any).user?.id;
     
@@ -214,7 +217,7 @@ router.post('/:branchId/merge', async (req: Request, res: Response) => {
  */
 router.put('/:branchId/archive', async (req: Request, res: Response) => {
   try {
-    const { branchId } = req.params;
+    const branchId = asString(req.params.branchId);
     const userId = (req as any).user?.id;
     
     await branchPersistenceService.archiveBranch(branchId, userId);
@@ -231,7 +234,7 @@ router.put('/:branchId/archive', async (req: Request, res: Response) => {
  */
 router.get('/:branchId/compare', async (req: Request, res: Response) => {
   try {
-    const { branchId } = req.params;
+    const branchId = asString(req.params.branchId);
     const from = parseInt(req.query.from as string);
     const to = parseInt(req.query.to as string);
     

@@ -18,6 +18,7 @@ import * as z from "zod";
 import { requireRole } from "../middleware/rbac";
 import { createAuditEntry } from "../services/auditService";
 import * as claimsService from "../services/claimsService";
+import { asString } from "../utils/asString";
 
 const router = Router();
 
@@ -193,7 +194,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { claimId } = req.params;
+      const claimId = asString(req.params.claimId);
 
       const claim = await claimsService.getClaim(claimId);
 
@@ -221,7 +222,7 @@ router.patch(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { claimId } = req.params;
+      const claimId = asString(req.params.claimId);
       const userId = (req as any).user?.id || "system";
 
       const parseResult = updateClaimStatusSchema.safeParse(req.body);
@@ -272,7 +273,7 @@ router.delete(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { claimId } = req.params;
+      const claimId = asString(req.params.claimId);
       const userId = (req as any).user?.id || "system";
 
       const existing = await claimsService.getClaim(claimId);
@@ -313,7 +314,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { claimId } = req.params;
+      const claimId = asString(req.params.claimId);
       const userId = (req as any).user?.id || "system";
 
       const parseResult = linkEvidenceSchema.safeParse(req.body);
@@ -370,7 +371,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { claimId } = req.params;
+      const claimId = asString(req.params.claimId);
 
       const claim = await claimsService.getClaim(claimId);
       if (!claim) {
@@ -396,7 +397,7 @@ router.delete(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { linkId } = req.params;
+      const linkId = asString(req.params.linkId);
       const userId = (req as any).user?.id || "system";
 
       const deleted = await claimsService.unlinkEvidence(linkId);

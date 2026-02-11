@@ -8,6 +8,7 @@ import * as z from 'zod';
 
 import { requireAuth } from '../middleware/auth';
 import * as EditSessionService from '../services/edit-session.service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/branch/:branchId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const session = await EditSessionService.getEditSessionByBranchId(req.params.branchId);
+    const session = await EditSessionService.getEditSessionByBranchId(asString(req.params.branchId));
     if (!session) return res.status(404).json({ error: 'Edit session not found' });
     return res.json(session);
   } catch (err: any) {
@@ -66,7 +67,7 @@ router.get('/branch/:branchId', requireAuth, async (req: Request, res: Response)
  */
 router.get('/manuscript/:manuscriptId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const sessions = await EditSessionService.listEditSessionsByManuscript(req.params.manuscriptId);
+    const sessions = await EditSessionService.listEditSessionsByManuscript(asString(req.params.manuscriptId));
     return res.json(sessions);
   } catch (err: any) {
     return res.status(500).json({ error: err?.message ?? 'Failed to list edit sessions' });
@@ -78,7 +79,7 @@ router.get('/manuscript/:manuscriptId', requireAuth, async (req: Request, res: R
  */
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const session = await EditSessionService.getEditSession(req.params.sessionId);
+    const session = await EditSessionService.getEditSession(asString(req.params.sessionId));
     if (!session) return res.status(404).json({ error: 'Edit session not found' });
     return res.json(session);
   } catch (err: any) {
@@ -97,7 +98,7 @@ router.post('/:sessionId/submit', requireAuth, async (req: Request, res: Respons
       return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
     }
     const userId = (req as any).user?.id;
-    const session = await EditSessionService.submitEditSession(req.params.sessionId, userId);
+    const session = await EditSessionService.submitEditSession(asString(req.params.sessionId), userId);
     return res.json(session);
   } catch (err: any) {
     if (err.message?.startsWith('Cannot submit')) return res.status(400).json({ error: err.message });
@@ -117,7 +118,7 @@ router.post('/:sessionId/approve', requireAuth, async (req: Request, res: Respon
       return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
     }
     const userId = (req as any).user?.id;
-    const session = await EditSessionService.approveEditSession(req.params.sessionId, userId);
+    const session = await EditSessionService.approveEditSession(asString(req.params.sessionId), userId);
     return res.json(session);
   } catch (err: any) {
     if (err.message?.startsWith('Cannot approve')) return res.status(400).json({ error: err.message });
@@ -137,7 +138,7 @@ router.post('/:sessionId/reject', requireAuth, async (req: Request, res: Respons
       return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
     }
     const userId = (req as any).user?.id;
-    const session = await EditSessionService.rejectEditSession(req.params.sessionId, {
+    const session = await EditSessionService.rejectEditSession(asString(req.params.sessionId), {
       rejectedBy: userId,
       reason: parsed.data.reason,
     });
@@ -160,7 +161,7 @@ router.post('/:sessionId/merge', requireAuth, async (req: Request, res: Response
       return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
     }
     const userId = (req as any).user?.id;
-    const session = await EditSessionService.mergeEditSession(req.params.sessionId, userId);
+    const session = await EditSessionService.mergeEditSession(asString(req.params.sessionId), userId);
     return res.json(session);
   } catch (err: any) {
     if (err.message?.startsWith('Cannot merge')) return res.status(400).json({ error: err.message });

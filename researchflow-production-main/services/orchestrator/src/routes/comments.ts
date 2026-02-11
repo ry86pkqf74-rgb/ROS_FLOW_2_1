@@ -16,6 +16,7 @@ import * as z from "zod";
 import { requireRole } from "../middleware/rbac";
 import { createAuditEntry } from "../services/auditService";
 import * as commentService from "../services/commentService";
+import { asString } from "../utils/asString";
 
 const router = Router();
 
@@ -199,7 +200,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const comment = await commentService.getComment(id);
 
       if (!comment) {
@@ -224,7 +225,7 @@ router.patch(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const parseResult = updateCommentSchema.safeParse(req.body);
 
       if (!parseResult.success) {
@@ -292,7 +293,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const userId = (req as any).user?.id;
 
       const existing = await commentService.getComment(id);
@@ -330,7 +331,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const userId = (req as any).user?.id;
 
       const existing = await commentService.getComment(id);
@@ -368,7 +369,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const { assignedTo } = req.body;
       const userId = (req as any).user?.id;
 
@@ -411,7 +412,7 @@ router.delete(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const userId = (req as any).user?.id;
       const userRole = (req as any).user?.role;
 
