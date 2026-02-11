@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert';
-import { test, describe, beforeEach, beforeAll, afterAll } from 'node:test';
+import { test, describe, beforeEach, before, after } from 'node:test';
 
 import express from 'express';
 import request from 'supertest';
@@ -35,7 +35,7 @@ describe('AI Bridge End-to-End Tests', () => {
   const RF_BYPASS_KEY = '__rf_test_bypass_rbac_count__' as const;
   type RFGlobal = typeof globalThis & { [RF_BYPASS_KEY]?: number };
 
-  beforeAll(() => {
+  before(() => {
     process.env.NODE_ENV = 'test';
 
     const g = globalThis as RFGlobal;
@@ -44,7 +44,7 @@ describe('AI Bridge End-to-End Tests', () => {
     process.env.RF_TEST_BYPASS_RBAC = '1';
   });
 
-  afterAll(() => {
+  after(() => {
     const g = globalThis as RFGlobal;
     g[RF_BYPASS_KEY] = Math.max(0, (g[RF_BYPASS_KEY] ?? 1) - 1);
 
