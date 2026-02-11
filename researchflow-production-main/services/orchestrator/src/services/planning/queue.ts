@@ -39,8 +39,17 @@ export const QUEUE_NAMES = {
 export interface PlanBuildJobData {
   planId: string;
   jobId: string;
-  datasetId: string;
-  researchGoal: string;
+  datasetMetadata?: {
+    name: string;
+    rowCount?: number;
+    columns: Array<{
+      name: string;
+      type: string;
+      nullable?: boolean;
+      cardinality?: number;
+    }>;
+  };
+  researchQuestion: string;
   constraints: Record<string, unknown>;
   governanceMode: 'DEMO' | 'LIVE';
 }
@@ -111,8 +120,8 @@ export async function initPlanningQueues(): Promise<void> {
         await planningService.generatePlanInBackground(
           job.data.planId,
           job.data.jobId,
-          job.data.datasetId as any, // TODO: align PlanBuildJobData with method signature
-          job.data.researchGoal,
+          job.data.datasetMetadata,
+          job.data.researchQuestion,
           job.data.constraints
         );
 
