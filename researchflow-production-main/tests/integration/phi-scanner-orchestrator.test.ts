@@ -42,7 +42,7 @@ vi.mock('@researchflow/phi-engine', () => ({
 }));
 
 // Import after mocking
-import { scanForPHI, type PHIPattern, type PHIScanResult } from '../../../../services/orchestrator/services/phi-scanner';
+import { scanForPHI, type PHIPattern, type PHIScanResult } from '../../services/orchestrator/services/phi-scanner';
 
 describe('PHI Scanner Safety', () => {
   describe('scanForPHI - Hash-only Output', () => {
