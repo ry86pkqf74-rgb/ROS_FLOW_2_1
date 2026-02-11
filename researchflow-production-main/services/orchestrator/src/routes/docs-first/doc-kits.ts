@@ -10,6 +10,7 @@ import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { blockInStandby } from '../../middleware/governance-gates.js';
 import { requirePermission } from '../../middleware/rbac.js';
 import { docKitsService } from '../../services/docs-first/doc-kits.service.js';
+import { asString } from '../../utils/asString';
 
 const router = express.Router();
 
@@ -52,7 +53,7 @@ router.post('/',
 router.get('/:id',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     try {
       const result = await docKitsService.getKitWithItems(id);
@@ -74,7 +75,7 @@ router.patch('/items/:id',
   blockInStandby(),
   requirePermission('UPDATE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { status, content } = req.body;
 
     if (!status) {

@@ -15,6 +15,7 @@ import { blockInStandby } from '../../middleware/governance-gates.js';
 import { requirePermission, requireRole } from '../../middleware/rbac.js';
 import { scopeFreezeService } from '../../services/docs-first/scope-freeze.service.js';
 import { topicBriefsService } from '../../services/docs-first/topic-briefs.service.js';
+import { asString } from '../../utils/asString';
 
 const router = express.Router();
 
@@ -74,7 +75,7 @@ router.get('/',
 router.get('/:id',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const brief = await topicBriefsService.getBrief(id);
 
     if (!brief) {
@@ -93,7 +94,7 @@ router.patch('/:id',
   blockInStandby(),
   requirePermission('UPDATE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     try {
       const brief = await topicBriefsService.updateBrief(id, req.body, req.user!.id);
@@ -115,7 +116,7 @@ router.delete('/:id',
   blockInStandby(),
   requirePermission('DELETE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     await topicBriefsService.deleteBrief(id, req.user!.id);
     res.status(204).send();
   })
@@ -126,7 +127,7 @@ router.post('/:id/freeze',
   blockInStandby(),
   requireRole('STEWARD'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     try {
       const anchor = await scopeFreezeService.freezeBrief(id, req.user!.id);
@@ -156,7 +157,7 @@ router.post('/:id/freeze',
 router.get('/:id/snapshot',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const snapshot = await scopeFreezeService.getLatestSnapshot(id);
 
@@ -175,7 +176,7 @@ router.get('/:id/snapshot',
 router.get('/anchors/:id/verify',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const result = await scopeFreezeService.verifyAnchor(id);
 
     res.json(result);

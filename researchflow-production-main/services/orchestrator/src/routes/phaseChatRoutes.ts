@@ -16,6 +16,7 @@ import {
   STAGE_TO_AGENTS,
 } from '../services/phase-chat/registry';
 import { phaseChatService } from '../services/phase-chat/service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ const PhaseChatInputSchema = z.object({
  */
 router.get('/:stage/agents', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const stage = parseInt(req.params.stage, 10);
+    const stage = parseInt(asString(req.params.stage), 10);
 
     if (isNaN(stage) || stage < 1 || stage > 20) {
       return res.status(400).json({
@@ -67,7 +68,7 @@ router.get('/:stage/agents', async (req: Request, res: Response, next: NextFunct
  */
 router.post('/:stage/chat', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const stage = parseInt(req.params.stage, 10);
+    const stage = parseInt(asString(req.params.stage), 10);
     const parseResult = PhaseChatInputSchema.safeParse(req.body);
 
     if (isNaN(stage) || stage < 1 || stage > 20) {
@@ -139,8 +140,8 @@ router.post('/:stage/chat', async (req: Request, res: Response, next: NextFuncti
  */
 router.post('/:stage/chat/:agentId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const stage = parseInt(req.params.stage, 10);
-    const { agentId } = req.params;
+    const stage = parseInt(asString(req.params.stage), 10);
+    const agentId = asString(req.params.agentId);
     const parseResult = PhaseChatInputSchema.safeParse(req.body);
 
     if (isNaN(stage) || stage < 1 || stage > 20) {

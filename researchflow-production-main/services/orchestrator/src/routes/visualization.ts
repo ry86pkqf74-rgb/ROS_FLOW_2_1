@@ -29,6 +29,7 @@ import { createFiguresService, type FigureCreateInput } from '../services/figure
 import { visualizationCache } from '../services/visualization-cache.service';
 import { visualizationMetrics } from '../services/visualization-metrics.service';
 import { createLogger } from '../utils/logger';
+import { asString } from '../utils/asString';
 
 const router = Router();
 const logger = createLogger('visualization-route');
@@ -532,7 +533,7 @@ router.get(
   '/visualization/figures/:researchId',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const { 
       figure_type, 
       phi_scan_status, 
@@ -597,7 +598,7 @@ router.get(
   '/visualization/figure/:id',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { include_image = 'false' } = req.query;
 
     logger.info('Fetching figure', { figureId: id });
@@ -653,7 +654,7 @@ router.delete(
   '/visualization/figure/:id',
   requirePermission('DELETE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     logger.info('Deleting figure', { figureId: id });
 
@@ -713,7 +714,7 @@ router.get(
   '/visualization/stats/:researchId',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
 
     logger.info('Fetching figure statistics', { researchId });
 
@@ -758,7 +759,7 @@ router.patch(
   '/visualization/figure/:id/phi-scan',
   requirePermission('MODERATE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { phi_scan_status, phi_risk_level, phi_findings } = req.body;
 
     logger.info('Updating PHI scan results', { 
