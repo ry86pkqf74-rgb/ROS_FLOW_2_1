@@ -42,11 +42,11 @@ const UpdateProjectSchema = z.object({
 
 const AddMemberSchema = z.object({
   email: z.string().email(),
-  role: z.enum(['admin', 'member', 'viewer']),
+  role: z.enum(['owner', 'admin', 'member', 'viewer']),
 });
 
 const UpdateMemberRoleSchema = z.object({
-  role: z.enum(['admin', 'member', 'viewer']),
+  role: z.enum(['owner', 'admin', 'member', 'viewer']),
 });
 
 // =============================================================================
