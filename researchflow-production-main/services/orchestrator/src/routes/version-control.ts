@@ -12,6 +12,7 @@ import { config } from '../config/env';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
 import { logAction } from '../services/audit-service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -438,7 +439,7 @@ router.post(
   '/file/:projectId',
   requirePermission('WRITE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const parseResult = SaveFileRequestSchema.safeParse(req.body);
 
     if (!parseResult.success) {

@@ -17,6 +17,7 @@ import { Router, Request, Response } from "express";
 
 import { db } from "../../../db";
 import { logAction } from "../../services/audit-service";
+import { asString } from "../../utils/asString";
 import {
   verifyZoomSignature,
   generateValidationResponse,
@@ -271,7 +272,7 @@ router.get("/sessions", async (req: Request, res: Response) => {
  * Link a review session to an organization and research project
  */
 router.patch("/sessions/:sessionId/link", async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
+  const sessionId = asString(req.params.sessionId);
   const { orgId, researchId } = req.body;
 
   if (!db) {

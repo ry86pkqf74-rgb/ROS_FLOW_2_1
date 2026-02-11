@@ -22,6 +22,7 @@ import { Router, Request, Response } from 'express';
 
 import { requireAuth } from '../middleware/auth';
 import { logAction } from '../services/audit-service';
+import { asString } from '../utils/asString';
 import {
   runSectionVerifyGate,
   runIMRaDPipeline,
@@ -599,7 +600,7 @@ router.get('/budgets', async (_req: Request, res: Response) => {
  */
 router.put('/budgets/:manuscriptId', async (req: Request, res: Response) => {
   try {
-    const { manuscriptId } = req.params;
+    const manuscriptId = asString(req.params.manuscriptId);
     const { budgets } = req.body;
     const userId = (req as any).user?.id;
     
