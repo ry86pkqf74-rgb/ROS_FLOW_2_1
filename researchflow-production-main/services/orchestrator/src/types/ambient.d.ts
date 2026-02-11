@@ -233,7 +233,6 @@ declare module 'node-fetch' { const fetch: any; export default fetch; }
 declare module 'form-data' { export default class FormData { append(k: string, v: any): void; } }
 declare module 'archiver' { const archiver: any; export = archiver; }
 declare module 'bottleneck' { export default class Bottleneck { constructor(opts?: any); schedule<T>(fn: () => Promise<T>): Promise<T>; } }
-declare module 'bullmq' { export class Queue { constructor(name: string, opts?: any); add(name: string, data: any, opts?: any): Promise<any>; } export class Worker { constructor(name: string, processor: any, opts?: any); } }
 declare module 'prom-client' { export const Registry: any; export const Counter: any; export const Gauge: any; export const Histogram: any; export const collectDefaultMetrics: any; }
 declare module 'redis' {
   export type RedisClientType = any;

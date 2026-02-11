@@ -111,10 +111,9 @@ export async function initPlanningQueues(): Promise<void> {
         await planningService.generatePlanInBackground(
           job.data.planId,
           job.data.jobId,
-          job.data.datasetId,
+          job.data.datasetId as any, // TODO: align PlanBuildJobData with method signature
           job.data.researchGoal,
-          job.data.constraints,
-          job.data.governanceMode
+          job.data.constraints
         );
 
         jobEvents.emit(`job:${job.data.jobId}:completed`, {
