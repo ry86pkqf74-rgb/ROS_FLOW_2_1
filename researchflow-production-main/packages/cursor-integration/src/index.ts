@@ -169,7 +169,7 @@ export async function sendAgentTriggerEvent(
       };
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { taskId?: string };
     return {
       success: true,
       taskId: data.taskId,

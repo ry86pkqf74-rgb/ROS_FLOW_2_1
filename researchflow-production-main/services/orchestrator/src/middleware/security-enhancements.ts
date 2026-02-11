@@ -35,9 +35,9 @@ interface TokenPayload {
   exp: number;
 }
 
-interface SecurityRequest extends Request {
+type SecurityRequest = Request & {
   user?: TokenPayload;
-  auth?: { authenticated: boolean; isServiceToken?: boolean; userId?: string; role?: string };
+  securityAuth?: { authenticated: boolean; isServiceToken?: boolean; userId?: string; role?: string };
   rateLimitInfo?: {
     limit: number;
     remaining: number;
@@ -49,7 +49,7 @@ interface SecurityRequest extends Request {
     rateLimited: boolean;
     threatLevel: 'low' | 'medium' | 'high';
   };
-}
+};
 
 export class SecurityEnhancementMiddleware {
   private config: SecurityConfig;
@@ -108,7 +108,7 @@ export class SecurityEnhancementMiddleware {
    */
   private async applySecurityLayers(req: SecurityRequest, res: Response, next: NextFunction) {
     try {
-      const isServiceToken = req.auth?.isServiceToken === true;
+      const isServiceToken = req.securityAuth?.isServiceToken === true;
       if (isServiceToken) {
         req.securityContext!.authenticated = true;
       }
@@ -300,9 +300,9 @@ export class SecurityEnhancementMiddleware {
       return { valid: true, user: decoded };
 
     } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
         return { valid: false, message: 'Token has expired' };
-      } else if (error instanceof jwt.JsonWebTokenError) {
+      } else if (error instanceof Error && error.name === 'JsonWebTokenError') {
         return { valid: false, message: 'Invalid token' };
       } else {
         return { valid: false, message: 'Token verification failed' };
@@ -422,15 +422,18 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Encrypt sensitive data
+   * Encrypt sensitive data (AES-256-GCM; auth tag appended to ciphertext in hex)
    */
   encrypt(data: string): { encrypted: string; iv: string } {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher('aes-256-gcm', this.config.encryptionKey);
-    
+    const keyBuffer = crypto.createHash('sha256').update(this.config.encryptionKey, 'utf8').digest();
+    const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
+
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+    const authTag = cipher.getAuthTag();
+    encrypted += authTag.toString('hex');
+
     return {
       encrypted,
       iv: iv.toString('hex')
@@ -438,14 +441,18 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Decrypt sensitive data
+   * Decrypt sensitive data (AES-256-GCM; auth tag is last 32 hex chars of encrypted)
    */
   decrypt(encrypted: string, iv: string): string {
-    const decipher = crypto.createDecipher('aes-256-gcm', this.config.encryptionKey);
-    
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    const keyBuffer = crypto.createHash('sha256').update(this.config.encryptionKey, 'utf8').digest();
+    const authTagHex = encrypted.slice(-32);
+    const ciphertextHex = encrypted.slice(0, -32);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+
+    let decrypted = decipher.update(ciphertextHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   }
 
@@ -530,7 +537,7 @@ export class SecurityEnhancementMiddleware {
    * Log security events. Skip verbose logging for internal service calls unless VERBOSE_INTERNAL_LOGS.
    */
   private logSecurityEvent(req: SecurityRequest): void {
-    if (req.auth?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
+    if (req.securityAuth?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
       return;
     }
     if (req.securityContext?.threatLevel !== 'low') {

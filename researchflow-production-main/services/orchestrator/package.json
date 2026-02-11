@@ -21,6 +21,7 @@
     "@notionhq/client": "^2.2.0",
     "@researchflow/ai-router": "file:../../packages/ai-router",
     "@researchflow/core": "file:../../packages/core",
+    "@researchflow/cursor-integration": "file:../../packages/cursor-integration",
     "@researchflow/manuscript-engine": "file:../../packages/manuscript-engine",
     "@researchflow/notion-integration": "file:../../packages/notion-integration",
     "@researchflow/phi-engine": "file:../../packages/phi-engine",

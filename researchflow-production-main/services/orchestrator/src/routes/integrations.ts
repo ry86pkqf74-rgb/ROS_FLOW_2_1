@@ -1,4 +1,4 @@
-import { raw } from 'body-parser';
+import bodyParser from 'body-parser';
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
@@ -6,7 +6,7 @@ import * as z from 'zod';
 import {
   CursorCodeChangeEvent,
   CursorAgentTriggerEvent,
-} from '../../packages/cursor-integration/src';
+} from '@researchflow/cursor-integration';
 import {
   DockerWebhookPayload,
   verifyDockerWebhook,
