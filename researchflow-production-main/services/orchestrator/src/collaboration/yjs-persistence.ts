@@ -255,7 +255,7 @@ export class YjsPersistence {
     };
 
     // Get attributes
-    element.getAttributes().forEach((value, key) => {
+    Object.entries(element.getAttributes()).forEach(([key, value]) => {
       node.attrs[key] = value;
     });
 
