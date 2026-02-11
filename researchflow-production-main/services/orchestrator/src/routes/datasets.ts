@@ -14,6 +14,7 @@ import { Router } from 'express';
 
 import { db } from '../../db.js';
 import { blockDataUploadInDemo } from '../../middleware/mode-guard.js';
+import { asString } from '../utils/asString';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import {
   blockInStandby,
@@ -71,7 +72,7 @@ router.get(
   '/:datasetId',
   requirePermission('VIEW'),
   asyncHandler(async (req, res) => {
-    const { datasetId } = req.params;
+    const datasetId = asString(req.params.datasetId);
 
     const dataset = await getDatasetById(datasetId);
 
@@ -282,7 +283,7 @@ router.delete(
   blockInStandby(),
   requirePermission('DELETE'),
   asyncHandler(async (req, res) => {
-    const { datasetId } = req.params;
+    const datasetId = asString(req.params.datasetId);
 
     // Get dataset first for audit logging
     const dataset = await getDatasetById(datasetId);
@@ -343,7 +344,7 @@ router.post(
   blockInStandby(),
   requirePermission('APPROVE'),
   asyncHandler(async (req, res) => {
-    const { datasetId } = req.params;
+    const datasetId = asString(req.params.datasetId);
 
     const dataset = await getDatasetById(datasetId);
 

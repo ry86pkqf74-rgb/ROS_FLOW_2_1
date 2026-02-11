@@ -5,6 +5,7 @@ import { Router } from "express";
 
 import { db } from "../../db";
 import { asyncHandler } from "../middleware/errorHandler";
+import { asString } from "../utils/asString";
 import { requireRole, logAuditEvent, ROLES } from "../middleware/rbac";
 import {
   convertQuickEntryToPICO,
@@ -26,7 +27,7 @@ const router = Router();
 router.get(
   "/:researchId",
   asyncHandler(async (req, res) => {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
 
     const topic = await getCurrentTopic(researchId);
 
@@ -46,7 +47,7 @@ router.get(
 router.get(
   "/:researchId/history",
   asyncHandler(async (req, res) => {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
 
     const history = await getTopicVersionHistory(researchId);
 
@@ -106,7 +107,7 @@ router.post(
 router.put(
   "/:id",
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { title, description, picoElements, keywords } = req.body;
     const userId = req.user?.id || "anonymous";
 
@@ -148,7 +149,7 @@ router.put(
 router.post(
   "/:id/lock",
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const userId = req.user?.id || "anonymous";
 
     const existingTopic = await getTopicById(id);
@@ -197,7 +198,7 @@ router.post(
   requireRole(ROLES.RESEARCHER),
   logAuditEvent("TOPIC_CONVERT_TO_PICO", "topic"),
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { comparator, timeframe, population, intervention }: PICOConversionRequest = req.body;
 
     const existingTopic = await getTopicById(id);
@@ -284,7 +285,7 @@ router.post(
 router.get(
   "/:id/entry-mode",
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const topic = await getTopicById(id);
     if (!topic) {

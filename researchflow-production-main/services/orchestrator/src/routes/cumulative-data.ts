@@ -10,6 +10,7 @@
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
+import { asString } from '../utils/asString';
 import {
   getCumulativeDataService,
   WORKFLOW_STAGES,
@@ -67,7 +68,7 @@ router.get('/stages', (_req: Request, res: Response) => {
  */
 router.get('/projects/:identifier/state', async (req: Request, res: Response) => {
   try {
-    const { identifier } = req.params;
+    const identifier = asString(req.params.identifier);
     const service = getCumulativeDataService();
 
     // Determine if identifier is a projectId or researchId
@@ -94,7 +95,8 @@ router.get('/projects/:identifier/state', async (req: Request, res: Response) =>
  */
 router.get('/projects/:identifier/cumulative/:stageNumber', async (req: Request, res: Response) => {
   try {
-    const { identifier, stageNumber } = req.params;
+    const identifier = asString(req.params.identifier);
+    const stageNumber = asString(req.params.stageNumber);
     const stageNum = parseInt(stageNumber, 10);
 
     if (isNaN(stageNum) || stageNum < 1 || stageNum > 20) {
@@ -133,7 +135,8 @@ router.get('/projects/:identifier/cumulative/:stageNumber', async (req: Request,
  */
 router.post('/projects/:identifier/stages/:stageNumber', async (req: Request, res: Response) => {
   try {
-    const { identifier, stageNumber } = req.params;
+    const identifier = asString(req.params.identifier);
+    const stageNumber = asString(req.params.stageNumber);
     const stageNum = parseInt(stageNumber, 10);
 
     if (isNaN(stageNum) || stageNum < 1 || stageNum > 20) {
@@ -269,7 +272,7 @@ router.post('/internal/stages/fail', async (req: Request, res: Response) => {
  */
 router.post('/projects/:identifier/phi-schema', async (req: Request, res: Response) => {
   try {
-    const { identifier } = req.params;
+    const identifier = asString(req.params.identifier);
 
     const validation = PhiSchemaSchema.safeParse(req.body);
     if (!validation.success) {
@@ -308,7 +311,8 @@ router.post('/projects/:identifier/phi-schema', async (req: Request, res: Respon
  */
 router.get('/projects/:identifier/stages/:stageNumber', async (req: Request, res: Response) => {
   try {
-    const { identifier, stageNumber } = req.params;
+    const identifier = asString(req.params.identifier);
+    const stageNumber = asString(req.params.stageNumber);
     const stageNum = parseInt(stageNumber, 10);
 
     if (isNaN(stageNum) || stageNum < 1 || stageNum > 20) {

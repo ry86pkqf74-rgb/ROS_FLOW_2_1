@@ -13,6 +13,7 @@ import * as z from 'zod';
 import { config } from '../config/env';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
+import { asString } from '../utils/asString';
 
 const router = Router();
 const WORKER_URL = config.workerUrl;
@@ -139,7 +140,7 @@ router.get(
   '/assumption-tests/:method',
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const method = req.params.method;
+    const method = asString(req.params.method);
     if (!method || !method.trim()) {
       return res.status(400).json({
         error: 'INVALID_PARAM',

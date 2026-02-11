@@ -15,6 +15,7 @@ import * as z from "zod";
 import { requireRole } from "../middleware/rbac";
 import { createAuditEntry } from "../services/auditService";
 import * as shareService from "../services/shareService";
+import { asString } from "../utils/asString";
 
 const router = Router();
 
@@ -148,7 +149,7 @@ router.get(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { shareId } = req.params;
+      const shareId = asString(req.params.shareId);
 
       const share = await shareService.getShare(shareId);
 
@@ -174,7 +175,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { shareId } = req.params;
+      const shareId = asString(req.params.shareId);
       const userId = (req as any).user?.id || "system";
 
       const existing = await shareService.getShare(shareId);
@@ -216,7 +217,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { shareId } = req.params;
+      const shareId = asString(req.params.shareId);
       const userId = (req as any).user?.id || "system";
 
       const parseResult = extendShareSchema.safeParse(req.body);
