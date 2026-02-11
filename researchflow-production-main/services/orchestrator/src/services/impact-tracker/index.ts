@@ -60,7 +60,7 @@ async function lookupCrossrefByDoi(doi: string): Promise<ImpactMetric | null> {
   return {
     source: 'crossref',
     year: toInt(msg?.published?.['date-parts']?.[0]?.[0]),
-    venue: msg?.container-title?.[0],
+    venue: msg?.['container-title']?.[0],
     url: msg?.URL,
     raw: { crossref: msg },
   };

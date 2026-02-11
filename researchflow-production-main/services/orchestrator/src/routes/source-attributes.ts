@@ -14,10 +14,12 @@ import { desc, eq, and, sql, gte, lte } from 'drizzle-orm';
 import { isNull } from "../db/drizzleCompat";
 import { Router, Request, Response, NextFunction } from 'express';
 import * as z from 'zod';
-
+import { createLogger } from '../utils/logger';
 import { db } from '../../db.js';
 import { requireRole } from '../middleware/rbac';
 import { eventBus, type AppEvent } from '../services/event-bus';
+
+const logger = createLogger('source-attributes');
 
 /** Row shape returned by the source_attributes SELECT query. */
 interface SourceAttributeRow {
