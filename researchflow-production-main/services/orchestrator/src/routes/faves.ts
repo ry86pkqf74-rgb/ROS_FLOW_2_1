@@ -250,11 +250,16 @@ router.post(
       RETURNING *
     `);
 
-    eventBus.emit('faves:evaluation_created', {
-      evaluationId: result.rows[0].id,
-      modelId: validated.model_id,
-      evaluationType: validated.evaluation_type,
-      createdBy: userId,
+    eventBus.publish({
+      type: 'faves:evaluation_created',
+      topic: 'governance',
+      ts: new Date().toISOString(),
+      payload: {
+        evaluationId: result.rows[0].id,
+        modelId: validated.model_id,
+        evaluationType: validated.evaluation_type,
+        createdBy: userId,
+      },
     });
 
     res.status(201).json(result.rows[0]);
@@ -327,16 +332,26 @@ router.post(
 
     // Emit appropriate event
     if (deploymentAllowed) {
-      eventBus.emit('faves:evaluation_passed', {
-        evaluationId: id,
-        modelId: result.rows[0].model_id,
-        overallScore,
+      eventBus.publish({
+        type: 'faves:evaluation_passed',
+        topic: 'governance',
+        ts: new Date().toISOString(),
+        payload: {
+          evaluationId: id,
+          modelId: result.rows[0].model_id,
+          overallScore,
+        },
       });
     } else {
-      eventBus.emit('faves:evaluation_failed', {
-        evaluationId: id,
-        modelId: result.rows[0].model_id,
-        blockingIssues,
+      eventBus.publish({
+        type: 'faves:evaluation_failed',
+        topic: 'governance',
+        ts: new Date().toISOString(),
+        payload: {
+          evaluationId: id,
+          modelId: result.rows[0].model_id,
+          blockingIssues,
+        },
       });
     }
 
@@ -502,10 +517,15 @@ router.post(
       )
     `);
 
-    eventBus.emit('faves:override_requested', {
-      modelId,
-      requestedBy: userId,
-      reason,
+    eventBus.publish({
+      type: 'faves:override_requested',
+      topic: 'governance',
+      ts: new Date().toISOString(),
+      payload: {
+        modelId,
+        requestedBy: userId,
+        reason,
+      },
     });
 
     res.json({
