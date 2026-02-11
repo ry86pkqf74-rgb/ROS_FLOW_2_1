@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import { createClient } from 'redis';
 
+import type { AuthContext } from './service-auth';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('rateLimit');
@@ -40,7 +41,7 @@ async function initializeRedisClient() {
 
 /** Request with optional auth context set by service-auth middleware */
 interface RequestWithAuth extends Request {
-  auth?: { isServiceToken?: boolean; userId?: string };
+  auth?: AuthContext;
 }
 
 /**
