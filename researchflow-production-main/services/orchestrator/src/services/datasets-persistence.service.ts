@@ -6,7 +6,7 @@
  */
 
 import { datasets } from '@researchflow/core/schema';
-import { DatasetMetadata } from '@researchflow/core/types/classification';
+import { DatasetMetadata, type DataClassification } from '@researchflow/core/types/classification';
 import { eq, and, sql } from 'drizzle-orm';
 import { ilike } from "../db/drizzleCompat";
 
@@ -193,15 +193,16 @@ export async function createDataset(data: {
     const newDataset: DatasetMetadata = {
       id,
       name: data.filename,
-      classification: data.classification,
+      classification: data.classification as DataClassification,
       recordCount: data.rowCount || 0,
       uploadedAt: new Date(),
       uploadedBy: data.uploadedBy,
       phiScanPassed: false,
       schemaVersion: '1.0',
-      format: data.format,
+      format: data.format as DatasetMetadata['format'],
       sizeBytes: data.sizeBytes,
       columns: data.metadata?.columns || [],
+      source: data.metadata?.source || 'upload',
       riskScore: 0
     };
     mockDatasets.push(newDataset);
@@ -245,7 +246,7 @@ export async function updateDataset(
   if (!db) {
     const idx = mockDatasets.findIndex(d => d.id === id);
     if (idx >= 0) {
-      if (updates.classification) mockDatasets[idx].classification = updates.classification;
+      if (updates.classification) mockDatasets[idx].classification = updates.classification as DataClassification;
       if (updates.riskScore !== undefined) mockDatasets[idx].riskScore = updates.riskScore;
       return mockDatasets[idx];
     }
