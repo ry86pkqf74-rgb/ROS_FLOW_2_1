@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 
 import { getRedisClient, isCacheAvailable } from '../utils/cache.js';
 import { logger } from '../utils/logger.js';
+import { asString } from '../utils/asString';
 
 
 export type HealthStatus = 'OK' | 'DEGRADED' | 'DOWN';
@@ -134,7 +135,7 @@ export function createHealthRouter(config: HealthConfig = {}) {
   });
 
   router.get('/health/services/:name', async (req: Request, res: Response) => {
-    const { name } = req.params;
+    const name = asString(req.params.name);
     const known = new Set(config.serviceNames ?? []);
 
     if (known.size && !known.has(name)) {

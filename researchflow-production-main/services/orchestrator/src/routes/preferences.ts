@@ -16,6 +16,7 @@ import {
   UserPreferencesSchema,
   DEFAULT_PREFERENCES,
 } from '../services/preferences.service.js';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -224,7 +225,7 @@ router.get('/:key', async (req: Request, res: Response) => {
       });
     }
 
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     // Validate key
     const validKeys = Object.keys(DEFAULT_PREFERENCES);
@@ -268,7 +269,7 @@ router.put('/:key', async (req: Request, res: Response) => {
       });
     }
 
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const { value } = req.body;
 
     // Validate key

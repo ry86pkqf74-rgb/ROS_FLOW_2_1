@@ -17,6 +17,7 @@ import {
   ActivityActions, 
   EntityTypes 
 } from '../services/activityService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -200,7 +201,7 @@ router.get('/activity', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/:projectId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -268,7 +269,7 @@ router.get('/:projectId', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/:projectId/activity', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -415,7 +416,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
  */
 router.patch('/:projectId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -527,7 +528,7 @@ router.patch('/:projectId', requireAuth, async (req: Request, res: Response) => 
  */
 router.delete('/:projectId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -602,7 +603,7 @@ router.delete('/:projectId', requireAuth, async (req: Request, res: Response) =>
  */
 router.post('/:projectId/workflows', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const { workflowId, name, description } = req.body;
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -698,7 +699,7 @@ router.get('/templates', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/:projectId/members', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -749,7 +750,7 @@ router.get('/:projectId/members', requireAuth, async (req: Request, res: Respons
  */
 router.post('/:projectId/members', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const userId = (req as any).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -833,7 +834,8 @@ router.post('/:projectId/members', requireAuth, async (req: Request, res: Respon
  */
 router.patch('/:projectId/members/:userId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId, userId: targetUserId } = req.params;
+    const projectId = asString(req.params.projectId);
+    const targetUserId = asString(req.params.userId);
     const requesterId = (req as any).user?.id;
     if (!requesterId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -914,7 +916,8 @@ router.patch('/:projectId/members/:userId', requireAuth, async (req: Request, re
  */
 router.delete('/:projectId/members/:userId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { projectId, userId: targetUserId } = req.params;
+    const projectId = asString(req.params.projectId);
+    const targetUserId = asString(req.params.userId);
     const requesterId = (req as any).user?.id;
     if (!requesterId) {
       return res.status(401).json({ error: 'Unauthorized' });

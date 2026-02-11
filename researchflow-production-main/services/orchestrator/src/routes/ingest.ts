@@ -20,6 +20,7 @@ import {
   IngestConfirmation,
 } from '../jobs/multiFileIngest';
 import { requireAuth } from '../middleware/auth.js';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -117,7 +118,7 @@ router.post('/confirm', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/status/:runId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { runId } = req.params;
+    const runId = asString(req.params.runId);
 
     const job = getMultiFileIngestJob();
     const result = job.getJobStatus(runId);
@@ -178,7 +179,7 @@ router.get('/jobs', requireAuth, async (req: Request, res: Response) => {
  */
 router.delete('/jobs/:runId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { runId } = req.params;
+    const runId = asString(req.params.runId);
 
     const job = getMultiFileIngestJob();
     const cancelled = job.cancelJob(runId);

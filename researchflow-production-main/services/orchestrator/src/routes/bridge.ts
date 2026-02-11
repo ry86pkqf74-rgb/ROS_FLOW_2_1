@@ -61,6 +61,7 @@ import { getRedisClient, isCacheAvailable } from '../utils/cache.js';
 import { CircuitBreakerRegistry } from '../utils/circuit-breaker.js';
 import { logger } from '../utils/logger.js';
 import { tracingMiddleware, traceServiceCall } from '../utils/tracing.js';
+import { asString } from '../utils/asString';
 
 
 const router = Router();
@@ -139,7 +140,7 @@ async function buildRateLimiter() {
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: (req) => {
-        const serviceName = req.params.serviceName ?? 'unknown';
+        const serviceName = asString(req.params.serviceName) ?? 'unknown';
         // separate budgets per service and per caller ip
         const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip;
         return `${serviceName}:${ip}`;
@@ -149,7 +150,7 @@ async function buildRateLimiter() {
         res.status(429).json({
           success: false,
           error: 'rate_limited',
-          service: req.params.serviceName,
+          service: asString(req.params.serviceName),
         });
       },
     });
@@ -161,7 +162,7 @@ async function buildRateLimiter() {
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: (req) => {
-        const serviceName = req.params.serviceName ?? 'unknown';
+        const serviceName = asString(req.params.serviceName) ?? 'unknown';
         const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip;
         return `${serviceName}:${ip}`;
       },
@@ -237,7 +238,8 @@ router.post(
   openapiValidationMiddleware,
   rateLimiterMiddleware,
   async (req: Request, res: Response) => {
-    const { serviceName, methodName } = req.params;
+    const serviceName = asString(req.params.serviceName);
+    const methodName = asString(req.params.methodName);
 
     try {
       // Validate service exists
@@ -281,21 +283,21 @@ router.post(
           success: false,
           error: 'service_unavailable',
           reason: 'circuit_open',
-          service: req.params.serviceName,
+          service: asString(req.params.serviceName),
         });
       }
 
       logger.error('bridge_error', {
-        service: req.params.serviceName,
-        method: req.params.methodName,
+        service: asString(req.params.serviceName),
+        method: asString(req.params.methodName),
         error: error?.message ?? String(error),
       });
 
       res.status(500).json({
         success: false,
         error: error?.message ?? 'Internal server error',
-        service: req.params.serviceName,
-        method: req.params.methodName,
+        service: asString(req.params.serviceName),
+        method: asString(req.params.methodName),
       });
     }
   },

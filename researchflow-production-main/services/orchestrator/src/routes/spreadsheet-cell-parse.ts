@@ -10,6 +10,7 @@
 import axios from 'axios';
 import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { asString } from '../utils/asString';
 import * as z from 'zod';
 
 const router = Router();
@@ -203,7 +204,7 @@ router.post(
  * Get the status of a spreadsheet parsing job.
  */
 router.get('/parse/:jobId/status', async (req: Request, res: Response) => {
-  const { jobId } = req.params;
+  const jobId = asString(req.params.jobId);
   
   const job = jobs.get(jobId);
   if (!job) {
@@ -252,7 +253,7 @@ router.get('/parse/:jobId/status', async (req: Request, res: Response) => {
  * Get the results of a completed spreadsheet parsing job.
  */
 router.get('/parse/:jobId/results', async (req: Request, res: Response) => {
-  const { jobId } = req.params;
+  const jobId = asString(req.params.jobId);
   
   const job = jobs.get(jobId);
   if (!job) {
@@ -307,7 +308,7 @@ router.get('/parse/:jobId/results', async (req: Request, res: Response) => {
  * Cancel a running spreadsheet parsing job.
  */
 router.post('/parse/:jobId/cancel', async (req: Request, res: Response) => {
-  const { jobId } = req.params;
+  const jobId = asString(req.params.jobId);
   
   const job = jobs.get(jobId);
   if (!job) {
