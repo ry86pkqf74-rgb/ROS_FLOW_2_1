@@ -395,8 +395,8 @@ router.get('/stages/:id/requirements', (req: Request, res: Response) => {
       stageName: stage.name,
       requiredArtifacts: getStageArtifactRequirements(stageId),
       qualityGates: getStageQualityGates(stageId),
-      phiCheckRequired: PHI_CHECK_STAGES.includes(stageId),
-      attestationRequired: ATTESTATION_REQUIRED_STAGES.includes(stageId),
+      phiCheckRequired: (PHI_CHECK_STAGES as readonly number[]).includes(stageId),
+      attestationRequired: (ATTESTATION_REQUIRED_STAGES as readonly number[]).includes(stageId),
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch stage requirements' });
@@ -431,7 +431,8 @@ router.post('/stages/:id/complete', async (req: Request, res: Response) => {
   try {
     const stageId = parseInt(asString(req.params.id));
     const sessionId = lifecycleService.getSessionId(req);
-    lifecycleService.completeStage(sessionId, stageId);
+    const stageName = getStageName(stageId) || `Stage ${stageId}`;
+    lifecycleService.completeStage(sessionId, stageId, stageName);
     const nextStageId = stageId < 20 ? stageId + 1 : null;
     res.json({
       completed: true,

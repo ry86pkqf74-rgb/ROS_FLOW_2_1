@@ -33,7 +33,7 @@ interface ScanResult {
   scanDurationMs: number;
 }
 
-interface AccessRequest {
+export interface AccessRequest {
   id: string;
   projectId: string;
   requesterId: string;

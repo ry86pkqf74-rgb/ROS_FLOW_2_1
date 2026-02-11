@@ -155,6 +155,7 @@ router.post(
 
       // Log successful analysis
       await logAction({
+        eventType: 'STATISTICAL_ANALYSIS',
         userId: req.user?.id || 'anonymous',
         action: 'STATISTICAL_ANALYSIS',
         resourceType: 'research',

@@ -259,8 +259,8 @@ export class VisualizationCacheService {
       // Calculate TTL
       const expirySeconds = visualizationConfig.cache.expiryHours * 3600;
       
-      // Store in cache
-      await this.redis.setex(key, expirySeconds, data);
+      // Store in cache (convert Buffer to base64 string for Redis)
+      await this.redis.setex(key, expirySeconds, data instanceof Buffer ? data.toString('base64') : data);
       
       this.metrics.sets++;
       
@@ -293,7 +293,11 @@ export class VisualizationCacheService {
         return 0;
       }
       
-      const deleted = await this.redis.del(...keys);
+      // Delete keys one at a time to avoid spread type issues
+      let deleted = 0;
+      for (const key of keys) {
+        deleted += await this.redis.del(key);
+      }
       this.metrics.deletes += deleted;
       
       logger.info('Cache invalidated by pattern', { 
