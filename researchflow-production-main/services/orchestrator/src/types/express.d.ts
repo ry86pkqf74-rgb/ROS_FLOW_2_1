@@ -14,7 +14,7 @@ interface AuthUser {
   id: string;
   email: string;
   name?: string;
-  role: 'admin' | 'researcher' | 'reviewer' | 'viewer';
+  role: 'ADMIN' | 'RESEARCHER' | 'STEWARD' | 'VIEWER';
   organizationId?: string;
   permissions?: string[];
 }
