@@ -32,12 +32,25 @@ function createE2ETestApp() {
 }
 
 describe('AI Bridge End-to-End Tests', () => {
+  const RF_BYPASS_KEY = '__rf_test_bypass_rbac_count__' as const;
+  type RFGlobal = typeof globalThis & { [RF_BYPASS_KEY]?: number };
+
   beforeAll(() => {
+    process.env.NODE_ENV = 'test';
+
+    const g = globalThis as RFGlobal;
+    g[RF_BYPASS_KEY] = (g[RF_BYPASS_KEY] ?? 0) + 1;
+
     process.env.RF_TEST_BYPASS_RBAC = '1';
   });
 
   afterAll(() => {
-    delete process.env.RF_TEST_BYPASS_RBAC;
+    const g = globalThis as RFGlobal;
+    g[RF_BYPASS_KEY] = Math.max(0, (g[RF_BYPASS_KEY] ?? 1) - 1);
+
+    if (g[RF_BYPASS_KEY] === 0) {
+      delete process.env.RF_TEST_BYPASS_RBAC;
+    }
   });
 
   test('should handle hypothesis generation workflow', async () => {
