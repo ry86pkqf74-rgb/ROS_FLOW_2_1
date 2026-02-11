@@ -115,7 +115,7 @@ export function generateMockResults(config: SAPConfig): AnalysisResults {
     });
   }
 
-  const secondaryAnalyses = [];
+  const secondaryAnalyses: AnalysisResults['secondaryAnalyses'] = [];
   if (config.subgroups && config.subgroups.length > 0) {
     for (const subgroup of config.subgroups.slice(0, 3)) {
       const subCoef = generateCoefficient();

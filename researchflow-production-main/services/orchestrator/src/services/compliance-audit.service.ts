@@ -623,7 +623,7 @@ export class ComplianceAuditService extends EventEmitter {
   }
 
   private generateComplianceRecommendations(report: ComplianceReport): string[] {
-    const recommendations = [];
+    const recommendations: string[] = [];
     
     if (report.summary.complianceViolations > 0) {
       recommendations.push('Review and address compliance violations');

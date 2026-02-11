@@ -354,7 +354,7 @@ export class VisualizationMetricsService {
    * Check alert conditions and return triggered alerts
    */
   async checkAlerts(): Promise<Array<{ alert: AlertCondition; value: number; severity: string }>> {
-    const triggeredAlerts = [];
+    const triggeredAlerts: Array<{ alert: AlertCondition; value: number; severity: string }> = [];
     
     const alertConditions: AlertCondition[] = [
       {
