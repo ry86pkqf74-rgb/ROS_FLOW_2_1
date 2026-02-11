@@ -399,7 +399,7 @@ export class AIRouterBridge {
         );
 
         // Validate and return response
-        const validated = LLMResponseSchema.parse(response.data);
+        const validated: LLMResponse = LLMResponseSchema.parse(response.data) as LLMResponse;
         return validated;
       } catch (error) {
         lastError = error as Error;

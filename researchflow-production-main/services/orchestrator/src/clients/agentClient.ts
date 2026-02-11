@@ -852,12 +852,12 @@ class AgentClient {
       }
       const first = await self.circuitBreaker.execute(() => innerGen!.next());
       if (first.done) return;
-      yield first.value;
+      yield first.value as StreamEvent;
       try {
         while (true) {
           const next = await innerGen!.next();
           if (next.done) break;
-          yield next.value;
+          yield next.value as StreamEvent;
         }
       } catch (err) {
         self.circuitBreaker.recordFailure();
