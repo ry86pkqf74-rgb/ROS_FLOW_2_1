@@ -140,7 +140,7 @@ declare module '@researchflow/core/schema' {
 }
 
 declare module '@researchflow/core/types' {
-  export interface User { id: string; email: string; name?: string; role: string; organizationId?: string; }
+  export interface User { id: string; email: string; name?: string; role: UserRole; organizationId?: string; }
   export interface Organization { id: string; name: string; slug: string; }
   export interface Project { id: string; name: string; organizationId: string; status: string; }
   export interface Artifact { id: string; projectId: string; type: string; path: string; }
@@ -150,9 +150,9 @@ declare module '@researchflow/core/types' {
   export interface Approval { id: string; artifactId: string; status: string; }
   export interface Policy { id: string; name: string; rules: any; }
   export type GovernanceMode = 'demo' | 'live' | 'audit';
-  export type UserRole = 'admin' | 'researcher' | 'reviewer' | 'viewer';
+  export type UserRole = 'ADMIN' | 'RESEARCHER' | 'STEWARD' | 'VIEWER';
   export const GovernanceMode: { DEMO: 'demo'; LIVE: 'live'; AUDIT: 'audit'; };
-  export const UserRole: { ADMIN: 'admin'; RESEARCHER: 'researcher'; REVIEWER: 'reviewer'; VIEWER: 'viewer'; };
+  export const UserRole: { ADMIN: 'ADMIN'; RESEARCHER: 'RESEARCHER'; STEWARD: 'STEWARD'; VIEWER: 'VIEWER'; };
 }
 
 declare module '@researchflow/core/types/*' {

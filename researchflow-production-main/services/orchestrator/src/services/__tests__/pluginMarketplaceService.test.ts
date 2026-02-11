@@ -133,7 +133,7 @@ describe('PluginMarketplaceService', () => {
 
       const logs = getPluginAuditLog({ tenantId: `audit-${tenantId}` });
       expect(logs.length).toBeGreaterThan(0);
-      expect(logs.some(l => l.action === 'INSTALL')).toBe(true);
+      expect(logs.some(l => l.action === 'INSTALLED')).toBe(true);
     });
 
     it('should filter by pluginId', () => {

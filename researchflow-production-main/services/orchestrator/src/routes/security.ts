@@ -296,7 +296,7 @@ router.post('/test', async (req, res) => {
 router.post('/reset', (req, res) => {
   try {
     // Check if user has admin role (implement proper authorization)
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = req.user?.role === 'ADMIN';
     
     if (!isAdmin) {
       return res.status(403).json({

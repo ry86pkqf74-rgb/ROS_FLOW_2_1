@@ -46,7 +46,7 @@ const AddMemberSchema = z.object({
 });
 
 const UpdateMemberRoleSchema = z.object({
-  role: z.enum(['admin', 'member', 'viewer']),
+  role: z.enum(['owner', 'admin', 'member', 'viewer']),
 });
 
 // =============================================================================

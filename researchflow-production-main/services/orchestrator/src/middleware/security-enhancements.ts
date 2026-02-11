@@ -57,8 +57,8 @@ const resolveAuth = (req: SecurityRequest): SecurityAuth | undefined =>
 const errName = (e: unknown): unknown =>
   e && typeof e === 'object' && 'name' in e ? (e as { name: unknown }).name : undefined;
 
-/** Role type matching AuthUser interface */
-type AuthRole = 'admin' | 'researcher' | 'reviewer' | 'viewer';
+/** Role type matching @researchflow/core RoleName (uppercase) */
+type AuthRole = 'ADMIN' | 'RESEARCHER' | 'STEWARD' | 'VIEWER';
 
 /**
  * Extended user type that combines TokenPayload with AuthUser-compatible fields.
