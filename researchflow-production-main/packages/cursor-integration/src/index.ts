@@ -169,10 +169,14 @@ export async function sendAgentTriggerEvent(
       };
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
+    const taskId =
+      data && typeof data === 'object' && 'taskId' in data && typeof (data as Record<string, unknown>).taskId === 'string'
+        ? ((data as Record<string, unknown>).taskId as string)
+        : undefined;
     return {
       success: true,
-      taskId: data.taskId,
+      taskId,
     };
   } catch (error) {
     return {

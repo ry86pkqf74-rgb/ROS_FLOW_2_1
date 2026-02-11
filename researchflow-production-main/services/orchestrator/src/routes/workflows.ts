@@ -29,7 +29,7 @@ import {
   WorkflowPolicySchema,
   type WorkflowDefinition,
   type WorkflowPolicy,
-} from '@researchflow/core/types';
+} from '@researchflow/core/types/workflow';
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 

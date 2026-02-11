@@ -198,12 +198,12 @@ router.get('/retry-stats', (req, res) => {
 });
 
 router.post('/test-retry', async (req, res) => {
+    let attempt = 0;
     try {
         const { operation_name = 'test', should_fail = false, max_retries = 3 } = req.body;
         const recovery = req.app.locals.recoverySystem;
         
         // Create test operation
-        let attempt = 0;
         const testOperation = async () => {
             attempt++;
             if (should_fail && attempt < max_retries) {
