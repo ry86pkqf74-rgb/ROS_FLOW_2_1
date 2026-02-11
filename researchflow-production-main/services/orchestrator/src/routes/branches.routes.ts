@@ -15,7 +15,7 @@
 
 import { Router, Request, Response } from 'express';
 
-import { branchPersistenceService } from './branch-persistence.service';
+import { branchPersistenceService } from '../services/branch-persistence.service';
 
 const router = Router();
 
