@@ -41,14 +41,11 @@ declare global {
       correlationId?: string;
       startTime?: number;
       
-      // Parsed body types (for JSON APIs)
-      body: Record<string, unknown>;
-      
-      // Query params (typed)
-      query: Record<string, string | string[] | undefined>;
-      
-      // Route params (typed)
-      params: Record<string, string>;
+      // NOTE: body, query, params are NOT declared here.
+      // Express.Request augmentation cannot override the generic properties
+      // on express.Request<P, ResBody, ReqBody, ReqQuery>.  Declaring them
+      // here is a no-op that silently lies about the actual types.
+      // See ParamsDictionary in @types/express-serve-static-core.
       
       // File uploads (multer)
       file?: Express.Multer.File;
