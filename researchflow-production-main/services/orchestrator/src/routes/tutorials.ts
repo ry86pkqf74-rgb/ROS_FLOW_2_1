@@ -10,11 +10,21 @@ import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { featureFlagsService } from '../services/featureFlagsService';
-import { tutorialService, TutorialStep } from '../services/tutorialService';
+import { tutorialService } from '../services/tutorialService';
 import { asString } from '../utils/asString';
 
 
 const router = express.Router();
+
+/**
+ * Zod schema matching the TutorialStep interface
+ */
+const tutorialStepSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  targetSelector: z.string().optional(),
+  videoUrl: z.string().url().optional(),
+});
 
 /**
  * Middleware to check feature flag for tutorials
@@ -230,14 +240,7 @@ const createTutorialSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   videoUrl: z.string().url().optional(),
-  steps: z.array(
-    z.object({
-      title: z.string().min(1),
-      content: z.string().min(1),
-      targetSelector: z.string().optional(),
-      videoUrl: z.string().url().optional(),
-    })
-  ),
+  steps: z.array(tutorialStepSchema),
   enabled: z.boolean().optional(),
   orgId: z.string().nullable().optional(),
 });
@@ -284,16 +287,7 @@ const updateTutorialSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   videoUrl: z.string().url().optional(),
-  steps: z
-    .array(
-      z.object({
-        title: z.string().min(1),
-        content: z.string().min(1),
-        targetSelector: z.string().optional(),
-        videoUrl: z.string().url().optional(),
-      })
-    )
-    .optional(),
+  steps: z.array(tutorialStepSchema).optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -314,22 +308,9 @@ router.put(
       });
     }
 
-    // Explicitly construct Partial to ensure type safety
-    const updateData: Partial<{
-      title: string;
-      description: string;
-      videoUrl: string;
-      steps: TutorialStep[];
-      enabled: boolean;
-    }> = {
-      title: validation.data.title,
-      description: validation.data.description,
-      videoUrl: validation.data.videoUrl,
-      steps: validation.data.steps as TutorialStep[] | undefined,
-      enabled: validation.data.enabled,
-    };
-
-    const tutorial = await tutorialService.updateTutorial(key, updateData);
+    // Note: Minor type assertion needed due to Zod's type inference for nested arrays.
+    // Runtime validation via tutorialStepSchema ensures correctness.
+    const tutorial = await tutorialService.updateTutorial(key, validation.data as Parameters<typeof tutorialService.updateTutorial>[1]);
 
     if (!tutorial) {
       return res.status(404).json({
