@@ -11,6 +11,7 @@ import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { blockInStandby } from '../../middleware/governance-gates.js';
 import { requirePermission } from '../../middleware/rbac.js';
 import { ideasService } from '../../services/docs-first/ideas.service.js';
+import { asString } from '../../utils/asString';
 
 
 const router = express.Router();
@@ -82,7 +83,7 @@ router.get('/',
 router.get('/:id',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const idea = await ideasService.getIdea(id);
 
     if (!idea) {
@@ -102,7 +103,7 @@ router.patch('/:id',
   requirePermission('UPDATE'),
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const updates = UpdateIdeaSchema.parse(req.body);
 
       const idea = await ideasService.updateIdea(id, updates, req.user!.id);
@@ -126,7 +127,7 @@ router.delete('/:id',
   blockInStandby(),
   requirePermission('DELETE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     await ideasService.deleteIdea(id, req.user!.id);
 
     res.status(204).send();
@@ -139,7 +140,7 @@ router.post('/:id/scorecard',
   requirePermission('CREATE'),
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const scores = ScorecardSchema.parse(req.body);
 
       const scorecard = await ideasService.createOrUpdateScorecard(
@@ -166,7 +167,7 @@ router.post('/:id/scorecard',
 router.get('/:id/scorecard',
   requirePermission('VIEW'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const scorecard = await ideasService.getScorecard(id);
 
     if (!scorecard) {
@@ -185,7 +186,7 @@ router.post('/:id/convert',
   blockInStandby(),
   requirePermission('CREATE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const briefId = await ideasService.convertToTopicBrief(id, req.user!.id);
 
     res.status(201).json({

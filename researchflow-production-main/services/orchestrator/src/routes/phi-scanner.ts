@@ -22,6 +22,7 @@ import {
   updateAccessRequest,
   listAccessRequests,
 } from '../services/phi-scan-persistence.service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -300,7 +301,7 @@ router.get(
   '/scan/:id',
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const result = await getScanResult(id);
 
     if (!result) {
@@ -502,7 +503,7 @@ router.put(
   requireRole('STEWARD'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.user;
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     if (!user) {
       return res.status(401).json({
@@ -584,7 +585,7 @@ router.put(
   requireRole('STEWARD'),
   asyncHandler(async (req: Request, res: Response) => {
     const user = req.user;
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const { reason } = req.body;
 
     if (!user) {
