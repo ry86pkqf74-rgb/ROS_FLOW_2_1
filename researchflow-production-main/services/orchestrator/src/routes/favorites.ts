@@ -8,6 +8,7 @@ import {
   removeFavorite,
   FavoriteResourceType,
 } from '../services/favoritesService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -62,7 +63,7 @@ router.delete(
     }
 
     try {
-      await removeFavorite(user.id, req.params.id);
+      await removeFavorite(user.id, asString(req.params.id));
       res.status(204).send();
     } catch (error: any) {
       if (error?.message === 'FAVORITE_NOT_FOUND') {

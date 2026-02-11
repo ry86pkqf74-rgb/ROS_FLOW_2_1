@@ -24,6 +24,7 @@ import { nanoid } from 'nanoid';
 import * as z from 'zod';
 
 import { db } from '../../db';
+import { asString } from '../utils/asString';
 
 const router = Router({ mergeParams: true });
 
@@ -84,7 +85,7 @@ async function verifyPaperAccess(paperId: string, userId: string): Promise<boole
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
     const page = req.query.page ? parseInt(req.query.page as string) : undefined;
 
     // Verify paper access
@@ -126,7 +127,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
     const parsed = createAnnotationSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -172,7 +173,8 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       SELECT * FROM paper_annotations
@@ -197,7 +199,8 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
     const parsed = updateAnnotationSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -241,7 +244,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
 
     // Verify ownership
     const existing = await db.execute(sql`
@@ -269,7 +273,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
 router.get('/:id/threads', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
 
     // Verify annotation access
     const annotation = await db.execute(sql`
@@ -308,7 +313,8 @@ router.get('/:id/threads', async (req: Request, res: Response) => {
 router.post('/:id/threads', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
     const parsed = createThreadSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -352,7 +358,8 @@ router.post('/:id/threads', async (req: Request, res: Response) => {
 router.patch('/:id/resolve', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId, id } = req.params;
+    const paperId = asString(req.params.paperId);
+    const id = asString(req.params.id);
     const { resolved } = req.body;
 
     // Verify ownership

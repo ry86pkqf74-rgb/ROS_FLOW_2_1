@@ -20,6 +20,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { createAuditEntry } from '../services/auditService.js';
 import { RedisCacheService, getCacheService } from '../services/redis-cache.js';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -442,7 +443,8 @@ router.get(
   '/paper/:provider/:id',
   requirePermission('VIEW'),
   asyncHandler(async (req, res) => {
-    const { provider, id } = req.params;
+    const provider = asString(req.params.provider);
+    const id = asString(req.params.id);
 
     let paper: LiteratureItem | null = null;
 

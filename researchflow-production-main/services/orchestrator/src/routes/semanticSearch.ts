@@ -20,6 +20,7 @@ import { embeddingService } from '../services/embeddingService';
 import { featureFlagsService } from '../services/featureFlagsService';
 import { hybridSearchService } from '../services/hybridSearchService';
 import { semanticSearchService } from '../services/semanticSearchService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -175,7 +176,7 @@ router.get(
   requireSemanticSearch,
   asyncHandler(async (req: Request, res: Response) => {
     const { org } = req.org!;
-    const { artifactId } = req.params;
+    const artifactId = asString(req.params.artifactId);
     const { limit } = req.query;
 
     const parsedLimit = Math.min(parseInt(limit as string, 10) || 10, 50);

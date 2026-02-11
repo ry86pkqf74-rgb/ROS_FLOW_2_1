@@ -17,6 +17,7 @@ import {
   OrcidNotConfiguredError,
   OrcidApiError
 } from '../services/orcid';
+import { asString } from '../utils/asString';
 
 // Simple async handler wrapper
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
@@ -60,7 +61,7 @@ router.get(
 router.get(
   '/lookup/:orcidId',
   asyncHandler(async (req, res) => {
-    const { orcidId } = req.params;
+    const orcidId = asString(req.params.orcidId);
     const includeWorks = req.query.includeWorks !== 'false';
     const includeAffiliations = req.query.includeAffiliations !== 'false';
 

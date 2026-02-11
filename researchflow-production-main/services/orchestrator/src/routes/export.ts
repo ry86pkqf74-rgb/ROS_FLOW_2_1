@@ -38,6 +38,7 @@ import * as z from 'zod';
 import { db } from '../../db';
 import { requireAuth } from '../middleware/auth.js';
 import { protect, protectWithRole, requirePermission } from '../middleware/rbac';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -267,7 +268,7 @@ router.get('/templates', async (req: Request, res: Response) => {
 router.get('/templates/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       SELECT * FROM export_templates
@@ -333,7 +334,7 @@ router.post('/templates', async (req: Request, res: Response) => {
 router.patch('/templates/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const parsed = updateTemplateSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -390,7 +391,7 @@ router.patch('/templates/:id', async (req: Request, res: Response) => {
 router.delete('/templates/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       DELETE FROM export_templates
@@ -416,7 +417,7 @@ router.delete('/templates/:id', async (req: Request, res: Response) => {
 router.post('/manuscripts/:manuscriptId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { manuscriptId } = req.params;
+    const manuscriptId = asString(req.params.manuscriptId);
     const parsed = exportManuscriptSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -518,7 +519,7 @@ router.post('/manuscripts/:manuscriptId', async (req: Request, res: Response) =>
 router.post('/manuscripts/:manuscriptId/preview', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { manuscriptId } = req.params;
+    const manuscriptId = asString(req.params.manuscriptId);
     const parsed = exportPreviewSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -608,7 +609,7 @@ router.get('/jobs', async (req: Request, res: Response) => {
 router.get('/jobs/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       SELECT ej.*, m.title as manuscript_title
@@ -637,7 +638,7 @@ router.get('/jobs/:id', async (req: Request, res: Response) => {
 router.get('/jobs/:jobId/status', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { jobId } = req.params;
+    const jobId = asString(req.params.jobId);
 
     const result = await db.execute(sql`
       SELECT ej.*, m.title as manuscript_title
@@ -675,7 +676,7 @@ router.get('/jobs/:jobId/status', async (req: Request, res: Response) => {
 router.get('/jobs/:id/download', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       SELECT output_path, output_filename, output_expires_at, status
@@ -719,7 +720,7 @@ router.get('/jobs/:id/download', async (req: Request, res: Response) => {
 router.delete('/jobs/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     // Get job to delete file
     const job = await db.execute(sql`
@@ -862,7 +863,7 @@ router.get('/journals', async (req: Request, res: Response) => {
  */
 router.get('/journals/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     const result = await db.execute(sql`
       SELECT * FROM journal_requirements WHERE id = ${id} LIMIT 1

@@ -15,6 +15,7 @@ import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
 import { requireAuth } from '../middleware/governance';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -189,7 +190,7 @@ router.post('/select', async (req: Request, res: Response) => {
  */
 router.get('/output/:projectId', async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
 
     const stored = storage.get(projectId);
 
