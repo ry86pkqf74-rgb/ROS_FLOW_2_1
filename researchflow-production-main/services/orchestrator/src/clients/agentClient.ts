@@ -844,6 +844,13 @@ class AgentClient {
     const self = this;
     let innerGen: AsyncGenerator<StreamEvent, void, unknown> | null = null;
 
+    // Type guard to narrow IteratorResult to the "yield" case
+    function isYield<T, TReturn>(
+      r: IteratorResult<T, TReturn>
+    ): r is IteratorYieldResult<T> {
+      return r.done === false;
+    }
+
     async function* wrap(): AsyncGenerator<StreamEvent, void, unknown> {
       innerGen = self._streamEvents(agentBaseUrl, path, body, options);
       if (!CIRCUIT_BREAKER_ENABLED) {
@@ -851,13 +858,13 @@ class AgentClient {
         return;
       }
       const first = await self.circuitBreaker.execute(() => innerGen!.next());
-      if (first.done) return;
-      yield first.value as StreamEvent;
+      if (!isYield(first)) return;
+      yield first.value;
       try {
         while (true) {
           const next = await innerGen!.next();
-          if (next.done) break;
-          yield next.value as StreamEvent;
+          if (!isYield(next)) break;
+          yield next.value;
         }
       } catch (err) {
         self.circuitBreaker.recordFailure();

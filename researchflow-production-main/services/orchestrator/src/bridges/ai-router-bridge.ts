@@ -34,43 +34,7 @@ const ModelOptionsSchema = z.object({
 // Derive ModelOptions from the Zod schema — single source of truth
 export type ModelOptions = z.infer<typeof ModelOptionsSchema>;
 
-export interface LLMResponse {
-  content: string;
-  usage: {
-    totalTokens: number;
-    promptTokens: number;
-    completionTokens: number;
-  };
-  cost: {
-    total: number;
-    input: number;
-    output: number;
-  };
-  model: string;
-  tier: string;
-  finishReason: string;
-  metadata?: Record<string, any>;
-}
-
-export interface BridgeConfig {
-  orchestratorUrl: string;
-  defaultTier: ModelTier;
-  phiCompliantOnly: boolean;
-  maxRetries: number;
-  timeoutMs: number;
-  costTrackingEnabled: boolean;
-  streamingEnabled: boolean;
-}
-
-// Typed response from the AI Router routing endpoint
-const RoutingApiResponseSchema = z.object({
-  selectedTier: ModelTierSchema,
-  model: z.string(),
-  costEstimate: z.object({ total: z.number() }),
-});
-
-// ModelOptionsSchema and ModelOptions type are defined above the interfaces
-
+// LLMResponseSchema must be defined before the type that infers from it
 const LLMResponseSchema = z.object({
   content: z.string(),
   usage: z.object({
@@ -87,6 +51,25 @@ const LLMResponseSchema = z.object({
   tier: z.string(),
   finishReason: z.string(),
   metadata: z.record(z.any()).optional(),
+});
+
+export type LLMResponse = z.infer<typeof LLMResponseSchema>;
+
+export interface BridgeConfig {
+  orchestratorUrl: string;
+  defaultTier: ModelTier;
+  phiCompliantOnly: boolean;
+  maxRetries: number;
+  timeoutMs: number;
+  costTrackingEnabled: boolean;
+  streamingEnabled: boolean;
+}
+
+// Typed response from the AI Router routing endpoint
+const RoutingApiResponseSchema = z.object({
+  selectedTier: ModelTierSchema,
+  model: z.string(),
+  costEstimate: z.object({ total: z.number() }),
 });
 
 /**
@@ -399,7 +382,7 @@ export class AIRouterBridge {
         );
 
         // Validate and return response
-        const validated: LLMResponse = LLMResponseSchema.parse(response.data) as LLMResponse;
+        const validated = LLMResponseSchema.parse(response.data);
         return validated;
       } catch (error) {
         lastError = error as Error;
