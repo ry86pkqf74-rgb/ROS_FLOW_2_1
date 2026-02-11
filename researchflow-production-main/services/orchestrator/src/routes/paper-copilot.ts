@@ -25,6 +25,7 @@ import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
 import { db } from '../../db';
+import { asString } from '../utils/asString';
 import { paperCopilotService } from '../services/paper-copilot.service';
 
 const router = Router({ mergeParams: true }); // Access :paperId from parent router
@@ -79,7 +80,7 @@ router.get('/ping', (_req: Request, res: Response) => {
 router.post('/chunk', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });
@@ -125,7 +126,7 @@ router.post('/chunk', async (req: Request, res: Response) => {
 router.get('/chunks', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });
@@ -155,7 +156,7 @@ router.get('/chunks', async (req: Request, res: Response) => {
 router.post('/chat', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
     const parsed = chatMessageSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -229,7 +230,7 @@ router.post('/chat', async (req: Request, res: Response) => {
 router.get('/chat', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
     if (!await validatePaperAccess(paperId, userId)) {
@@ -256,7 +257,7 @@ router.get('/chat', async (req: Request, res: Response) => {
 router.delete('/chat', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });
@@ -281,7 +282,7 @@ router.delete('/chat', async (req: Request, res: Response) => {
 router.post('/summarize', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
     const parsed = summarizeSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -317,7 +318,7 @@ router.post('/summarize', async (req: Request, res: Response) => {
 router.get('/summaries', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });
@@ -347,7 +348,7 @@ router.get('/summaries', async (req: Request, res: Response) => {
 router.post('/extract-claims', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });
@@ -377,7 +378,7 @@ router.post('/extract-claims', async (req: Request, res: Response) => {
 router.get('/claims', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { paperId } = req.params;
+    const paperId = asString(req.params.paperId);
 
     if (!await validatePaperAccess(paperId, userId)) {
       return res.status(404).json({ error: 'Paper not found' });

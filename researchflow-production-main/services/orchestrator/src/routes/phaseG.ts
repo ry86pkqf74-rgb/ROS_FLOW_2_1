@@ -10,6 +10,7 @@
 import { Router, Request, Response } from 'express';
 
 import { requireAuth } from '../middleware/auth.js';
+import { asString } from '../utils/asString';
 import { protectWithRole, auditAccess } from '../middleware/rbac';
 import { chaosEngineeringService } from '../services/chaosEngineeringService';
 import { clusterStatusService } from '../services/clusterStatusService';
@@ -158,7 +159,7 @@ router.post('/sharding/upload', async (req: Request, res: Response) => {
 
 router.get('/sharding/artifacts/:artifactId', async (req: Request, res: Response) => {
   try {
-    const manifest = dataShardingService.getManifest(req.params.artifactId);
+    const manifest = dataShardingService.getManifest(asString(req.params.artifactId));
     if (!manifest) {
       return res.status(404).json({ success: false, error: 'Artifact not found' });
     }
@@ -246,7 +247,7 @@ router.get('/scaling/vertical/resources', (_req: Request, res: Response) => {
 
 router.get('/scaling/vertical/resources/:service', (req: Request, res: Response) => {
   try {
-    const resources = verticalScalingService.getServiceResources(req.params.service);
+    const resources = verticalScalingService.getServiceResources(asString(req.params.service));
     if (!resources) {
       return res.status(404).json({ success: false, error: 'Service not found' });
     }
@@ -267,7 +268,7 @@ router.post('/scaling/vertical/scale', async (req: Request, res: Response) => {
 
 router.post('/scaling/vertical/rollback/:historyId', async (req: Request, res: Response) => {
   try {
-    const result = await verticalScalingService.rollback(req.params.historyId);
+    const result = await verticalScalingService.rollback(asString(req.params.historyId));
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -385,7 +386,7 @@ router.get('/optimization/suggestions/urgent', async (_req: Request, res: Respon
 router.post('/optimization/suggestions/:id/execute', async (req: Request, res: Response) => {
   try {
     const report = await optimizationSuggestionService.getSuggestions();
-    const suggestion = report.suggestions.find(s => s.id === req.params.id);
+    const suggestion = report.suggestions.find(s => s.id === asString(req.params.id));
     if (!suggestion) {
       return res.status(404).json({ success: false, error: 'Suggestion not found' });
     }
@@ -421,7 +422,7 @@ router.post('/simulation/start', async (req: Request, res: Response) => {
 
 router.post('/simulation/:id/cancel', async (req: Request, res: Response) => {
   try {
-    const cancelled = await devSimulationService.cancelSimulation(req.params.id);
+    const cancelled = await devSimulationService.cancelSimulation(asString(req.params.id));
     res.json({ success: true, data: { cancelled } });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -458,7 +459,7 @@ router.get('/simulation/scenarios', (_req: Request, res: Response) => {
 
 router.post('/simulation/scenarios/:id/run', async (req: Request, res: Response) => {
   try {
-    const results = await devSimulationService.runScenario(req.params.id);
+    const results = await devSimulationService.runScenario(asString(req.params.id));
     res.json({ success: true, data: results });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -486,7 +487,7 @@ router.post('/chaos/experiments', (req: Request, res: Response) => {
 
 router.get('/chaos/experiments/:id', (req: Request, res: Response) => {
   try {
-    const experiment = chaosEngineeringService.getExperiment(req.params.id);
+    const experiment = chaosEngineeringService.getExperiment(asString(req.params.id));
     if (!experiment) {
       return res.status(404).json({ success: false, error: 'Experiment not found' });
     }
@@ -498,7 +499,7 @@ router.get('/chaos/experiments/:id', (req: Request, res: Response) => {
 
 router.put('/chaos/experiments/:id', (req: Request, res: Response) => {
   try {
-    const experiment = chaosEngineeringService.updateExperiment(req.params.id, req.body);
+    const experiment = chaosEngineeringService.updateExperiment(asString(req.params.id), req.body);
     if (!experiment) {
       return res.status(404).json({ success: false, error: 'Experiment not found' });
     }
@@ -510,7 +511,7 @@ router.put('/chaos/experiments/:id', (req: Request, res: Response) => {
 
 router.delete('/chaos/experiments/:id', (req: Request, res: Response) => {
   try {
-    const deleted = chaosEngineeringService.deleteExperiment(req.params.id);
+    const deleted = chaosEngineeringService.deleteExperiment(asString(req.params.id));
     res.json({ success: true, data: { deleted } });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -519,7 +520,7 @@ router.delete('/chaos/experiments/:id', (req: Request, res: Response) => {
 
 router.post('/chaos/experiments/:id/run', async (req: Request, res: Response) => {
   try {
-    const run = await chaosEngineeringService.runExperiment(req.params.id);
+    const run = await chaosEngineeringService.runExperiment(asString(req.params.id));
     res.json({ success: true, data: run });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -539,7 +540,7 @@ router.get('/chaos/runs', (req: Request, res: Response) => {
 
 router.get('/chaos/experiments/:id/report', (req: Request, res: Response) => {
   try {
-    const report = chaosEngineeringService.generateReport(req.params.id);
+    const report = chaosEngineeringService.generateReport(asString(req.params.id));
     if (!report) {
       return res.status(404).json({ success: false, error: 'Experiment not found' });
     }
@@ -717,7 +718,7 @@ router.post('/serverless/functions', (req: Request, res: Response) => {
 
 router.get('/serverless/functions/:id', (req: Request, res: Response) => {
   try {
-    const func = serverlessTriggerService.getFunction(req.params.id);
+    const func = serverlessTriggerService.getFunction(asString(req.params.id));
     if (!func) {
       return res.status(404).json({ success: false, error: 'Function not found' });
     }
@@ -729,7 +730,7 @@ router.get('/serverless/functions/:id', (req: Request, res: Response) => {
 
 router.put('/serverless/functions/:id', (req: Request, res: Response) => {
   try {
-    const func = serverlessTriggerService.updateFunction(req.params.id, req.body);
+    const func = serverlessTriggerService.updateFunction(asString(req.params.id), req.body);
     if (!func) {
       return res.status(404).json({ success: false, error: 'Function not found' });
     }
@@ -741,7 +742,7 @@ router.put('/serverless/functions/:id', (req: Request, res: Response) => {
 
 router.delete('/serverless/functions/:id', (req: Request, res: Response) => {
   try {
-    const deleted = serverlessTriggerService.deleteFunction(req.params.id);
+    const deleted = serverlessTriggerService.deleteFunction(asString(req.params.id));
     res.json({ success: true, data: { deleted } });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -750,7 +751,7 @@ router.delete('/serverless/functions/:id', (req: Request, res: Response) => {
 
 router.post('/serverless/functions/:id/invoke', async (req: Request, res: Response) => {
   try {
-    const invocation = await serverlessTriggerService.invokeFunction(req.params.id, req.body.input);
+    const invocation = await serverlessTriggerService.invokeFunction(asString(req.params.id), req.body.input);
     res.json({ success: true, data: invocation });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -760,7 +761,7 @@ router.post('/serverless/functions/:id/invoke', async (req: Request, res: Respon
 router.get('/serverless/functions/:id/metrics', (req: Request, res: Response) => {
   try {
     const periodMinutes = parseInt(req.query.period as string) || 60;
-    const metrics = serverlessTriggerService.getMetrics(req.params.id, periodMinutes);
+    const metrics = serverlessTriggerService.getMetrics(asString(req.params.id), periodMinutes);
     if (!metrics) {
       return res.status(404).json({ success: false, error: 'Function not found' });
     }
@@ -843,7 +844,7 @@ router.post('/costs/budgets', (req: Request, res: Response) => {
 
 router.put('/costs/budgets/:id', (req: Request, res: Response) => {
   try {
-    const budget = costMonitoringService.updateBudget(req.params.id, req.body);
+    const budget = costMonitoringService.updateBudget(asString(req.params.id), req.body);
     if (!budget) {
       return res.status(404).json({ success: false, error: 'Budget not found' });
     }
@@ -855,7 +856,7 @@ router.put('/costs/budgets/:id', (req: Request, res: Response) => {
 
 router.delete('/costs/budgets/:id', (req: Request, res: Response) => {
   try {
-    const deleted = costMonitoringService.deleteBudget(req.params.id);
+    const deleted = costMonitoringService.deleteBudget(asString(req.params.id));
     res.json({ success: true, data: { deleted } });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -875,7 +876,7 @@ router.get('/costs/anomalies', (req: Request, res: Response) => {
 router.put('/costs/anomalies/:id', (req: Request, res: Response) => {
   try {
     const { status, resolution } = req.body;
-    const anomaly = costMonitoringService.updateAnomalyStatus(req.params.id, status, resolution);
+    const anomaly = costMonitoringService.updateAnomalyStatus(asString(req.params.id), status, resolution);
     if (!anomaly) {
       return res.status(404).json({ success: false, error: 'Anomaly not found' });
     }
@@ -898,7 +899,7 @@ router.get('/costs/optimizations', (req: Request, res: Response) => {
 router.put('/costs/optimizations/:id', (req: Request, res: Response) => {
   try {
     const { status, actualSavings } = req.body;
-    const optimization = costMonitoringService.updateOptimizationStatus(req.params.id, status, actualSavings);
+    const optimization = costMonitoringService.updateOptimizationStatus(asString(req.params.id), status, actualSavings);
     if (!optimization) {
       return res.status(404).json({ success: false, error: 'Optimization not found' });
     }

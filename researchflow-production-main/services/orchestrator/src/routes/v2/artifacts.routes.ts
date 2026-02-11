@@ -11,6 +11,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import * as z from 'zod';
 
 import { requireActiveAccount, requireRole } from '../../middleware/rbac';
+import { asString } from '../../utils/asString';
 import { ArtifactGraphService } from '../../services/artifact-graph.service';
 
 const router = Router();
@@ -77,7 +78,7 @@ const GetGraphQuerySchema = z.object({
  */
 router.get('/:id', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     // Validate UUID format
     if (!z.string().uuid().safeParse(id).success) {
@@ -162,7 +163,7 @@ router.post('/', requireActiveAccount, async (req: Request, res: Response, next:
  */
 router.patch('/:id', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const updates = UpdateArtifactSchema.parse(req.body);
 
     // Validate UUID format
@@ -219,7 +220,7 @@ router.patch('/:id', requireActiveAccount, async (req: Request, res: Response, n
  */
 router.delete('/:id', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     // Validate UUID format
     if (!z.string().uuid().safeParse(id).success) {
@@ -276,7 +277,7 @@ router.delete('/:id', requireActiveAccount, async (req: Request, res: Response, 
  */
 router.get('/:id/graph', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const query = GetGraphQuerySchema.parse(req.query);
 
     // Validate UUID format
@@ -334,7 +335,7 @@ router.get('/:id/graph', requireActiveAccount, async (req: Request, res: Respons
  */
 router.post('/:id/link', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: sourceArtifactId } = req.params;
+    const sourceArtifactId = asString(req.params.id);
     const data = LinkArtifactsSchema.parse(req.body);
 
     // Validate UUID format
@@ -414,7 +415,7 @@ router.post('/:id/link', requireActiveAccount, async (req: Request, res: Respons
  */
 router.delete('/edges/:edgeId', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { edgeId } = req.params;
+    const edgeId = asString(req.params.edgeId);
 
     // Validate UUID format
     if (!z.string().uuid().safeParse(edgeId).success) {
@@ -464,7 +465,7 @@ router.delete('/edges/:edgeId', requireActiveAccount, async (req: Request, res: 
  */
 router.get('/:id/outdated', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     // Validate UUID format
     if (!z.string().uuid().safeParse(id).success) {
@@ -510,7 +511,7 @@ router.get('/:id/outdated', requireActiveAccount, async (req: Request, res: Resp
  */
 router.get('/:id/dependencies', requireActiveAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = asString(req.params.id);
 
     // Validate UUID format
     if (!z.string().uuid().safeParse(id).success) {
