@@ -440,7 +440,10 @@ export class AIBridgeErrorHandler {
           }
         });
       } catch (auditError) {
-        logger.error('Failed to audit critical error', auditError as Error);
+        logger.error('Failed to audit critical error', { 
+          error: auditError instanceof Error ? auditError.message : String(auditError),
+          stack: auditError instanceof Error ? auditError.stack : undefined 
+        });
       }
     }
   }

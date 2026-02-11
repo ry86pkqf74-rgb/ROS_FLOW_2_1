@@ -111,9 +111,11 @@ router.post(
       const maxTokens = TIER_TO_MAX_TOKENS[tier] || TIER_TO_MAX_TOKENS.MINI;
       
       // Use generateStructured from llm-router
+      // Always use passthrough schema to allow flexible output structure
+      const resultSchema = z.object({}).passthrough();
       const result = await generateStructured(
         `${systemPrompt}\n\nInput:\n${input}`,
-        schema ? z.object({}).passthrough() : z.string(), // Use passthrough for flexible schema
+        resultSchema,
         {
           researchId: metadata?.research_id as string || 'extraction',
           stageId: metadata?.stage_id as string || 'extraction',
@@ -137,7 +139,7 @@ router.post(
       
       // Calculate cost estimate
       const inputTokens = Math.ceil(input.length / 4);
-      const outputTokens = Math.ceil(JSON.stringify(result.data).length / 4);
+      const outputTokens = Math.ceil(JSON.stringify(result.pack?.content || {}).length / 4);
       const costs = TIER_COSTS[tier] || TIER_COSTS.MINI;
       const costUsd = (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
       
@@ -161,7 +163,7 @@ router.post(
       
       // Return response
       return res.json({
-        output: return_format === 'json' ? result.data : JSON.stringify(result.data),
+        output: return_format === 'json' ? result.pack?.content : JSON.stringify(result.pack?.content),
         tier_used: tier,
         provider: 'anthropic',
         model,

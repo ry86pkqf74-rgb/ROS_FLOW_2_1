@@ -21,6 +21,7 @@ import {
   getAccessRequest,
   updateAccessRequest,
   listAccessRequests,
+  type AccessRequest,
 } from '../services/phi-scan-persistence.service';
 import { asString } from '../utils/asString';
 
@@ -356,13 +357,10 @@ router.post(
     const appliedRedactions: Array<{ id: string; original: string; redacted: string }> = [];
 
     // Sort findings by offset descending to apply from end to start
+    // Simplified: production would use positional data from findings
     const sortedFindings = findings
       .filter((f) => f.redact)
-      .sort((a, b) => {
-        const findingA = scanResults.get(a.id);
-        const findingB = scanResults.get(b.id);
-        return 0; // Would sort by offset in real implementation
-      });
+      .sort(() => 0);
 
     // This is a simplified implementation
     // In production, would track exact positions and apply redactions properly
@@ -420,7 +418,7 @@ router.post(
 
     const requestId = `access_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const accessRequest = {
+    const accessRequest: AccessRequest = {
       id: requestId,
       projectId,
       requesterId: user.id,
