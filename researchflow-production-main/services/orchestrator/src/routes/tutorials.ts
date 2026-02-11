@@ -260,15 +260,10 @@ router.post(
       });
     }
 
-    const tutorial = await tutorialService.createTutorial({
-      tutorialKey: validation.data.tutorialKey,
-      title: validation.data.title,
-      description: validation.data.description,
-      videoUrl: validation.data.videoUrl,
-      steps: validation.data.steps,
-      enabled: validation.data.enabled,
-      orgId: validation.data.orgId,
-    });
+    // After safeParse succeeds, req.body is validated.
+    // Pass req.body directly because Zod >= 3.25 has a TS type-depth
+    // regression that infers nested object fields as optional (zod#3721).
+    const tutorial = await tutorialService.createTutorial(req.body);
 
     res.status(201).json({
       success: true,
@@ -308,13 +303,9 @@ router.put(
       });
     }
 
-    const tutorial = await tutorialService.updateTutorial(key, {
-      title: validation.data.title,
-      description: validation.data.description,
-      videoUrl: validation.data.videoUrl,
-      steps: validation.data.steps,
-      enabled: validation.data.enabled,
-    });
+    // After safeParse succeeds, req.body is validated.
+    // Pass req.body directly (see createTutorial comment re: zod#3721).
+    const tutorial = await tutorialService.updateTutorial(key, req.body);
 
     if (!tutorial) {
       return res.status(404).json({

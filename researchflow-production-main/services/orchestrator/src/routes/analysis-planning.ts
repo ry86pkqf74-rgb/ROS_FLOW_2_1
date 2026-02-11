@@ -9,6 +9,7 @@ import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { planningService } from '../services/planning';
+import { CreatePlanRequest } from '../types/planning';
 
 const router = Router();
 
@@ -97,19 +98,15 @@ router.post(
   '/plans',
   conditionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const body = createPlanSchema.parse(req.body);
+    // Validate at runtime — Zod throws on bad data.
+    // Then annotate with the hand-written interface because Zod ≥ 3.25
+    // has a known TS type-depth regression that infers deeply-nested
+    // object fields as optional (see zod#3721).
+    createPlanSchema.parse(req.body);
+    const body: CreatePlanRequest = req.body;
     const userId = (req as any).user?.id || 'demo-user';
 
-    const result = await planningService.createPlan({
-      datasetId: body.datasetId,
-      name: body.name,
-      description: body.description,
-      researchQuestion: body.researchQuestion,
-      planType: body.planType,
-      constraints: body.constraints,
-      projectId: body.projectId,
-      datasetMetadata: body.datasetMetadata,
-    }, userId);
+    const result = await planningService.createPlan(body, userId);
 
     res.status(201).json({
       plan: result.plan,
