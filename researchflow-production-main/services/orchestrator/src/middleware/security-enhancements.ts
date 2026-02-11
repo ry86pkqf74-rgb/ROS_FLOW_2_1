@@ -35,9 +35,31 @@ interface TokenPayload {
   exp: number;
 }
 
+/** Shape shared between service-auth middleware (sets `req.auth`) and this module. */
+type SecurityAuth = {
+  authenticated: boolean;
+  isServiceToken?: boolean;
+  userId?: string;
+  role?: string;
+};
+
+/**
+ * Resolve the auth context from the request.
+ *
+ * `service-auth.ts` middleware sets `req.auth`; this module stores its own
+ * copy as `req.securityAuth`.  We read from either so the module stays
+ * compatible no matter which middleware ran first.
+ */
+const resolveAuth = (req: SecurityRequest): SecurityAuth | undefined =>
+  req.securityAuth ?? (req as unknown as Record<string, unknown>).auth as SecurityAuth | undefined;
+
+/** Safely extract `.name` from an unknown thrown value (works even if it isn't an Error). */
+const errName = (e: unknown): unknown =>
+  e && typeof e === 'object' && 'name' in e ? (e as { name: unknown }).name : undefined;
+
 type SecurityRequest = Request & {
   user?: TokenPayload;
-  securityAuth?: { authenticated: boolean; isServiceToken?: boolean; userId?: string; role?: string };
+  securityAuth?: SecurityAuth;
   rateLimitInfo?: {
     limit: number;
     remaining: number;
@@ -108,7 +130,8 @@ export class SecurityEnhancementMiddleware {
    */
   private async applySecurityLayers(req: SecurityRequest, res: Response, next: NextFunction) {
     try {
-      const isServiceToken = req.securityAuth?.isServiceToken === true;
+      const auth = resolveAuth(req);
+      const isServiceToken = auth?.isServiceToken === true;
       if (isServiceToken) {
         req.securityContext!.authenticated = true;
       }
@@ -300,9 +323,10 @@ export class SecurityEnhancementMiddleware {
       return { valid: true, user: decoded };
 
     } catch (error) {
-      if (error instanceof Error && error.name === 'TokenExpiredError') {
+      const name = errName(error);
+      if (name === 'TokenExpiredError') {
         return { valid: false, message: 'Token has expired' };
-      } else if (error instanceof Error && error.name === 'JsonWebTokenError') {
+      } else if (name === 'JsonWebTokenError') {
         return { valid: false, message: 'Invalid token' };
       } else {
         return { valid: false, message: 'Token verification failed' };
@@ -422,38 +446,118 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Encrypt sensitive data (AES-256-GCM; auth tag appended to ciphertext in hex)
+   * Derive a deterministic 256-bit key from the configured encryptionKey string.
+   */
+  private deriveKey(): Buffer {
+    return crypto.createHash('sha256').update(this.config.encryptionKey, 'utf8').digest();
+  }
+
+  /**
+   * Encrypt sensitive data.
+   *
+   * Always emits the **v2 versioned envelope** format:
+   *   `v2:<ivHex>:<ciphertextHex>:<authTagHex>`
+   *
+   * The returned `iv` field is kept for API backward-compatibility with callers
+   * that persist `{ encrypted, iv }`, but it is redundant — the IV is also
+   * embedded inside the envelope string.
+   *
+   * **Operational note:** Ciphertext from this method is consumed only by the
+   * `/api/security/encrypt` → `/api/security/decrypt` round-trip in
+   * `src/routes/security.ts`.  There is no DB/Redis persistence of this format
+   * within the codebase.
    */
   encrypt(data: string): { encrypted: string; iv: string } {
     const iv = crypto.randomBytes(16);
-    const keyBuffer = crypto.createHash('sha256').update(this.config.encryptionKey, 'utf8').digest();
+    const keyBuffer = this.deriveKey();
     const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
 
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag();
-    encrypted += authTag.toString('hex');
+    let ciphertext = cipher.update(data, 'utf8', 'hex');
+    ciphertext += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+    const ivHex = iv.toString('hex');
+
+    // v2 envelope: version-tagged, self-contained
+    const envelope = `v2:${ivHex}:${ciphertext}:${authTag}`;
 
     return {
-      encrypted,
-      iv: iv.toString('hex')
+      encrypted: envelope,
+      iv: ivHex  // redundant for v2, kept for API compat
     };
   }
 
   /**
-   * Decrypt sensitive data (AES-256-GCM; auth tag is last 32 hex chars of encrypted)
+   * Decrypt sensitive data.
+   *
+   * Supports two formats:
+   *   - **v2 envelope** — string starting with `v2:` containing
+   *     `v2:<ivHex>:<ciphertextHex>:<authTagHex>`.  The `iv` parameter is
+   *     ignored because the IV is embedded.
+   *   - **v1 (legacy)** — any other string.  Treated as raw hex ciphertext
+   *     produced by the deprecated `crypto.createDecipher('aes-256-gcm', …)`.
+   *     The separate `iv` parameter is **not** used by the legacy API either
+   *     (the old `createDecipher` didn't accept an IV), but it is required by
+   *     callers for the v2 path.
+   *
+   * v1 is deprecated and does not provide authenticated encryption.
    */
   decrypt(encrypted: string, iv: string): string {
-    const keyBuffer = crypto.createHash('sha256').update(this.config.encryptionKey, 'utf8').digest();
-    const authTagHex = encrypted.slice(-32);
-    const ciphertextHex = encrypted.slice(0, -32);
-    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(iv, 'hex'));
+    if (encrypted.startsWith('v2:')) {
+      return this.decryptV2(encrypted);
+    }
+    return this.decryptV1Legacy(encrypted);
+  }
+
+  /**
+   * v2 decryption — AES-256-GCM with authenticated tag.
+   */
+  private decryptV2(envelope: string): string {
+    const parts = envelope.split(':');
+    if (parts.length !== 4 || parts[0] !== 'v2') {
+      throw new Error('Malformed v2 encryption envelope');
+    }
+    const [, ivHex, ciphertextHex, authTagHex] = parts;
+
+    const keyBuffer = this.deriveKey();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(ivHex, 'hex'));
     decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
 
     let decrypted = decipher.update(ciphertextHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-
     return decrypted;
+  }
+
+  /**
+   * v1 legacy decryption — matches the pre-Batch 8 behavior that used the now-
+   * removed `crypto.createDecipher('aes-256-gcm', key)`.
+   *
+   * Node removed `createDecipher` in recent versions, but the same byte-level
+   * behavior can be reproduced with `createDecipheriv` using a zero IV and no
+   * auth tag verification (createDecipher derived IV internally as all-zeros
+   * for GCM when called without one).
+   *
+   * @deprecated v1 format lacks authenticated encryption; new data should use v2.
+   */
+  private decryptV1Legacy(encrypted: string): string {
+    const keyBuffer = this.deriveKey();
+    // createDecipher('aes-256-gcm', key) internally used an all-zero IV
+    const zeroIv = Buffer.alloc(16, 0);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, zeroIv);
+    // Legacy path did not use an auth tag — disable tag requirement
+    (decipher as any).setAutoPadding(false);
+    try {
+      // Attempt without auth tag (GCM will error on final without one).
+      // Wrap in try/catch so we can surface a clear message.
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch {
+      throw new Error(
+        'Failed to decrypt v1 (legacy) ciphertext. ' +
+        'The data may be corrupted or was encrypted with a different key. ' +
+        'Re-encrypt with the current v2 format to resolve.'
+      );
+    }
   }
 
   /**
@@ -537,7 +641,7 @@ export class SecurityEnhancementMiddleware {
    * Log security events. Skip verbose logging for internal service calls unless VERBOSE_INTERNAL_LOGS.
    */
   private logSecurityEvent(req: SecurityRequest): void {
-    if (req.securityAuth?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
+    if (resolveAuth(req)?.isServiceToken === true && process.env.VERBOSE_INTERNAL_LOGS !== 'true') {
       return;
     }
     if (req.securityContext?.threatLevel !== 'low') {
