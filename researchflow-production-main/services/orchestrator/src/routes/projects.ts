@@ -870,7 +870,7 @@ router.patch('/:projectId/members/:userId', requireAuth, async (req: Request, re
       [projectId, targetUserId]
     );
 
-    if (ownerCheck.rows[0].role === 'owner' && input.role !== 'owner') {
+    if (ownerCheck.rows[0].role === 'admin' && input.role !== 'admin') {
       return res.status(400).json({ error: 'Cannot change owner role' });
     }
 

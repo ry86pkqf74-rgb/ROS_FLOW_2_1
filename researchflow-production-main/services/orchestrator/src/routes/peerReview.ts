@@ -225,7 +225,7 @@ router.get('/review-assignments/:assignmentId', async (req: Request, res: Respon
   try {
     const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
-    const isEditor = req.user?.role === 'STEWARD' || req.user?.role === 'ADMIN';
+    const isEditor = req.user?.role === 'admin';
 
     const assignment = peerReviewService.getAssignment(assignmentId);
     if (!assignment) {
