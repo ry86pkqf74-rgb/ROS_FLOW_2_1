@@ -10,6 +10,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 
 import { requireRole } from '../middleware/rbac';
+import { asString } from '../utils/asString';
 
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -207,7 +208,7 @@ router.get(
   '/checklist/:projectId',
   requireRole('RESEARCHER'),
   asyncHandler(async (req, res) => {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
 
     if (!mockChecklists[projectId]) {
       mockChecklists[projectId] = {
@@ -235,7 +236,7 @@ router.post(
   '/checklist/:projectId/check',
   requireRole('RESEARCHER'),
   asyncHandler(async (req, res) => {
-    const { projectId } = req.params;
+    const projectId = asString(req.params.projectId);
     const { itemId, checked } = req.body;
 
     if (!itemId || typeof checked !== 'boolean') {
@@ -735,7 +736,8 @@ router.get(
   '/download/:runId/:filename',
   requireRole('RESEARCHER'),
   asyncHandler(async (req, res) => {
-    const { runId, filename } = req.params;
+    const runId = asString(req.params.runId);
+    const filename = asString(req.params.filename);
 
     // Path traversal protection: reject any path containing .. or /
     if (!runId || !filename ||

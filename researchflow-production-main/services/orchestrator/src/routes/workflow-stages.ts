@@ -10,6 +10,7 @@
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
+import { asString } from '../utils/asString';
 import {
   workflowStageGroups,
   getAllStages,
@@ -106,7 +107,7 @@ router.get('/stages', (req: Request, res: Response) => {
  */
 router.get('/stages/:stageId', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.stageId);
+    const stageId = parseInt(asString(req.params.stageId));
     if (isNaN(stageId)) {
       return res.status(400).json({ error: 'Invalid stage ID' });
     }
@@ -144,7 +145,7 @@ router.get('/stages/:stageId', (req: Request, res: Response) => {
  */
 router.post('/stages/:stageId/approve-ai', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.stageId);
+    const stageId = parseInt(asString(req.params.stageId));
     if (isNaN(stageId)) {
       return res.status(400).json({ error: 'Invalid stage ID' });
     }
@@ -179,7 +180,7 @@ router.post('/stages/:stageId/approve-ai', (req: Request, res: Response) => {
  */
 router.post('/stages/:stageId/revoke-ai', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.stageId);
+    const stageId = parseInt(asString(req.params.stageId));
     if (isNaN(stageId)) {
       return res.status(400).json({ error: 'Invalid stage ID' });
     }
@@ -210,7 +211,7 @@ router.post('/stages/:stageId/revoke-ai', (req: Request, res: Response) => {
  */
 router.post('/stages/:stageId/attest', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.stageId);
+    const stageId = parseInt(asString(req.params.stageId));
     if (isNaN(stageId)) {
       return res.status(400).json({ error: 'Invalid stage ID' });
     }
@@ -246,7 +247,7 @@ router.post('/stages/:stageId/attest', (req: Request, res: Response) => {
  */
 router.post('/stages/:stageId/complete', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.stageId);
+    const stageId = parseInt(asString(req.params.stageId));
     if (isNaN(stageId)) {
       return res.status(400).json({ error: 'Invalid stage ID' });
     }
@@ -384,7 +385,7 @@ router.post('/reset', (req: Request, res: Response) => {
  */
 router.get('/stages/:id/requirements', (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.id);
+    const stageId = parseInt(asString(req.params.id));
     const stage = getStageById(stageId);
     if (!stage) {
       return res.status(404).json({ error: 'Stage not found' });
@@ -407,7 +408,7 @@ router.get('/stages/:id/requirements', (req: Request, res: Response) => {
  */
 router.post('/stages/:id/validate', async (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.id);
+    const stageId = parseInt(asString(req.params.id));
     const { workflowId } = req.body;
     const requirements = getStageArtifactRequirements(stageId);
     const gates = getStageQualityGates(stageId);
@@ -428,7 +429,7 @@ router.post('/stages/:id/validate', async (req: Request, res: Response) => {
  */
 router.post('/stages/:id/complete', async (req: Request, res: Response) => {
   try {
-    const stageId = parseInt(req.params.id);
+    const stageId = parseInt(asString(req.params.id));
     const sessionId = lifecycleService.getSessionId(req);
     lifecycleService.completeStage(sessionId, stageId);
     const nextStageId = stageId < 20 ? stageId + 1 : null;

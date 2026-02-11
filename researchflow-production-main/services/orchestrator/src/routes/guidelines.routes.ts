@@ -9,6 +9,7 @@ import { Pool } from 'pg';
 
 import { GuidelinesRepository } from '../repositories/guidelines.repository';
 import { GuidelinesService } from '../services/guidelines.service';
+import { asString } from '../utils/asString';
 import {
   SearchSystemCardsRequest,
   CalculateScoreRequest,
@@ -69,7 +70,7 @@ router.get('/search', async (req: Request, res: Response, next: NextFunction) =>
  */
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const details = await service.getSystemCardWithDetails(req.params.id);
+    const details = await service.getSystemCardWithDetails(asString(req.params.id));
     if (!details) {
       return res.status(404).json({ error: 'System card not found' });
     }
@@ -85,7 +86,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
  */
 router.get('/by-name/:name', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const systemCard = await service.getSystemCardByName(req.params.name);
+    const systemCard = await service.getSystemCardByName(asString(req.params.name));
     if (!systemCard) {
       return res.status(404).json({ error: 'System card not found' });
     }
@@ -103,7 +104,7 @@ router.get('/by-name/:name', async (req: Request, res: Response, next: NextFunct
  */
 router.get('/:id/versions', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const versions = await repository.getVersionHistory(req.params.id);
+    const versions = await repository.getVersionHistory(asString(req.params.id));
     res.json({ versions });
   } catch (error) {
     next(error);
@@ -116,7 +117,7 @@ router.get('/:id/versions', async (req: Request, res: Response, next: NextFuncti
  */
 router.get('/:id/evidence', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const evidence = await repository.getEvidenceForSystemCard(req.params.id);
+    const evidence = await repository.getEvidenceForSystemCard(asString(req.params.id));
     res.json({ evidence });
   } catch (error) {
     next(error);
@@ -129,7 +130,7 @@ router.get('/:id/evidence', async (req: Request, res: Response, next: NextFuncti
  */
 router.get('/:id/rules', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const rules = await repository.getRuleSpecsForSystemCard(req.params.id);
+    const rules = await repository.getRuleSpecsForSystemCard(asString(req.params.id));
     res.json({ rules });
   } catch (error) {
     next(error);
@@ -181,7 +182,7 @@ router.get('/:id/calculations', async (req: Request, res: Response, next: NextFu
     const userId = req.query.userId as string;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
 
-    const history = await repository.getCalculatorHistory(req.params.id, userId, limit);
+    const history = await repository.getCalculatorHistory(asString(req.params.id), userId, limit);
     res.json({ calculations: history });
   } catch (error) {
     next(error);
@@ -228,7 +229,7 @@ router.post('/compare', async (req: Request, res: Response, next: NextFunction) 
 router.post('/:id/summarize', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { query } = req.body;
-    const summary = await service.summarizeGuideline(req.params.id, query);
+    const summary = await service.summarizeGuideline(asString(req.params.id), query);
     res.json({ summary });
   } catch (error: any) {
     if (error.message.includes('not found')) {
@@ -300,7 +301,7 @@ router.get('/blueprints/mine', async (req: Request, res: Response, next: NextFun
  */
 router.get('/:id/blueprints', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blueprints = await repository.listBlueprintsForSystemCard(req.params.id);
+    const blueprints = await repository.listBlueprintsForSystemCard(asString(req.params.id));
     res.json({ blueprints });
   } catch (error) {
     next(error);
@@ -313,7 +314,7 @@ router.get('/:id/blueprints', async (req: Request, res: Response, next: NextFunc
  */
 router.get('/blueprints/:blueprintId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blueprint = await repository.getValidationBlueprint(req.params.blueprintId);
+    const blueprint = await repository.getValidationBlueprint(asString(req.params.blueprintId));
     if (!blueprint) {
       return res.status(404).json({ error: 'Blueprint not found' });
     }
@@ -329,7 +330,7 @@ router.get('/blueprints/:blueprintId', async (req: Request, res: Response, next:
  */
 router.patch('/blueprints/:blueprintId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const updated = await repository.updateValidationBlueprint(req.params.blueprintId, req.body);
+    const updated = await repository.updateValidationBlueprint(asString(req.params.blueprintId), req.body);
     if (!updated) {
       return res.status(404).json({ error: 'Blueprint not found' });
     }
@@ -347,7 +348,7 @@ router.post(
   '/blueprints/:blueprintId/export',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const blueprint = await repository.getValidationBlueprint(req.params.blueprintId);
+      const blueprint = await repository.getValidationBlueprint(asString(req.params.blueprintId));
       if (!blueprint) {
         return res.status(404).json({ error: 'Blueprint not found' });
       }

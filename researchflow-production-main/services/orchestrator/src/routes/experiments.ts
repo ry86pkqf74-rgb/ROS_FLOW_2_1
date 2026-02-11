@@ -7,6 +7,7 @@ import { db } from '../../db';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireRole } from '../middleware/rbac';
 import { featureFlagsService } from '../services/featureFlagsService';
+import { asString } from '../utils/asString';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const router = express.Router();
  */
 router.get('/:key/variant',
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     // Extract user ID from session (assuming req.user from auth middleware)
     const userId = req.user?.id || req.sessionID || 'anonymous';
@@ -40,7 +41,7 @@ router.get('/:key/variant',
  */
 router.get('/:key',
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     const experiment = await featureFlagsService.getExperiment(key);
 
@@ -134,7 +135,7 @@ router.post('/',
 router.patch('/:key/status',
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     const updateStatusSchema = z.object({
       status: z.enum(['DRAFT', 'RUNNING', 'PAUSED', 'COMPLETE']),
@@ -187,7 +188,7 @@ router.get('/flags',
  */
 router.get('/flags/:key',
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     const enabled = await featureFlagsService.isFlagEnabled(key);
 
