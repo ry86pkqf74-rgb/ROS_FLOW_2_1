@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { featureFlags, experiments, experimentAssignments } from '@researchflow/core/types/schema';
 import { eq, and } from 'drizzle-orm';
 
-import { db } from '../lib/db';
+import { db } from '../../db';
 
 
 /**
