@@ -245,8 +245,9 @@ declare module 'drizzle-orm' { export const eq: any; export const and: any; expo
 // Internal workspace packages
 declare module '@researchflow/ai-router' { export const routeToModel: any; export const getModelConfig: any; }
 declare module '@researchflow/ai-router/*' { const mod: any; export = mod; }
-declare module '@researchflow/manuscript-engine' { export const ManuscriptService: any; }
-declare module '@researchflow/manuscript-engine/*' { const mod: any; export = mod; }
+// @researchflow/manuscript-engine — resolved via tsconfig paths; ambient override removed (PR151)
+// declare module '@researchflow/manuscript-engine' { export const ManuscriptService: any; }
+// declare module '@researchflow/manuscript-engine/*' { const mod: any; export = mod; }
 declare module '@researchflow/notion-integration' { export const NotionClient: any; }
 declare module '@researchflow/cursor-integration' { const mod: any; export = mod; }
 declare module '@researchflow/cursor-integration/*' { const mod: any; export = mod; }
