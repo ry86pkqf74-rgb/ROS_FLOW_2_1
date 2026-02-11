@@ -34,7 +34,7 @@ declare module '@researchflow/core/schema' {
   export const workflowTemplates: any;
   export const workflowPolicies: any;
   export const workflowRunCheckpoints: any;
-  
+
   // Additional table exports for orchestrator
   export const researchProjects: any;
   export const userRoles: any;
@@ -48,8 +48,49 @@ declare module '@researchflow/core/schema' {
   export const artifactComparisons: any;
   export const fileUploads: any;
   export const researchSessions: any;
-  
-  // Type exports
+
+  // TS2305 cluster fix (PR150): tables added after initial .d.ts authoring
+  export const aiInvocations: any;
+  export const aiOutputFeedback: any;
+  export const artifactEmbeddings: any;
+  export const artifactShares: any;
+  export const claimEvidenceLinks: any;
+  export const claims: any;
+  export const comments: any;
+  export const datasets: any;
+  export const docAnchors: any;
+  export const docKitItems: any;
+  export const docKits: any;
+  export const ethicsApprovals: any;
+  export const experimentAssignments: any;
+  export const experiments: any;
+  export const featureFlags: any;
+  export const governanceConfig: any;
+  export const ideaScorecards: any;
+  export const ideas: any;
+  export const orgInvites: any;
+  export const orgMemberships: any;
+  export const orgSubscriptions: any;
+  export const phiScanResults: any;
+  export const rebuttalResponses: any;
+  export const researchBriefs: any;
+  export const reviewSessions: any;
+  export const reviewerPoints: any;
+  export const statisticalPlans: any;
+  export const submissionPackages: any;
+  export const submissionTargets: any;
+  export const submissions: any;
+  export const topicBriefs: any;
+  export const tutorialAssets: any;
+  export const userConsents: any;
+  export const userOnboarding: any;
+  export const venues: any;
+
+  // TS2305 cluster fix (PR150): const arrays / enums
+  export const GOVERNANCE_MODES: readonly string[];
+  export const ANALYTICS_EVENT_NAMES: readonly string[];
+
+  // Type exports (original)
   export type Topic = any;
   export type InsertTopic = any;
   export type UpsertUser = any;
@@ -81,6 +122,21 @@ declare module '@researchflow/core/schema' {
   export type InsertFileUpload = any;
   export type ResearchSession = any;
   export type InsertResearchSession = any;
+
+  // TS2305 cluster fix (PR150): type exports added after initial .d.ts authoring
+  export type AnalyticsEventName = string;
+  export type DocAnchor = any;
+  export type DocKit = any;
+  export type DocKitItem = any;
+  export type Experiment = any;
+  export type FeatureFlag = any;
+  export type GovernanceMode = string;
+  export type Idea = any;
+  export type IdeaScorecard = any;
+  export type InsertIdea = any;
+  export type OrgMembershipRecord = any;
+  export type TopicBrief = any;
+  export type Venue = any;
 }
 
 declare module '@researchflow/core/types' {
