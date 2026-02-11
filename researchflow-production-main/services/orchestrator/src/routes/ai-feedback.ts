@@ -9,7 +9,8 @@
  */
 
 import { aiOutputFeedback, aiInvocations } from '@researchflow/core/schema';
-import { eq, and, desc, gte, lte, sql, count } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
+import { count } from 'drizzle-orm/sql/functions/aggregate';
 import { Router, type Request, type Response } from 'express';
 
 import { db } from '../../db';
@@ -17,6 +18,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission, requireRole } from '../middleware/rbac';
 import { rebuildFeedbackRAG } from '../services/ai-feedback-rag.service';
 import { logAction } from '../services/audit-service';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -319,7 +321,7 @@ router.put(
   '/:id/review',
   requireRole('ADMIN'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const user = req.user;
 
     if (!user) {
