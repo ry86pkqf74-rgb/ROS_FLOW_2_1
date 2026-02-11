@@ -140,8 +140,9 @@ async function buildRateLimiter() {
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: (req) => {
-        const serviceName = asString(req.params.serviceName) ?? 'unknown';
-        // separate budgets per service and per caller ip
+        // req.params.serviceName may be undefined if rate limiter fires on a
+        // non-parameterised path; fall back to 'unknown' so the key is stable.
+        const serviceName = (req.params.serviceName as string | undefined) ?? 'unknown';
         const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip;
         return `${serviceName}:${ip}`;
       },
@@ -150,7 +151,7 @@ async function buildRateLimiter() {
         res.status(429).json({
           success: false,
           error: 'rate_limited',
-          service: asString(req.params.serviceName),
+          service: (req.params.serviceName as string | undefined) ?? 'unknown',
         });
       },
     });
@@ -162,7 +163,7 @@ async function buildRateLimiter() {
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: (req) => {
-        const serviceName = asString(req.params.serviceName) ?? 'unknown';
+        const serviceName = (req.params.serviceName as string | undefined) ?? 'unknown';
         const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip;
         return `${serviceName}:${ip}`;
       },

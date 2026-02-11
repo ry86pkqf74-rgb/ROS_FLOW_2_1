@@ -528,28 +528,50 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * v1 legacy decryption — matches the pre-Batch 8 behavior that used the now-
-   * removed `crypto.createDecipher('aes-256-gcm', key)`.
+   * Replicate OpenSSL `EVP_BytesToKey(md5, NULL, password, 1, totalBytes)`
+   * which is what the deprecated `crypto.createCipher / createDecipher` used
+   * internally to derive key + IV from a password string.
    *
-   * Node removed `createDecipher` in recent versions, but the same byte-level
-   * behavior can be reproduced with `createDecipheriv` using a zero IV and no
-   * auth tag verification (createDecipher derived IV internally as all-zeros
-   * for GCM when called without one).
+   * For AES-256 (32-byte key) + GCM (16-byte IV) we need 48 bytes total.
+   *   round 1: d1 = MD5(password)               → 16 bytes
+   *   round 2: d2 = MD5(d1 ‖ password)           → 16 bytes
+   *   round 3: d3 = MD5(d2 ‖ password)           → 16 bytes
+   *   derived  = d1 ‖ d2 ‖ d3                     → 48 bytes
+   *   key      = first 32 bytes, iv = next 16 bytes
+   */
+  private evpBytesToKey(password: string): { key: Buffer; iv: Buffer } {
+    const pwd = Buffer.from(password);
+    const d1 = crypto.createHash('md5').update(pwd).digest();
+    const d2 = crypto.createHash('md5').update(Buffer.concat([d1, pwd])).digest();
+    const d3 = crypto.createHash('md5').update(Buffer.concat([d2, pwd])).digest();
+    return {
+      key: Buffer.concat([d1, d2]),  // 32 bytes
+      iv: d3,                         // 16 bytes
+    };
+  }
+
+  /**
+   * v1 legacy decryption — matches the pre-Batch 8 behavior that used the now-
+   * removed `crypto.createDecipher('aes-256-gcm', password)`.
+   *
+   * `createDecipher` derived key + IV via OpenSSL's EVP_BytesToKey (MD5, no
+   * salt, 1 iteration) and did not expose or verify a GCM auth tag.  We
+   * replicate the same derivation so existing v1 ciphertext can still be read.
+   *
+   * Because GCM's `decipher.final()` requires an auth tag and the legacy
+   * encrypt path never stored one, we extract the bytes via `update()` only.
+   * This is inherently unauthenticated (the original scheme was too).
    *
    * @deprecated v1 format lacks authenticated encryption; new data should use v2.
    */
   private decryptV1Legacy(encrypted: string): string {
-    const keyBuffer = this.deriveKey();
-    // createDecipher('aes-256-gcm', key) internally used an all-zero IV
-    const zeroIv = Buffer.alloc(16, 0);
-    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, zeroIv);
-    // Legacy path did not use an auth tag — disable tag requirement
-    (decipher as any).setAutoPadding(false);
+    const { key, iv } = this.evpBytesToKey(this.config.encryptionKey);
     try {
-      // Attempt without auth tag (GCM will error on final without one).
-      // Wrap in try/catch so we can surface a clear message.
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      // Legacy ciphertext has no auth tag.  GCM will reject final() without
+      // one, so we extract all plaintext via update() and skip final().
+      // This mirrors the unauthenticated behavior of the old createDecipher.
+      const decrypted = decipher.update(encrypted, 'hex', 'utf8');
       return decrypted;
     } catch {
       throw new Error(
