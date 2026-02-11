@@ -7,7 +7,7 @@
  * - Multi-service orchestration
  */
 
-import { config } from '../config';
+import { config } from '../config/env';
 
 interface N8nWorkflow {
   id: string;
