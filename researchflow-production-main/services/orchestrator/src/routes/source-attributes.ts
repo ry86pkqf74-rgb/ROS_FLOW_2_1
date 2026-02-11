@@ -17,7 +17,16 @@ import * as z from 'zod';
 
 import { db } from '../../db.js';
 import { requireRole } from '../middleware/rbac';
-import { eventBus } from '../services/event-bus';
+import { eventBus, type AppEvent } from '../services/event-bus';
+
+/** Row shape returned by the source_attributes SELECT query. */
+interface SourceAttributeRow {
+  attribute_key: string;
+  display_name: string;
+  value_text: string | null;
+  effective_date: string | null;
+  expiry_date: string | null;
+}
 
 
 // Async handler wrapper
@@ -234,11 +243,16 @@ router.post(
       RETURNING *
     `);
 
-    eventBus.emit('source-attributes:dsi_created', {
-      dsiId: result.rows[0].id,
-      modelId: validated.model_id,
-      dsiType: validated.dsi_type,
-      createdBy: userId,
+    eventBus.publish({
+      type: 'source-attributes:dsi_created',
+      ts: new Date().toISOString(),
+      topic: 'governance',
+      payload: {
+        dsiId: result.rows[0].id,
+        modelId: validated.model_id,
+        dsiType: validated.dsi_type,
+        createdBy: userId,
+      },
     });
 
     res.status(201).json(result.rows[0]);
@@ -367,11 +381,16 @@ router.post(
       )
     `);
 
-    eventBus.emit('source-attributes:attribute_updated', {
-      dsiId,
-      attributeKey: validated.attribute_key,
-      version: newVersion,
-      updatedBy: userId,
+    eventBus.publish({
+      type: 'source-attributes:attribute_updated',
+      ts: new Date().toISOString(),
+      topic: 'governance',
+      payload: {
+        dsiId,
+        attributeKey: validated.attribute_key,
+        version: newVersion,
+        updatedBy: userId,
+      },
     });
 
     res.status(201).json(result.rows[0]);
@@ -495,8 +514,8 @@ router.get(
       WHERE dsi_id = ${dsiId} AND is_current = true
     `);
 
-    const currentAttributes = new Map(
-      attributesResult.rows.map((a: any) => [a.attribute_key, a])
+    const currentAttributes = new Map<string, SourceAttributeRow>(
+      attributesResult.rows.map((a: any) => [a.attribute_key, a as SourceAttributeRow])
     );
 
     // Check each required key
@@ -704,12 +723,17 @@ router.post(
         });
         results.successful++;
 
-        eventBus.emit('source-attributes:batch_update', {
-          batchId,
-          dsiId: update.dsi_id,
-          attributeKey: update.attribute_key,
-          version: newVersion,
-          updatedBy: userId,
+        eventBus.publish({
+          type: 'source-attributes:batch_update',
+          ts: new Date().toISOString(),
+          topic: 'governance',
+          payload: {
+            batchId,
+            dsiId: update.dsi_id,
+            attributeKey: update.attribute_key,
+            version: newVersion,
+            updatedBy: userId,
+          },
         });
 
       } catch (error) {
