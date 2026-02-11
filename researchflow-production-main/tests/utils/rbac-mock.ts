@@ -10,13 +10,15 @@ import type { Request, Response, NextFunction } from 'express';
 
 import type { Role } from '../../packages/core/types/roles';
 
-type AuthUserRole = 'admin' | 'researcher' | 'reviewer' | 'viewer';
+// Derive from Express.AuthUser so MockUser.role can never drift
+// (AuthUser is declared in services/orchestrator/src/types/express.d.ts)
+type AuthUserRole = NonNullable<Express.Request['user']>['role'];
 
 const ROLE_TO_AUTH_ROLE: Record<Role, AuthUserRole> = {
-  VIEWER: 'viewer',
-  RESEARCHER: 'researcher',
-  STEWARD: 'reviewer',
-  ADMIN: 'admin',
+  VIEWER: 'VIEWER',
+  RESEARCHER: 'RESEARCHER',
+  STEWARD: 'STEWARD',
+  ADMIN: 'ADMIN',
 };
 
 export interface MockUser {
