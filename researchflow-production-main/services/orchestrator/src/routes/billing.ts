@@ -19,6 +19,7 @@ import { Router, Request, Response } from "express";
 
 import { db } from "../../db";
 import { asyncHandler } from "../middleware/asyncHandler";
+import { asString } from "../utils/asString";
 import { requireAuth as isAuthenticated } from "../middleware/auth.js";
 import {
   resolveOrgContext,
@@ -49,7 +50,7 @@ router.get(
   resolveOrgContext(),
   requireOrgId(),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
 
     const subscription = await getOrgSubscription(orgId);
 
@@ -72,7 +73,7 @@ router.get(
   resolveOrgContext(),
   requireOrgId(),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
 
     if (!db) {
       return res.status(503).json({ error: "Database not available" });
@@ -136,7 +137,7 @@ router.post(
   requireOrgId(),
   requireOrgCapability("billing"),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
     const userId = (req.user as any)?.id;
     const { tier } = req.body;
 
@@ -187,7 +188,7 @@ router.post(
   requireOrgId(),
   requireOrgCapability("billing"),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
     const userId = (req.user as any)?.id;
 
     try {
@@ -237,7 +238,7 @@ router.post(
       return res.status(403).json({ error: "Not available in production" });
     }
 
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
     const userId = (req.user as any)?.id;
     const { tier } = req.body;
 
@@ -278,7 +279,7 @@ router.get(
   resolveOrgContext(),
   requireOrgId(),
   asyncHandler(async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
+    const orgId = asString(req.params.orgId);
     const resource = req.params.resource as "members" | "projects" | "aiCalls" | "storage";
 
     const validResources = ["members", "projects", "aiCalls", "storage"];

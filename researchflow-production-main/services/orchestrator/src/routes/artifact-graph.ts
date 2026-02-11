@@ -12,6 +12,7 @@ import * as z from "zod";
 
 import { requireRole } from "../middleware/rbac";
 import * as artifactGraphService from "../services/artifactGraphService";
+import { asString } from "../utils/asString";
 import { createAuditEntry } from "../services/auditService";
 
 const router = Router();
@@ -52,7 +53,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const queryResult = graphQuerySchema.safeParse(req.query);
       
       if (!queryResult.success) {
@@ -136,7 +137,7 @@ router.delete(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { edgeId } = req.params;
+      const edgeId = asString(req.params.edgeId);
       
       // Get edge details for audit log
       const edge = await artifactGraphService.getEdge(edgeId);
@@ -211,7 +212,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { edgeId } = req.params;
+      const edgeId = asString(req.params.edgeId);
       const edge = await artifactGraphService.getEdge(edgeId);
 
       if (!edge) {

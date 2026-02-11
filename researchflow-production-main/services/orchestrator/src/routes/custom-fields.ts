@@ -3,6 +3,7 @@ import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { customFieldsService, CustomFieldsSchemaValidator } from '../services/customFieldsService';
+import { asString } from '../utils/asString';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const router = express.Router();
 router.get('/:entityType/schema',
   // TODO: Add requirePermission('VIEW') middleware
   asyncHandler(async (req, res) => {
-    const { entityType } = req.params;
+    const entityType = asString(req.params.entityType);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
 
     if (!orgId) {
@@ -60,7 +61,7 @@ router.put('/:entityType/schema',
   // TODO: Add blockInStandby() middleware
   // TODO: Add requireRole('ADMIN') middleware
   asyncHandler(async (req, res) => {
-    const { entityType } = req.params;
+    const entityType = asString(req.params.entityType);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
     const userId = req.user?.id || 'system';
 
@@ -108,7 +109,8 @@ router.put('/:entityType/schema',
 router.get('/:entityType/:entityId/values',
   // TODO: Add requirePermission('VIEW') middleware
   asyncHandler(async (req, res) => {
-    const { entityType, entityId } = req.params;
+    const entityType = asString(req.params.entityType);
+    const entityId = asString(req.params.entityId);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
 
     if (!orgId) {
@@ -136,7 +138,8 @@ router.put('/:entityType/:entityId/values',
   // TODO: Add blockInStandby() middleware
   // TODO: Add requirePermission('CREATE') middleware
   asyncHandler(async (req, res) => {
-    const { entityType, entityId } = req.params;
+    const entityType = asString(req.params.entityType);
+    const entityId = asString(req.params.entityId);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
 
     if (!orgId) {
@@ -168,7 +171,8 @@ router.delete('/:entityType/:entityId/values',
   // TODO: Add blockInStandby() middleware
   // TODO: Add requirePermission('DELETE') middleware
   asyncHandler(async (req, res) => {
-    const { entityType, entityId } = req.params;
+    const entityType = asString(req.params.entityType);
+    const entityId = asString(req.params.entityId);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
 
     if (!orgId) {
@@ -197,7 +201,7 @@ router.delete('/:entityType/:entityId/values',
 router.get('/:entityType/entities',
   // TODO: Add requirePermission('VIEW') middleware
   asyncHandler(async (req, res) => {
-    const { entityType } = req.params;
+    const entityType = asString(req.params.entityType);
     const orgId = req.headers['x-organization-id'] as string || req.query.orgId as string;
 
     if (!orgId) {

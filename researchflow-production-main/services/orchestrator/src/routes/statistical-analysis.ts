@@ -17,6 +17,7 @@ import * as z from 'zod';
 import { config } from '../config/env';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requirePermission } from '../middleware/rbac';
+import { asString } from '../utils/asString';
 import { logAction } from '../services/audit-service';
 import { createLogger } from '../utils/logger';
 
@@ -81,7 +82,7 @@ router.post(
   requirePermission('ANALYZE'),
   asyncHandler(async (req: Request, res: Response) => {
     const startTime = Date.now();
-    const researchId = req.params.id;
+    const researchId = asString(req.params.id);
     const requestId = `stat_analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     logger.info('Statistical analysis requested', { researchId, requestId });

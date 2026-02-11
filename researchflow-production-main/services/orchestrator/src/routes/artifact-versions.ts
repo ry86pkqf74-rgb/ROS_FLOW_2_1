@@ -18,6 +18,7 @@ import * as z from "zod";
 
 import { db } from "../../db";
 import { requireRole } from "../middleware/rbac";
+import { asString } from "../utils/asString";
 import { createAuditEntry } from "../services/auditService";
 import * as diffService from "../services/diffService";
 
@@ -55,7 +56,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const parseResult = listVersionsSchema.safeParse(req.query);
 
       if (!parseResult.success) {
@@ -117,7 +118,8 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId, versionId } = req.params;
+      const artifactId = asString(req.params.artifactId);
+      const versionId = asString(req.params.versionId);
       const includeContent = req.query.includeContent === 'true';
 
       const [version] = await db
@@ -169,7 +171,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const parseResult = createVersionSchema.safeParse(req.body);
 
       if (!parseResult.success) {
@@ -275,7 +277,7 @@ router.post(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const parseResult = compareVersionsSchema.safeParse(req.body);
 
       if (!parseResult.success) {
@@ -336,7 +338,8 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId, versionId } = req.params;
+      const artifactId = asString(req.params.artifactId);
+      const versionId = asString(req.params.versionId);
       const userId = (req as any).user?.id;
 
       // Get the version to restore
