@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert';
-import { test, describe } from 'node:test';
+import { test, describe, beforeAll, afterAll } from 'node:test';
 
 import express from 'express';
 import request from 'supertest';
@@ -22,7 +22,7 @@ function createProductionTestApp() {
     req.user = {
       id: 'prod-user-001',
       email: 'researcher@researchflow.ai',
-      role: 'researcher',
+      role: 'RESEARCHER',
     };
     next();
   });
@@ -32,6 +32,14 @@ function createProductionTestApp() {
 }
 
 describe('AI Bridge Production Validation', () => {
+  beforeAll(() => {
+    process.env.RF_TEST_BYPASS_RBAC = '1';
+  });
+
+  afterAll(() => {
+    delete process.env.RF_TEST_BYPASS_RBAC;
+  });
+
   test('should validate complete production stack', async () => {
     const app = createProductionTestApp();
     

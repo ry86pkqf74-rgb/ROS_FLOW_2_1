@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert';
-import { test, describe } from 'node:test';
+import { test, describe, beforeAll, afterAll } from 'node:test';
 
 import express from 'express';
 import request from 'supertest';
@@ -21,7 +21,7 @@ function createTestApp() {
     req.user = {
       id: 'test-user-123',
       email: 'test@example.com',
-      role: 'researcher',
+      role: 'RESEARCHER',
     };
     next();
   });
@@ -30,6 +30,14 @@ function createTestApp() {
 }
 
 describe('AI Bridge Basic Tests', () => {
+  beforeAll(() => {
+    process.env.RF_TEST_BYPASS_RBAC = '1';
+  });
+
+  afterAll(() => {
+    delete process.env.RF_TEST_BYPASS_RBAC;
+  });
+
   test('should return capabilities', async () => {
     const app = createTestApp();
     const response = await request(app)

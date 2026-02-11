@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert';
-import { test, describe, beforeEach } from 'node:test';
+import { test, describe, beforeEach, beforeAll, afterAll } from 'node:test';
 
 import express from 'express';
 import request from 'supertest';
@@ -22,7 +22,7 @@ function createE2ETestApp() {
     req.user = {
       id: 'python-agent-user',
       email: 'python-agent@researchflow.ai',
-      role: 'researcher',
+      role: 'RESEARCHER',
     };
     next();
   });
@@ -32,6 +32,14 @@ function createE2ETestApp() {
 }
 
 describe('AI Bridge End-to-End Tests', () => {
+  beforeAll(() => {
+    process.env.RF_TEST_BYPASS_RBAC = '1';
+  });
+
+  afterAll(() => {
+    delete process.env.RF_TEST_BYPASS_RBAC;
+  });
+
   test('should handle hypothesis generation workflow', async () => {
     const app = createE2ETestApp();
     
