@@ -239,7 +239,97 @@ declare module 'redis' {
   export type RedisClientType = any;
   export const createClient: any;
 }
-declare module 'yjs' { export class Doc { constructor(); } export const encodeStateAsUpdate: any; export const applyUpdate: any; }
+declare module 'yjs' {
+  export class Doc {
+    constructor(opts?: any);
+    getMap<T = any>(name?: string): Map<T>;
+    getArray<T = any>(name?: string): Array<T>;
+    getText(name?: string): Text;
+    getXmlFragment(name?: string): XmlFragment;
+    get<Type extends typeof AbstractType>(name: string, TypeConstructor: Type): InstanceType<Type>;
+    transact(f: (transaction: any) => void, origin?: any): void;
+    on(event: string, listener: (...args: any[]) => void): void;
+    off(event: string, listener: (...args: any[]) => void): void;
+    destroy(): void;
+    share: globalThis.Map<string, AbstractType<any>>;
+    clientID: number;
+    guid: string;
+  }
+
+  export class AbstractType<EventType = any> {
+    toJSON(): any;
+  }
+
+  export class Map<T = any> extends AbstractType {
+    get(key: string): T | undefined;
+    set(key: string, value: T): T;
+    delete(key: string): void;
+    has(key: string): boolean;
+    forEach(f: (value: T, key: string, map: Map<T>) => void): void;
+    toJSON(): { [key: string]: T };
+  }
+
+  export class Array<T = any> extends AbstractType {
+    get(index: number): T;
+    insert(index: number, content: T[]): void;
+    delete(index: number, length?: number): void;
+    push(content: T[]): void;
+    unshift(content: T[]): void;
+    toArray(): T[];
+    length: number;
+    forEach(f: (value: T, index: number, array: Array<T>) => void): void;
+    toJSON(): T[];
+  }
+
+  export class Text extends AbstractType {
+    insert(index: number, text: string, attributes?: Record<string, any>): void;
+    delete(index: number, length: number): void;
+    toString(): string;
+    toJSON(): string;
+    length: number;
+  }
+
+  export class XmlFragment extends AbstractType {
+    forEach(f: (item: XmlElement | XmlText) => void): void;
+    toArray(): (XmlElement | XmlText)[];
+    toString(): string;
+    length: number;
+  }
+
+  export class XmlElement extends AbstractType {
+    nodeName: string;
+    forEach(f: (child: XmlElement | XmlText) => void): void;
+    getAttributes(): globalThis.Map<string, string>;
+    getAttribute(name: string): string | undefined;
+    setAttribute(name: string, value: string): void;
+    removeAttribute(name: string): void;
+    toString(): string;
+    toArray(): (XmlElement | XmlText)[];
+    length: number;
+  }
+
+  export class XmlText extends AbstractType {
+    insert(index: number, text: string, attributes?: Record<string, any>): void;
+    delete(index: number, length: number): void;
+    toString(): string;
+    length: number;
+  }
+
+  export const encodeStateAsUpdate: (doc: Doc, encodedTargetStateVector?: Uint8Array) => Uint8Array;
+  export const applyUpdate: (ydoc: Doc, update: Uint8Array, origin?: any) => void;
+  export function mergeUpdates(updates: Uint8Array[]): Uint8Array;
+  export const encodeStateVector: (doc: Doc) => Uint8Array;
+  export const diffUpdate: (update: Uint8Array, sv: Uint8Array) => Uint8Array;
+
+  export class UndoManager {
+    constructor(typeScope: AbstractType | AbstractType[], opts?: any);
+    undo(): void;
+    redo(): void;
+    clear(): void;
+    stopCapturing(): void;
+    on(event: string, listener: (...args: any[]) => void): void;
+  }
+}
 declare module 'drizzle-orm' { export const eq: any; export const and: any; export const or: any; export const desc: any; export const asc: any; export const gt: any; export const lt: any; export const gte: any; export const lte: any; export const sql: any; export const inArray: any; }
 
 // Internal workspace packages
