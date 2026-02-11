@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 
 import { chatStorage } from "../chat/storage";
 
+import { asString } from "../../src/utils/asString";
 import { openai, speechToText, voiceChatWithTextModel } from "./client";
 
 export function registerAudioRoutes(app: Express): void {
@@ -19,7 +20,7 @@ export function registerAudioRoutes(app: Express): void {
   // Get single conversation with messages
   app.get("/api/conversations/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(asString(req.params.id));
       const conversation = await chatStorage.getConversation(id);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
@@ -47,7 +48,7 @@ export function registerAudioRoutes(app: Express): void {
   // Delete conversation
   app.delete("/api/conversations/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(asString(req.params.id));
       await chatStorage.deleteConversation(id);
       res.status(204).send();
     } catch (error) {
@@ -61,7 +62,7 @@ export function registerAudioRoutes(app: Express): void {
   // For text model control, chain: speechToText() -> text model -> textToSpeech()
   app.post("/api/conversations/:id/messages", async (req: Request, res: Response) => {
     try {
-      const conversationId = parseInt(req.params.id);
+      const conversationId = parseInt(asString(req.params.id));
       const { audio, voice = "alloy", inputFormat = "wav" } = req.body;
 
       if (!audio) {
@@ -135,7 +136,7 @@ export function registerAudioRoutes(app: Express): void {
   // Supports multilingual sentence detection via locale parameter
   app.post("/api/conversations/:id/voice-stream", async (req: Request, res: Response) => {
     try {
-      const conversationId = parseInt(req.params.id);
+      const conversationId = parseInt(asString(req.params.id));
       const { audio, voice = "alloy", inputFormat = "wav", locale = "en" } = req.body;
 
       if (!audio) {
