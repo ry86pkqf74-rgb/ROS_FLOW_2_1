@@ -245,7 +245,7 @@ router.patch(
   resolveOrgContext(),
   requireOrgId(),
   requireMinOrgRole("ADMIN"),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request<{ orgId: string }>, res: Response) => {
     const orgId = req.params.orgId;
     const userId = (req.user as any)?.id;
 
@@ -309,7 +309,7 @@ router.delete(
   resolveOrgContext(),
   requireOrgId(),
   requireMinOrgRole("OWNER"),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request<{ orgId: string }>, res: Response) => {
     const orgId = req.params.orgId;
     const userId = (req.user as any)?.id;
 
@@ -419,7 +419,7 @@ router.patch(
   resolveOrgContext(),
   requireOrgId(),
   requireOrgCapability("manage_members"),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request<{ orgId: string; memberId: string }>, res: Response) => {
     const { orgId, memberId } = req.params;
     const { orgRole } = req.body;
     const userId = (req.user as any)?.id;
@@ -491,7 +491,7 @@ router.delete(
   resolveOrgContext(),
   requireOrgId(),
   requireOrgCapability("manage_members"),
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request<{ orgId: string; memberId: string }>, res: Response) => {
     const { orgId, memberId } = req.params;
     const userId = (req.user as any)?.id;
 
