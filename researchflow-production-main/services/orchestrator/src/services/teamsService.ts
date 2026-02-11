@@ -42,4 +42,3 @@ export interface TeamsAction {
   name: string;
   targets?: Array<{ os: string; uri: string }>;
 }
-etype
