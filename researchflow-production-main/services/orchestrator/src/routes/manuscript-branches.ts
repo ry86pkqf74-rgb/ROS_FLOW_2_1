@@ -18,6 +18,7 @@ import { db } from "../../db";
 import { requireRole } from "../middleware/rbac";
 import aiEditingService from "../services/aiEditingService";
 import { createAuditEntry } from "../services/auditService";
+import { asString } from "../utils/asString";
 import * as diffService from "../services/diffService";
 import manuscriptVersionService from "../services/manuscriptVersionService";
 
@@ -167,7 +168,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const userId = (req as any).user?.id || "system";
 
       // Validate input
@@ -282,7 +283,7 @@ router.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
 
       // Check artifact exists
       const artifact = await db.query.artifacts.findFirst({
@@ -340,7 +341,7 @@ router.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId } = req.params;
+      const artifactId = asString(req.params.artifactId);
       const userId = (req as any).user?.id || "system";
 
       // Validate input
@@ -596,7 +597,8 @@ router.delete(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { artifactId, branchName } = req.params;
+      const artifactId = asString(req.params.artifactId);
+      const branchName = asString(req.params.branchName);
       const userId = (req as any).user?.id || "system";
 
       if (RESERVED_BRANCHES.includes(branchName)) {
@@ -661,7 +663,7 @@ manuscriptBranchingRoutes.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const parsed = createManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -686,7 +688,7 @@ manuscriptBranchingRoutes.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { branchId } = req.params;
+      const branchId = asString(req.params.branchId);
       const parsed = mergeManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -715,7 +717,7 @@ manuscriptBranchingRoutes.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { branchId } = req.params;
+      const branchId = asString(req.params.branchId);
       const { fromVersionId, toVersionId } = req.query;
 
       let from = typeof fromVersionId === "string" ? fromVersionId : undefined;
@@ -746,7 +748,7 @@ manuscriptBranchingRoutes.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const parsed = refineSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -766,7 +768,7 @@ manuscriptBranchingRoutes.get(
   requireRole("VIEWER"),
   async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = asString(req.params.id);
       const branch = typeof req.query.branch === "string" ? req.query.branch : undefined;
       const history = await manuscriptVersionService.getVersionHistory(id, branch);
       res.json({ manuscriptId: id, history });

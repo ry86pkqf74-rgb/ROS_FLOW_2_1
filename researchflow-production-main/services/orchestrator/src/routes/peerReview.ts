@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
 import * as peerReviewService from '../services/peerReviewService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -34,7 +35,7 @@ router.get('/rubrics/templates', async (req: Request, res: Response) => {
  */
 router.get('/research/:researchId/rubrics', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const rubrics = peerReviewService.getResearchRubrics(researchId);
     return res.json({ rubrics });
   } catch (error) {
@@ -49,7 +50,7 @@ router.get('/research/:researchId/rubrics', async (req: Request, res: Response) 
  */
 router.post('/research/:researchId/rubrics', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -95,7 +96,7 @@ router.post('/research/:researchId/rubrics', async (req: Request, res: Response)
  */
 router.post('/research/:researchId/rubrics/from-template', async (req: Request, res: Response) => {
   try {
-    const { researchId } = req.params;
+    const researchId = asString(req.params.researchId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -127,7 +128,7 @@ router.post('/research/:researchId/rubrics/from-template', async (req: Request, 
  */
 router.get('/rubrics/:rubricId', async (req: Request, res: Response) => {
   try {
-    const { rubricId } = req.params;
+    const rubricId = asString(req.params.rubricId);
     const rubric = peerReviewService.getRubric(rubricId);
 
     if (!rubric) {
@@ -151,7 +152,7 @@ router.get('/rubrics/:rubricId', async (req: Request, res: Response) => {
  */
 router.post('/submissions/:submissionId/review-assignments', async (req: Request, res: Response) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = asString(req.params.submissionId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -188,7 +189,7 @@ router.post('/submissions/:submissionId/review-assignments', async (req: Request
  */
 router.get('/submissions/:submissionId/review-assignments', async (req: Request, res: Response) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = asString(req.params.submissionId);
     const assignments = peerReviewService.getAssignmentsBySubmission(submissionId);
     return res.json({ assignments });
   } catch (error) {
@@ -222,7 +223,7 @@ router.get('/me/review-assignments', async (req: Request, res: Response) => {
  */
 router.get('/review-assignments/:assignmentId', async (req: Request, res: Response) => {
   try {
-    const { assignmentId } = req.params;
+    const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
     const isEditor = req.user?.role === 'STEWARD' || req.user?.role === 'ADMIN';
 
@@ -253,7 +254,7 @@ router.get('/review-assignments/:assignmentId', async (req: Request, res: Respon
  */
 router.post('/review-assignments/:assignmentId/start', async (req: Request, res: Response) => {
   try {
-    const { assignmentId } = req.params;
+    const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -277,7 +278,7 @@ router.post('/review-assignments/:assignmentId/start', async (req: Request, res:
  */
 router.post('/review-assignments/:assignmentId/decline', async (req: Request, res: Response) => {
   try {
-    const { assignmentId } = req.params;
+    const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -312,7 +313,7 @@ router.post('/review-assignments/:assignmentId/decline', async (req: Request, re
  */
 router.put('/review-assignments/:assignmentId/score', async (req: Request, res: Response) => {
   try {
-    const { assignmentId } = req.params;
+    const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -347,7 +348,7 @@ router.put('/review-assignments/:assignmentId/score', async (req: Request, res: 
  */
 router.post('/review-assignments/:assignmentId/submit', async (req: Request, res: Response) => {
   try {
-    const { assignmentId } = req.params;
+    const assignmentId = asString(req.params.assignmentId);
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -375,7 +376,7 @@ router.post('/review-assignments/:assignmentId/submit', async (req: Request, res
  */
 router.get('/submissions/:submissionId/review-summary', async (req: Request, res: Response) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = asString(req.params.submissionId);
     const summary = peerReviewService.getReviewSummary(submissionId);
 
     if (!summary) {
