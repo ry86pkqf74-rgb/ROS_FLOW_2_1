@@ -22,7 +22,7 @@ function createE2ETestApp() {
     req.user = {
       id: 'python-agent-user',
       email: 'python-agent@researchflow.ai',
-      role: 'RESEARCHER',
+      role: 'researcher',
     };
     next();
   });

@@ -30,8 +30,8 @@ describe('PluginMarketplaceService', () => {
     });
 
     it('should filter by category', () => {
-      const plugins = listPlugins({ category: 'ANALYSIS' });
-      expect(plugins.every(p => p.category === 'ANALYSIS')).toBe(true);
+      const plugins = listPlugins({ category: 'ANALYTICS' });
+      expect(plugins.every(p => p.category === 'ANALYTICS')).toBe(true);
     });
 
     it('should filter verified plugins only', () => {

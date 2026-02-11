@@ -21,7 +21,7 @@ function createTestApp() {
     req.user = {
       id: 'test-user-123',
       email: 'test@example.com',
-      role: 'RESEARCHER',
+      role: 'researcher',
     };
     next();
   });

@@ -22,7 +22,7 @@ function createProductionTestApp() {
     req.user = {
       id: 'prod-user-001',
       email: 'researcher@researchflow.ai',
-      role: 'RESEARCHER',
+      role: 'researcher',
     };
     next();
   });
