@@ -213,11 +213,16 @@ router.post(
     `);
 
     // Emit event
-    eventBus.emit('transparency:bundle_created', {
-      bundleId: result.rows[0].id,
-      modelId: validated.model_id,
-      bundleType: validated.bundle_type,
-      createdBy: userId,
+    eventBus.publish({
+      type: 'transparency:bundle_created',
+      topic: 'governance',
+      ts: new Date().toISOString(),
+      payload: {
+        bundleId: result.rows[0].id,
+        modelId: validated.model_id,
+        bundleType: validated.bundle_type,
+        createdBy: userId,
+      },
     });
 
     res.status(201).json(result.rows[0]);
@@ -288,11 +293,16 @@ router.patch(
 
     // Emit status change event if applicable
     if (validated.status && validated.status !== current.status) {
-      eventBus.emit('transparency:bundle_status_changed', {
-        bundleId: id,
-        previousStatus: current.status,
-        newStatus: validated.status,
-        changedBy: userId,
+      eventBus.publish({
+        type: 'transparency:bundle_status_changed',
+        topic: 'governance',
+        ts: new Date().toISOString(),
+        payload: {
+          bundleId: id,
+          previousStatus: current.status,
+          newStatus: validated.status,
+          changedBy: userId,
+        },
       });
     }
 
@@ -323,9 +333,14 @@ router.delete(
       return;
     }
 
-    eventBus.emit('transparency:bundle_archived', {
-      bundleId: id,
-      archivedBy: userId,
+    eventBus.publish({
+      type: 'transparency:bundle_archived',
+      topic: 'governance',
+      ts: new Date().toISOString(),
+      payload: {
+        bundleId: id,
+        archivedBy: userId,
+      },
     });
 
     res.json({ message: 'Evidence bundle archived', bundle: result.rows[0] });

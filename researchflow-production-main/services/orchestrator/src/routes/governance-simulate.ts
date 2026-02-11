@@ -10,7 +10,7 @@
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
-import { logAction } from '../services/auditService.js';
+import { logAction } from '../services/audit-service';
 
 const router = Router();
 
@@ -256,7 +256,7 @@ router.post('/simulate', async (req: Request, res: Response) => {
         id: 'custom',
         name: customScenario.name,
         description: customScenario.description || 'Custom simulation scenario',
-        actions: customScenario.actions,
+        actions: customScenario.actions as SimulationAction[],
       };
     } else if (scenarioId) {
       const builtIn = BUILT_IN_SCENARIOS.find((s) => s.id === scenarioId);
@@ -280,7 +280,8 @@ router.post('/simulate', async (req: Request, res: Response) => {
 
     // Log simulation
     await logAction({
-      action: 'GOVERNANCE_SIMULATION',
+      eventType: 'GOVERNANCE_SIMULATION',
+      action: 'SIMULATE',
       userId: user?.id || 'anonymous',
       resourceType: 'governance',
       resourceId: scenario.id,

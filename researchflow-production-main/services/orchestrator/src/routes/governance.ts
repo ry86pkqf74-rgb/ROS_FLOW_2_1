@@ -20,6 +20,7 @@ import { validateAuditChain } from '../services/auditService.js';
 import { eventBus } from '../services/event-bus';
 import { featureFlagsService } from '../services/feature-flags.service';
 import { governanceConfigService } from '../services/governance-config.service';
+import { asString } from '../utils/asString';
 
 // Simple async handler wrapper
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
@@ -160,7 +161,7 @@ router.post(
 
     try {
       // Validate mode change is enabled via feature flag
-      const modeChangeEnabled = await featureFlagsService.isEnabled('allow_mode_changes');
+      const modeChangeEnabled = await featureFlagsService.isFlagEnabled('allow_mode_changes');
       if (!modeChangeEnabled) {
         res.status(403).json({
           error: 'Feature disabled',
@@ -474,7 +475,7 @@ router.post(
     }
 
     // Check if audit export is enabled via feature flag
-    const auditExportEnabled = await featureFlagsService.isEnabled('allow_audit_export');
+    const auditExportEnabled = await featureFlagsService.isFlagEnabled('allow_audit_export');
     if (!auditExportEnabled) {
       res.status(403).json({
         error: 'Feature disabled',
@@ -570,7 +571,7 @@ router.post(
     }
 
     // Check if approval workflow is enabled via feature flag
-    const approvalsEnabled = await featureFlagsService.isEnabled('allow_approvals');
+    const approvalsEnabled = await featureFlagsService.isFlagEnabled('allow_approvals');
     if (!approvalsEnabled) {
       res.status(403).json({
         error: 'Feature disabled',
@@ -654,7 +655,7 @@ router.post(
     }
 
     // Check if approval workflow is enabled via feature flag
-    const approvalsEnabled = await featureFlagsService.isEnabled('allow_approvals');
+    const approvalsEnabled = await featureFlagsService.isFlagEnabled('allow_approvals');
     if (!approvalsEnabled) {
       res.status(403).json({
         error: 'Feature disabled',
@@ -809,7 +810,7 @@ router.get(
   '/phi/reveal/:token',
   requireRole('STEWARD'),
   asyncHandler(async (req, res) => {
-    const { token } = req.params;
+    const token = asString(req.params.token);
 
     // In production, validate token against database
     // For now, just check if it looks valid
