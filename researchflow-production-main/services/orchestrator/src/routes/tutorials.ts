@@ -10,7 +10,7 @@ import * as z from 'zod';
 
 import { asyncHandler } from '../middleware/asyncHandler';
 import { featureFlagsService } from '../services/featureFlagsService';
-import { tutorialService } from '../services/tutorialService';
+import { tutorialService, TutorialStep } from '../services/tutorialService';
 import { asString } from '../utils/asString';
 
 
@@ -257,7 +257,15 @@ router.post(
       });
     }
 
-    const tutorial = await tutorialService.createTutorial(validation.data);
+    const tutorial = await tutorialService.createTutorial({
+      tutorialKey: validation.data.tutorialKey,
+      title: validation.data.title,
+      description: validation.data.description,
+      videoUrl: validation.data.videoUrl,
+      steps: validation.data.steps,
+      enabled: validation.data.enabled,
+      orgId: validation.data.orgId,
+    });
 
     res.status(201).json({
       success: true,
@@ -306,7 +314,22 @@ router.put(
       });
     }
 
-    const tutorial = await tutorialService.updateTutorial(key, validation.data);
+    // Explicitly construct Partial to ensure type safety
+    const updateData: Partial<{
+      title: string;
+      description: string;
+      videoUrl: string;
+      steps: TutorialStep[];
+      enabled: boolean;
+    }> = {
+      title: validation.data.title,
+      description: validation.data.description,
+      videoUrl: validation.data.videoUrl,
+      steps: validation.data.steps as TutorialStep[] | undefined,
+      enabled: validation.data.enabled,
+    };
+
+    const tutorial = await tutorialService.updateTutorial(key, updateData);
 
     if (!tutorial) {
       return res.status(404).json({

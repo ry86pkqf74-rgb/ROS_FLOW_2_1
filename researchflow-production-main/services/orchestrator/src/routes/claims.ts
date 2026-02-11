@@ -329,7 +329,13 @@ router.post(
 
       const result = await claimsService.linkEvidence({
         claimId,
-        ...params,
+        evidenceType: params.evidenceType,
+        evidenceArtifactId: params.evidenceArtifactId,
+        citationId: params.citationId,
+        externalUrl: params.externalUrl,
+        locator: params.locator,
+        notes: params.notes,
+        metadata: params.metadata,
         linkedBy: userId,
       });
 

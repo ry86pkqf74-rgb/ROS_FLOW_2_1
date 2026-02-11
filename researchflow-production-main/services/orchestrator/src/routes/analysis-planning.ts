@@ -100,7 +100,16 @@ router.post(
     const body = createPlanSchema.parse(req.body);
     const userId = (req as any).user?.id || 'demo-user';
 
-    const result = await planningService.createPlan(body, userId);
+    const result = await planningService.createPlan({
+      datasetId: body.datasetId,
+      name: body.name,
+      description: body.description,
+      researchQuestion: body.researchQuestion,
+      planType: body.planType,
+      constraints: body.constraints,
+      projectId: body.projectId,
+      datasetMetadata: body.datasetMetadata,
+    }, userId);
 
     res.status(201).json({
       plan: result.plan,

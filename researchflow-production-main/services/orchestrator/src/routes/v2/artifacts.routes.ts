@@ -139,7 +139,11 @@ router.post('/', requireActiveAccount, async (req: Request, res: Response, next:
 
     // Create artifact
     const artifact = await artifactGraphService.createArtifact({
-      ...data,
+      type: data.type,
+      name: data.name,
+      description: data.description,
+      status: data.status,
+      metadata: data.metadata,
       ownerUserId: userId,
       organizationId,
     });
@@ -379,7 +383,11 @@ router.post('/:id/link', requireActiveAccount, async (req: Request, res: Respons
     const edge = await artifactGraphService.linkArtifacts(
       {
         sourceArtifactId,
-        ...data,
+        targetArtifactId: data.targetArtifactId,
+        relationType: data.relationType,
+        transformationType: data.transformationType,
+        transformationConfig: data.transformationConfig,
+        metadata: data.metadata,
       },
       userId
     );

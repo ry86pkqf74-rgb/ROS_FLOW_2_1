@@ -75,7 +75,9 @@ router.post('/research/:researchId/rubrics', async (req: Request, res: Response)
     }).parse(req.body);
 
     const rubric = peerReviewService.createRubric({
-      ...input,
+      name: input.name,
+      description: input.description,
+      criteria: input.criteria,
       researchId,
       isTemplate: false,
     }, userId);
@@ -327,7 +329,13 @@ router.put('/review-assignments/:assignmentId/score', async (req: Request, res: 
       confidenceLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     }).parse(req.body);
 
-    const score = peerReviewService.saveReviewScore(assignmentId, userId, input);
+    const score = peerReviewService.saveReviewScore(assignmentId, userId, {
+      scores: input.scores,
+      overallComment: input.overallComment,
+      confidentialComment: input.confidentialComment,
+      recommendation: input.recommendation,
+      confidenceLevel: input.confidenceLevel,
+    });
     if (!score) {
       return res.status(404).json({ error: 'Assignment not found or not authorized' });
     }
