@@ -15,7 +15,7 @@ vi.mock('../../lib/db', () => ({
   }
 }));
 
-import { db } from '../../lib/db';
+import { db } from '../../../db';
 
 describe('ArtifactGraphService', () => {
   let service: ArtifactGraphService;
