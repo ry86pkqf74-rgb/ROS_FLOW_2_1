@@ -239,7 +239,6 @@ declare module 'redis' {
   export type RedisClientType = any;
   export const createClient: any;
 }
-declare module 'yjs' { export class Doc { constructor(); } export const encodeStateAsUpdate: any; export const applyUpdate: any; }
 declare module 'drizzle-orm' { export const eq: any; export const and: any; export const or: any; export const desc: any; export const asc: any; export const gt: any; export const lt: any; export const gte: any; export const lte: any; export const sql: any; export const inArray: any; }
 
 // Internal workspace packages
