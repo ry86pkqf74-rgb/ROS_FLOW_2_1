@@ -308,9 +308,13 @@ router.put(
       });
     }
 
-    // Note: Minor type assertion needed due to Zod's type inference for nested arrays.
-    // Runtime validation via tutorialStepSchema ensures correctness.
-    const tutorial = await tutorialService.updateTutorial(key, validation.data as Parameters<typeof tutorialService.updateTutorial>[1]);
+    const tutorial = await tutorialService.updateTutorial(key, {
+      title: validation.data.title,
+      description: validation.data.description,
+      videoUrl: validation.data.videoUrl,
+      steps: validation.data.steps,
+      enabled: validation.data.enabled,
+    });
 
     if (!tutorial) {
       return res.status(404).json({

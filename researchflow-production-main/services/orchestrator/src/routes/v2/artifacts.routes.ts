@@ -142,7 +142,6 @@ router.post('/', requireActiveAccount, async (req: Request, res: Response, next:
       type: data.type,
       name: data.name,
       description: data.description,
-      status: data.status,
       metadata: data.metadata,
       ownerUserId: userId,
       organizationId,
