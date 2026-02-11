@@ -528,25 +528,27 @@ export class SecurityEnhancementMiddleware {
   }
 
   /**
-   * Replicate OpenSSL `EVP_BytesToKey(md5, NULL, password, 1, totalBytes)`
-   * which is what the deprecated `crypto.createCipher / createDecipher` used
-   * internally to derive key + IV from a password string.
+   * Derive key and IV from a password for legacy v1 decryption.
    *
-   * For AES-256 (32-byte key) + GCM (16-byte IV) we need 48 bytes total.
-   *   round 1: d1 = MD5(password)               → 16 bytes
-   *   round 2: d2 = MD5(d1 ‖ password)           → 16 bytes
-   *   round 3: d3 = MD5(d2 ‖ password)           → 16 bytes
-   *   derived  = d1 ‖ d2 ‖ d3                     → 48 bytes
-   *   key      = first 32 bytes, iv = next 16 bytes
+   * Historically this used OpenSSL's `EVP_BytesToKey(md5, NULL, password, 1, totalBytes)`
+   * via Node's deprecated `crypto.createCipher / createDecipher`. That construction
+   * relied on plain MD5 with a single iteration and no salt, which is computationally
+   * weak and vulnerable to brute-force attacks.
+   *
+   * To harden this path while preserving the same API and total output size, we now
+   * derive 48 bytes (32-byte key + 16-byte IV) using Node's built-in `scrypt` KDF.
+   * This increases the computational effort required to guess the password compared
+   * to the original MD5-based scheme.
    */
   private evpBytesToKey(password: string): { key: Buffer; iv: Buffer } {
-    const pwd = Buffer.from(password);
-    const d1 = crypto.createHash('md5').update(pwd).digest();
-    const d2 = crypto.createHash('md5').update(Buffer.concat([d1, pwd])).digest();
-    const d3 = crypto.createHash('md5').update(Buffer.concat([d2, pwd])).digest();
+    // Fixed, internal salt for legacy compatibility. This ensures deterministic
+    // derivation for a given password without changing the external ciphertext format.
+    const legacySalt = Buffer.from('legacy-v1-kdf-salt');
+    // Derive 48 bytes: first 32 for key, next 16 for IV.
+    const derived = crypto.scryptSync(password, legacySalt, 48);
     return {
-      key: Buffer.concat([d1, d2]),  // 32 bytes
-      iv: d3,                         // 16 bytes
+      key: derived.subarray(0, 32),   // 32 bytes
+      iv: derived.subarray(32, 48),   // 16 bytes
     };
   }
 
