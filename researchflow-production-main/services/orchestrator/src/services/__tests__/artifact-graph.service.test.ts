@@ -9,13 +9,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ArtifactGraphService } from '../artifact-graph.service';
 
 // Mock database module
-vi.mock('../../lib/db', () => ({
+vi.mock('../../../db', () => ({
   db: {
     query: vi.fn()
   }
 }));
 
-import { db } from '../../lib/db';
+import { db } from '../../../db';
 
 describe('ArtifactGraphService', () => {
   let service: ArtifactGraphService;
