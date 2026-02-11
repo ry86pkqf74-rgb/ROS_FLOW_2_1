@@ -107,7 +107,7 @@ router.get('/watchers/:manuscriptId', async (req: Request, res: Response) => {
 /**
  * Update a watcher
  */
-router.put('/watchers/:id', async (req: Request, res: Response) => {
+router.put('/watchers/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
     const { query, frequency, sources, status } = req.body as UpdateWatcherRequest;
@@ -174,7 +174,7 @@ router.put('/watchers/:id', async (req: Request, res: Response) => {
 /**
  * Delete a watcher
  */
-router.delete('/watchers/:id', async (req: Request, res: Response) => {
+router.delete('/watchers/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user?.id;
@@ -282,7 +282,7 @@ router.put('/alerts/:id/status', async (req: Request, res: Response) => {
 /**
  * Run a watcher manually (trigger immediate search)
  */
-router.post('/watchers/:id/run', async (req: Request, res: Response) => {
+router.post('/watchers/:id/run', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user?.id;
