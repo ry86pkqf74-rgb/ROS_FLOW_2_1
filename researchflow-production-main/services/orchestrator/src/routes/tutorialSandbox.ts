@@ -16,6 +16,7 @@ import {
   getDemoDataset,
   listDemoDatasets,
 } from '../services/tutorialSandboxService';
+import { asString } from '../utils/asString';
 
 export const tutorialSandboxRouter = Router();
 
@@ -74,7 +75,7 @@ tutorialSandboxRouter.get('/categories', (_req: Request, res: Response) => {
  */
 tutorialSandboxRouter.get('/:id', (req: Request, res: Response) => {
   try {
-    const tutorial = getTutorial(req.params.id);
+    const tutorial = getTutorial(asString(req.params.id));
     if (!tutorial) {
       return res.status(404).json({ error: 'Tutorial not found' });
     }
@@ -91,7 +92,7 @@ tutorialSandboxRouter.get('/:id', (req: Request, res: Response) => {
  */
 tutorialSandboxRouter.get('/:tutorialId/snippets/:snippetId', (req: Request, res: Response) => {
   try {
-    const snippet = getSnippet(req.params.tutorialId, req.params.snippetId);
+    const snippet = getSnippet(asString(req.params.tutorialId), asString(req.params.snippetId));
     if (!snippet) {
       return res.status(404).json({ error: 'Snippet not found' });
     }
@@ -120,8 +121,8 @@ tutorialSandboxRouter.post('/:tutorialId/snippets/:snippetId/execute', async (re
     }
 
     const result = await executeCode({
-      tutorialId: req.params.tutorialId,
-      snippetId: req.params.snippetId,
+      tutorialId: asString(req.params.tutorialId),
+      snippetId: asString(req.params.snippetId),
       code,
       userId,
     });
@@ -159,7 +160,7 @@ tutorialSandboxRouter.get('/progress/me', (req: Request, res: Response) => {
 tutorialSandboxRouter.get('/:id/progress', (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId ?? 'demo-user';
-    const progress = getUserProgress(userId, req.params.id);
+    const progress = getUserProgress(userId, asString(req.params.id));
     res.json(progress);
   } catch (error) {
     console.error('Error getting progress:', error);
@@ -209,7 +210,7 @@ tutorialSandboxRouter.get('/datasets/available', (_req: Request, res: Response) 
  */
 tutorialSandboxRouter.get('/datasets/:name', (req: Request, res: Response) => {
   try {
-    const dataset = getDemoDataset(req.params.name);
+    const dataset = getDemoDataset(asString(req.params.name));
     if (!dataset) {
       return res.status(404).json({ error: 'Dataset not found' });
     }

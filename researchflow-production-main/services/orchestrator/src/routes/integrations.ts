@@ -33,6 +33,7 @@ import {
   postSlackMessage,
   notifyAIAgentTask,
 } from '../services/slackService';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -365,7 +366,7 @@ router.get('/cursor/task-progress/:taskId', (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
-  const { taskId } = req.params;
+  const taskId = asString(req.params.taskId);
 
   // Set headers for SSE
   res.setHeader('Content-Type', 'text/event-stream');

@@ -11,6 +11,7 @@ import * as z from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { featureFlagsService } from '../services/featureFlagsService';
 import { tutorialService } from '../services/tutorialService';
+import { asString } from '../utils/asString';
 
 
 const router = express.Router();
@@ -59,7 +60,7 @@ router.get(
   '/:key',
   requireTutorialsEnabled,
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const orgId = req.headers['x-organization-id'] as string || null;
 
     const tutorial = await tutorialService.getTutorial(key, orgId);
@@ -84,7 +85,7 @@ router.get(
   '/:key/progress',
   requireTutorialsEnabled,
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const userId = (req as any).user?.id || req.headers['x-user-id'] as string;
 
     if (!userId) {
@@ -116,7 +117,7 @@ router.post(
   '/:key/progress',
   requireTutorialsEnabled,
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const userId = (req as any).user?.id || req.headers['x-user-id'] as string;
 
     if (!userId) {
@@ -156,7 +157,7 @@ router.post(
   '/:key/start',
   requireTutorialsEnabled,
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const userId = (req as any).user?.id || req.headers['x-user-id'] as string;
 
     if (!userId) {
@@ -189,7 +190,7 @@ router.post(
   '/:key/complete',
   requireTutorialsEnabled,
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
     const userId = (req as any).user?.id || req.headers['x-user-id'] as string;
 
     if (!userId) {
@@ -293,7 +294,7 @@ router.put(
   requireTutorialsEnabled,
   // TODO: Add requireRole('ADMIN') middleware
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     // Validate request body
     const validation = updateTutorialSchema.safeParse(req.body);
@@ -331,7 +332,7 @@ router.delete(
   requireTutorialsEnabled,
   // TODO: Add requireRole('ADMIN') middleware
   asyncHandler(async (req, res) => {
-    const { key } = req.params;
+    const key = asString(req.params.key);
 
     const deleted = await tutorialService.deleteTutorial(key);
 

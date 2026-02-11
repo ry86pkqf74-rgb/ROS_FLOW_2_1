@@ -25,6 +25,7 @@ import {
   getPendingBundleRequests,
   getProjectBundleRequests,
 } from '../services/reproducibility-bundle';
+import { asString } from '../utils/asString';
 
 const router = Router();
 
@@ -148,7 +149,7 @@ router.post(
   requireRole(ROLES.STEWARD),
   logAuditEvent('BUNDLE_EXPORT_APPROVED', 'reproducibility_bundle'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
     const { reason } = req.body;
 
     const user = req.user as any;
@@ -186,7 +187,7 @@ router.post(
   requireRole(ROLES.STEWARD),
   logAuditEvent('BUNDLE_EXPORT_DENIED', 'reproducibility_bundle'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
     const { reason } = req.body;
 
     if (!reason) {
@@ -230,7 +231,7 @@ router.post(
   requireRole(ROLES.STEWARD),
   logAuditEvent('BUNDLE_PHI_OVERRIDE', 'reproducibility_bundle'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
     const { justification, conditions } = req.body;
 
     if (!justification || justification.length < 20) {
@@ -276,7 +277,7 @@ router.get(
   blockExportInDemo,
   requireRole(ROLES.RESEARCHER),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
 
     const status = await getBundleRequestStatus(requestId);
 
@@ -302,7 +303,7 @@ router.get(
   requireRole(ROLES.RESEARCHER),
   logAuditEvent('BUNDLE_DOWNLOADED', 'reproducibility_bundle'),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
 
     const status = await getBundleRequestStatus(requestId);
 
@@ -366,7 +367,7 @@ router.get(
   '/manifest/:requestId',
   requireRole(ROLES.RESEARCHER),
   asyncHandler(async (req: Request, res: Response) => {
-    const { requestId } = req.params;
+    const requestId = asString(req.params.requestId);
 
     if (!requestId) {
       return res.status(400).json({
