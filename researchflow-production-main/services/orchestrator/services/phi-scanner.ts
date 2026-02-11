@@ -91,7 +91,8 @@ function mapPhiTypeToCategory(type: PatternDefinition['type']): PHICategory {
     'HEALTH_PLAN': 'other',
     'LICENSE': 'license_number',
     'DEVICE_ID': 'device_id',
-    'AGE_OVER_89': 'age_over_89'
+    'AGE_OVER_89': 'age_over_89',
+    'UNKNOWN': 'other'
   };
   return typeMap[type] || 'other';
 }
