@@ -37,6 +37,10 @@ interface RecoveryRequest extends Request {
   };
 }
 
+/** Safely extract error message from unknown caught value */
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 export class AdvancedErrorRecovery extends EventEmitter {
     private retryState = new Map();
     private serviceHealth = new Map();
@@ -126,11 +130,11 @@ export class AdvancedErrorRecovery extends EventEmitter {
                 const result = await this.executeWithTimeout(operation, context);
                 
                 // Success - clear retry state
-                this.clearRetryState(requestId, operationName);
+                this.clearRetryState(requestId ?? 'unknown', operationName);
                 
                 // Emit success event for monitoring
                 this.emit('retry:success', {
-                    requestId,
+                    requestId: requestId ?? 'unknown',
                     route,
                     operationName,
                     attempt,
@@ -142,14 +146,16 @@ export class AdvancedErrorRecovery extends EventEmitter {
             } catch (error) {
                 lastError = error;
                 attempt++;
+                const errMsg = getErrorMessage(error);
+                const errObj = error instanceof Error ? error : new Error(errMsg);
 
                 // Check if error is retryable
-                if (!this.isRetryableError(error) || attempt >= maxRetries) {
+                if (!this.isRetryableError(errObj) || attempt >= maxRetries) {
                     this.emit('retry:failed', {
-                        requestId,
+                        requestId: requestId ?? 'unknown',
                         route,
                         operationName,
-                        error: error.message,
+                        error: errMsg,
                         totalAttempts: attempt,
                         finalFailure: true
                     });
@@ -160,18 +166,18 @@ export class AdvancedErrorRecovery extends EventEmitter {
                 const delay = this.calculateDelay(attempt);
                 
                 this.emit('retry:attempt', {
-                    requestId,
+                    requestId: requestId ?? 'unknown',
                     route,
                     operationName,
                     attempt,
                     delay,
-                    error: error.message
+                    error: errMsg
                 });
 
                 // Store retry state
-                this.updateRetryState(requestId, operationName, {
+                this.updateRetryState(requestId ?? 'unknown', operationName, {
                     attempt,
-                    lastError: error.message,
+                    lastError: errMsg,
                     nextRetry: Date.now() + delay
                 });
 
@@ -271,7 +277,7 @@ export class AdvancedErrorRecovery extends EventEmitter {
         } catch (error) {
             this.cascadeBreakers.set(breakerKey, {
                 timestamp: Date.now(),
-                reason: error.message
+                reason: getErrorMessage(error)
             });
             throw error;
         }
@@ -308,15 +314,16 @@ export class AdvancedErrorRecovery extends EventEmitter {
             return healthy;
 
         } catch (error) {
+            const errMsg = getErrorMessage(error);
             this.serviceHealth.set(cacheKey, {
                 healthy: false,
                 timestamp: Date.now(),
-                error: error.message
+                error: errMsg
             });
 
             this.emit('health:error', {
                 service: serviceName,
-                error: error.message
+                error: errMsg
             });
 
             return false;
@@ -382,7 +389,7 @@ export class AdvancedErrorRecovery extends EventEmitter {
             
             this.emit('healing:failed', {
                 service: serviceName,
-                error: error.message
+                error: getErrorMessage(error)
             });
 
             throw error;
@@ -416,7 +423,7 @@ export class AdvancedErrorRecovery extends EventEmitter {
             return { healed: true, service: serviceName };
 
         } catch (error) {
-            throw new Error(`Healing failed for ${serviceName}: ${error.message}`);
+            throw new Error(`Healing failed for ${serviceName}: ${getErrorMessage(error)}`);
         }
     }
 
@@ -463,7 +470,7 @@ export class AdvancedErrorRecovery extends EventEmitter {
             } catch (error) {
                 this.emit('health:sweep:error', {
                     service,
-                    error: error.message
+                    error: getErrorMessage(error)
                 });
             }
         }
