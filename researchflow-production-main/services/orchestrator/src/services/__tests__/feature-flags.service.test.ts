@@ -142,8 +142,8 @@ describe('FeatureFlagsService', () => {
         }),
       });
 
-      const result = await isFlagEnabled('UNKNOWN_FLAG', true);
-      expect(result).toBe(true);
+      const result = await isFlagEnabled('UNKNOWN_FLAG');
+      expect(result).toBe(false);
     });
 
     it('should handle rollout percentage correctly', async () => {
@@ -163,8 +163,8 @@ describe('FeatureFlagsService', () => {
 
       // With 50% rollout, deterministic hash should give consistent results
       // for same user
-      const result1 = await isFlagEnabled('EXPERIMENTAL_FEATURE', false, 'user-123');
-      const result2 = await isFlagEnabled('EXPERIMENTAL_FEATURE', false, 'user-123');
+      const result1 = await isFlagEnabled('EXPERIMENTAL_FEATURE', { userId: 'user-123' });
+      const result2 = await isFlagEnabled('EXPERIMENTAL_FEATURE', { userId: 'user-123' });
       expect(result1).toBe(result2);
     });
   });
@@ -180,7 +180,7 @@ describe('FeatureFlagsService', () => {
         from: vi.fn().mockResolvedValue(mockFlags),
       });
 
-      const result = await getFlags();
+      const result = await getFlags({});
       expect(result.ALLOW_UPLOADS).toBe(true);
       expect(result.ALLOW_EXPORTS).toBe(false);
     });
@@ -229,7 +229,7 @@ describe('FeatureFlagsService', () => {
         }),
       });
 
-      await setFlag('ALLOW_EXPORTS', true, 'user-1');
+      await setFlag('ALLOW_EXPORTS', { enabled: true }, 'user-1');
 
       expect(db.insert).toHaveBeenCalled();
     });
