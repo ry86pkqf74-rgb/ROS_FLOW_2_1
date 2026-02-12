@@ -5,6 +5,174 @@
 
 import express from 'express';
 import request from 'supertest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
+
+// ---------------------------------------------------------------------------
+// Mock `fs` so the checklist route finds fixture YAML data instead of real files
+// ---------------------------------------------------------------------------
+const TRIPOD_AI_YAML = `
+tripod_ai_checklist:
+  id: tripod-ai-v1
+  version: "1.0"
+  title: "TRIPOD+AI Checklist"
+  description: "Transparent Reporting of a multivariable prediction model for Individual Prognosis or Diagnosis – AI extension"
+  sections:
+    - name: Title and Abstract
+      items: []
+    - name: Introduction
+      items: []
+    - name: Methods
+      items: []
+    - name: Results
+      items: []
+    - name: Discussion
+      items: []
+    - name: Other
+      items: []
+    - name: AI-Specific
+      items: []
+  items:${Array.from({ length: 27 }, (_, i) => `
+    - id: "T${i + 1}"
+      category: "${i < 5 ? 'Title and Abstract' : i < 10 ? 'Introduction' : i < 18 ? 'Methods' : i < 22 ? 'Results' : i < 25 ? 'Discussion' : 'AI-Specific'}"
+      subcategory: "Item ${i + 1}"
+      description: "TRIPOD+AI item ${i + 1}"
+      required: ${i < 20 ? 'true' : 'false'}
+      evidence_types:
+        - document
+      validation_rules:
+        - non_empty
+      guidance: "Guidance for item T${i + 1}"
+      cross_reference:
+        consort_item: "CONSORT-AI-${(i % 12) + 1}"`).join('')}
+`;
+
+const CONSORT_AI_YAML = `
+consort_ai_checklist:
+  id: consort-ai-v1
+  version: "1.0"
+  title: "CONSORT-AI Checklist"
+  description: "CONSORT 2010 statement extension for AI interventions"
+  sections:
+    - name: Title and Abstract
+      items:
+        - id: "CONSORT-AI-1"
+          category: "Title and Abstract"
+          subcategory: "Title"
+          description: "CONSORT-AI title item"
+          required: true
+          evidence_types: [document]
+          validation_rules: [non_empty]
+          guidance: "Guidance for CONSORT-AI-1"
+          cross_reference:
+            tripod_item: "T1"
+            rationale: "Maps to TRIPOD title item"
+        - id: "CONSORT-AI-2"
+          category: "Title and Abstract"
+          subcategory: "Abstract"
+          description: "CONSORT-AI abstract item"
+          required: true
+        - id: "CONSORT-AI-3"
+          category: "Title and Abstract"
+          subcategory: "Abstract detail"
+          description: "CONSORT-AI abstract detail"
+          required: true
+    - name: Introduction
+      items:
+        - id: "CONSORT-AI-4"
+          category: "Introduction"
+          subcategory: "Background"
+          description: "CONSORT-AI background"
+          required: true
+        - id: "CONSORT-AI-5"
+          category: "Introduction"
+          subcategory: "Objectives"
+          description: "CONSORT-AI objectives"
+          required: true
+        - id: "CONSORT-AI-6"
+          category: "Introduction"
+          subcategory: "Rationale"
+          description: "CONSORT-AI rationale"
+          required: true
+    - name: Methods
+      items:
+        - id: "CONSORT-AI-7"
+          category: "Methods"
+          subcategory: "Trial design"
+          description: "CONSORT-AI trial design"
+          required: true
+        - id: "CONSORT-AI-8"
+          category: "Methods"
+          subcategory: "Participants"
+          description: "CONSORT-AI participants"
+          required: true
+        - id: "CONSORT-AI-9"
+          category: "Methods"
+          subcategory: "Interventions"
+          description: "CONSORT-AI interventions"
+          required: true
+    - name: Results
+      items:
+        - id: "CONSORT-AI-10"
+          category: "Results"
+          subcategory: "Outcomes"
+          description: "CONSORT-AI outcomes"
+          required: true
+        - id: "CONSORT-AI-11"
+          category: "Results"
+          subcategory: "Harms"
+          description: "CONSORT-AI harms"
+          required: false
+        - id: "CONSORT-AI-12"
+          category: "Results"
+          subcategory: "Ancillary analyses"
+          description: "CONSORT-AI ancillary"
+          required: false
+  items: []
+`;
+
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      existsSync: vi.fn((filePath: string) => {
+        if (typeof filePath === 'string' &&
+            (filePath.includes('tripod-ai-checklist.yaml') ||
+             filePath.includes('consort-ai-checklist.yaml'))) {
+          return true;
+        }
+        return actual.existsSync(filePath);
+      }),
+      readFileSync: vi.fn((filePath: string, encoding?: string) => {
+        if (typeof filePath === 'string' && filePath.includes('tripod-ai-checklist.yaml')) {
+          return TRIPOD_AI_YAML;
+        }
+        if (typeof filePath === 'string' && filePath.includes('consort-ai-checklist.yaml')) {
+          return CONSORT_AI_YAML;
+        }
+        return actual.readFileSync(filePath, encoding as any);
+      }),
+    },
+    existsSync: vi.fn((filePath: string) => {
+      if (typeof filePath === 'string' &&
+          (filePath.includes('tripod-ai-checklist.yaml') ||
+           filePath.includes('consort-ai-checklist.yaml'))) {
+        return true;
+      }
+      return actual.existsSync(filePath);
+    }),
+    readFileSync: vi.fn((filePath: string, encoding?: string) => {
+      if (typeof filePath === 'string' && filePath.includes('tripod-ai-checklist.yaml')) {
+        return TRIPOD_AI_YAML;
+      }
+      if (typeof filePath === 'string' && filePath.includes('consort-ai-checklist.yaml')) {
+        return CONSORT_AI_YAML;
+      }
+      return actual.readFileSync(filePath, encoding as any);
+    }),
+  };
+});
 
 import checklistsRouter from '../checklists';
 

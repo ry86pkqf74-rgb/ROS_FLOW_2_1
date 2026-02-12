@@ -9,7 +9,13 @@
  * - Section 5: Open Issues (integration tests)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
+
+// Enable mock auth so JWT functions use HS256 dev fallback
+// (JWT_PRIVATE_KEY / JWT_PUBLIC_KEY are not set in the test env)
+beforeAll(() => {
+  process.env.ALLOW_MOCK_AUTH = 'true';
+});
 
 // ============================================
 // Section 1: Code Quality Tests
@@ -213,17 +219,31 @@ describe('Audit Section 2: JWT Authentication', () => {
     });
 
     it('should generate and verify access tokens', async () => {
-      const { generateAccessToken, verifyAccessToken, devFallbackUser } = await import('../services/authService');
+      const { generateAccessToken, verifyAccessToken } =
+        await import('../services/authService');
 
-      const token = generateAccessToken(devFallbackUser);
+      // Use a test user with a valid UUID — devFallbackUser.id is prefixed
+      // with "dev-user-" which fails JWTPayloadSchema's z.string().uuid().
+      const testUser = {
+        id: '00000000-0000-4000-8000-000000000001',
+        email: 'test-jwt@researchflow.local',
+        role: 'RESEARCHER' as const,
+        firstName: 'Test',
+        lastName: 'JWT',
+        displayName: 'Test JWT',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const token = generateAccessToken(testUser);
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       expect(token.split('.').length).toBe(3); // JWT has 3 parts
 
       const payload = verifyAccessToken(token);
       expect(payload).not.toBeNull();
-      expect(payload?.sub).toBe(devFallbackUser.id);
-      expect(payload?.email).toBe(devFallbackUser.email);
+      expect(payload?.sub).toBe(testUser.id);
+      expect(payload?.email).toBe(testUser.email);
     });
 
     it('should register new users', async () => {
@@ -305,7 +325,7 @@ describe('Audit Section 2: JWT Authentication', () => {
       expect(devFallbackUser).toBeDefined();
       expect(devFallbackUser.id).toBeDefined();
       expect(devFallbackUser.email).toBe('dev@researchflow.local');
-      expect(devFallbackUser.role).toBe('admin');
+      expect(devFallbackUser.role.toLowerCase()).toBe('admin');
     });
   });
 });

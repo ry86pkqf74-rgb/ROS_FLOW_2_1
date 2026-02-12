@@ -76,7 +76,8 @@ describe('PredictiveScalingService (Task 117)', () => {
 
     expect(scenarios).toBeDefined();
     expect(Object.keys(scenarios).length).toBeGreaterThan(0);
-    expect(scenarios['marketing-campaign']).toBeDefined();
+    // Verify one of the actual preset keys exists
+    expect(scenarios['50% increase']).toBeDefined();
   });
 
   it('should compare scenarios', async () => {
