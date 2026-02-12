@@ -35,7 +35,7 @@ const REDIS_CHANNEL = 'researchflow:events';
  * - PHI-safe by design (validates event payloads)
  * - TypeScript-first with type-safe events
  */
-class EventBus {
+export class EventBus {
   private emitter: EventEmitter;
   private redisPublisher: net.Socket | null = null;
   private redisSubscriber: net.Socket | null = null;

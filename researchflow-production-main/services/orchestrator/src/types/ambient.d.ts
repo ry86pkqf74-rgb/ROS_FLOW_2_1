@@ -357,7 +357,7 @@ declare module 'bottleneck' {
     counts(): { RECEIVED: number; QUEUED: number; RUNNING: number; EXECUTING: number; DONE: number; RESERVOIR: number };
   }
 }
-declare module 'prom-client' { export const Registry: any; export const Counter: any; export const Gauge: any; export const Histogram: any; export const collectDefaultMetrics: any; }
+declare module 'prom-client' { export const register: any; export const Registry: any; export const Counter: any; export const Gauge: any; export const Histogram: any; export const collectDefaultMetrics: any; }
 declare module 'redis' {
   export type RedisClientType = any;
   export const createClient: any;
