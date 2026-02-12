@@ -1,9 +1,32 @@
+import { createServer } from 'http';
+
 import { Server } from 'socket.io';
 
 type TypingState = {
   timeout?: NodeJS.Timeout;
   isTyping: boolean;
 };
+
+/**
+ * Class wrapper around createWebsocketServer for the orchestrator entry point.
+ * Constructs a Socket.IO Server from an HTTP server and wires up the
+ * collaboration event handlers.  Provides a shutdown() method for graceful
+ * teardown.
+ */
+export class CollaborationWebSocketServer {
+  private io: Server;
+
+  constructor(httpServer: ReturnType<typeof createServer>) {
+    this.io = new Server(httpServer);
+    createWebsocketServer(this.io);
+  }
+
+  async shutdown(): Promise<void> {
+    return new Promise((resolve) => {
+      this.io.close(() => resolve());
+    });
+  }
+}
 
 /**
  * Presence / collaboration websocket server.
