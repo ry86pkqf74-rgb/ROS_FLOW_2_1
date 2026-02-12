@@ -208,7 +208,7 @@ export class SecurityEnhancementMiddleware {
           req.user = {
             ...authResult.user,
             id: authResult.user.userId,
-            role: authResult.user.role as 'admin' | 'researcher' | 'reviewer' | 'viewer',
+            role: authResult.user.role.toUpperCase() as AuthRole,
           };
         }
         req.securityContext!.authenticated = true;
