@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import type { Express, ErrorRequestHandler, RequestHandler } from 'express';
+import type { Express, RequestHandler } from 'express';
 
 export type SentryInitOptions = {
   dsn?: string;
@@ -27,28 +27,31 @@ function envBool(v: string | undefined, fallback: boolean): boolean {
 }
 
 /**
- * Initializes Sentry and registers the Express error handler.
+ * Initializes Sentry for Express.
  *
  * Sentry v8 migration notes:
  * - Sentry.Handlers.requestHandler() / tracingHandler() → automatic via
  *   Sentry.init() integrations (expressIntegration handles both).
+ *   NOTE: expressIntegration() is registered in instrument.ts (the early
+ *   init path). If using this function as the sole init path, add
+ *   Sentry.expressIntegration() to the integrations array below.
  * - Sentry.Handlers.errorHandler() → Sentry.setupExpressErrorHandler(app).
  *
- * IMPORTANT: Call `setupExpressErrorHandler` AFTER all routes but BEFORE
- * other error-handling middleware.
+ * IMPORTANT: Call the returned `setupErrorHandler(app)` AFTER all routes
+ * but BEFORE other error-handling middleware.
  */
-export function initSentry(app: Express, opts: SentryInitOptions = {}) {
+export function initSentry(_app: Express, opts: SentryInitOptions = {}) {
   const dsn = opts.dsn ?? process.env.SENTRY_DSN;
   const enabled = opts.enabled ?? envBool(process.env.SENTRY_ENABLED, Boolean(dsn));
 
   const noopRequestHandler: RequestHandler = (_req, _res, next) => next();
-  const noopErrorHandler: ErrorRequestHandler = (err, _req, _res, next) => next(err);
+  const noopSetup = (_a: Express) => { /* noop */ };
 
   if (!enabled) {
     return {
       enabled: false,
       requestHandler: noopRequestHandler,
-      errorHandler: noopErrorHandler,
+      setupErrorHandler: noopSetup,
     };
   }
 
@@ -59,24 +62,20 @@ export function initSentry(app: Express, opts: SentryInitOptions = {}) {
     serverName: opts.serverName ?? process.env.SENTRY_SERVER_NAME,
     integrations: [
       nodeProfilingIntegration(),
-      Sentry.expressIntegration(),   // replaces requestHandler + tracingHandler
     ],
     tracesSampleRate: opts.tracesSampleRate ?? envNumber(process.env.SENTRY_TRACES_SAMPLE_RATE, 0.1),
     profilesSampleRate: opts.profilesSampleRate ?? envNumber(process.env.SENTRY_PROFILES_SAMPLE_RATE, 0.0),
   });
 
-  // In v8 the error handler is registered directly on the app.
-  // It must be called AFTER all routes are defined.
-  // We wrap it so callers can still call errorHandler() at the right time.
-  const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
-    // setupExpressErrorHandler already registers itself, but we also
-    // forward to Sentry.captureException for explicit control.
-    Sentry.captureException(err);
-    next(err);
+  return {
+    enabled: true,
+    requestHandler: noopRequestHandler,
+    /**
+     * Register Sentry's Express error handler on the app.
+     * Must be called AFTER all routes but BEFORE other error middleware.
+     */
+    setupErrorHandler: (appInstance: Express) => {
+      Sentry.setupExpressErrorHandler(appInstance);
+    },
   };
-
-  // Register Sentry's Express error handler on the app
-  Sentry.setupExpressErrorHandler(app);
-
-  return { enabled: true, requestHandler: noopRequestHandler, errorHandler };
 }
