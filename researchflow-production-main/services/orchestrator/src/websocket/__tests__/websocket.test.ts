@@ -12,9 +12,15 @@
  * @module websocket/__tests__/websocket
  */
 
-import { describe, it, beforeAll, afterAll, expect } from 'vitest';
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest';
 import { createServer, Server as HttpServer } from 'http';
 import * as ws from 'ws';
+
+// Mock audit-service to avoid DB dependency
+vi.mock('../../services/audit-service', () => ({
+  logAction: vi.fn(),
+}));
+
 import { WebSocketEventServer } from '../server';
 import {
   createProtocolEvent,
@@ -44,13 +50,34 @@ function createTestHttpServer(): Promise<{ server: HttpServer; port: number }> {
 }
 
 /**
- * Helper to connect WebSocket client
+ * Helper to connect WebSocket client.
+ * Buffers incoming messages so none are lost to race conditions
+ * (e.g. `connection.established` arriving before `waitForMessage` is called).
  */
 function connectClient(port: number): Promise<WsClient> {
   return new Promise((resolve, reject) => {
-    // TypeScript has an issue with ws.WebSocket constructor overloads
-    // Using type assertion to bypass this - the runtime behavior is correct
     const client = new ws.WebSocket(`ws://localhost:${port}/ws` as any) as WsClient;
+
+    // Message queue – stores anything that arrives before waitForMessage is called
+    const queue: any[] = [];
+    const pending: Array<{ resolve: (v: any) => void; reject: (e: Error) => void }> = [];
+
+    client.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        if (pending.length > 0) {
+          const waiter = pending.shift()!;
+          waiter.resolve(msg);
+        } else {
+          queue.push(msg);
+        }
+      } catch { /* ignore parse errors */ }
+    });
+
+    // Expose the queue via expando properties
+    (client as any).__msgQueue = queue;
+    (client as any).__msgPending = pending;
+
     client.on('open', () => resolve(client));
     client.on('error', reject);
     setTimeout(() => reject(new Error('Connection timeout')), 5000);
@@ -58,27 +85,37 @@ function connectClient(port: number): Promise<WsClient> {
 }
 
 /**
- * Helper to wait for message from WebSocket
+ * Helper to wait for the next message from a buffered WebSocket client.
  */
-function waitForMessage(ws: WsClient, timeout = 5000): Promise<any> {
+function waitForMessage(client: WsClient, timeout = 10000): Promise<any> {
+  const queue: any[] = (client as any).__msgQueue ?? [];
+  const pending: Array<{ resolve: (v: any) => void; reject: (e: Error) => void }> =
+    (client as any).__msgPending ?? [];
+
+  // If there's already a buffered message, return it immediately
+  if (queue.length > 0) {
+    return Promise.resolve(queue.shift());
+  }
+
+  // Otherwise wait for the next one
   return new Promise((resolve, reject) => {
+    // Build the entry first so we can remove it by reference on timeout
+    const entry = {
+      resolve: (msg: any) => { clearTimeout(timer); resolve(msg); },
+      reject:  (err: Error) => { clearTimeout(timer); reject(err); },
+    };
+
     const timer = setTimeout(() => {
+      const idx = pending.indexOf(entry);
+      if (idx !== -1) pending.splice(idx, 1);
       reject(new Error('Message timeout'));
     }, timeout);
 
-    ws.once('message', (data) => {
-      clearTimeout(timer);
-      try {
-        const message = JSON.parse(data.toString());
-        resolve(message);
-      } catch (error) {
-        reject(error);
-      }
-    });
+    pending.push(entry);
   });
 }
 
-describe('WebSocket Server', () => {
+describe('WebSocket Server', { timeout: 30000 }, () => {
   let httpServer: HttpServer;
   let wsServer: WebSocketEventServer;
   let port: number;

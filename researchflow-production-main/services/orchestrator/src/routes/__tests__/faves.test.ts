@@ -25,6 +25,7 @@ vi.mock('../../middleware/rbac', () => ({
 vi.mock('../../services/event-bus', () => ({
   eventBus: {
     emit: vi.fn(),
+    publish: vi.fn(),
   },
 }));
 
@@ -32,7 +33,23 @@ vi.mock('../../services/event-bus', () => ({
 function createTestApp() {
   const app = express();
   app.use(express.json());
+  // Inject a mock authenticated user (route handlers may access req.user)
+  app.use((req: any, _res: any, next: any) => {
+    req.user = {
+      id: 'test-user-123',
+      email: 'test@example.com',
+      role: 'ADMIN',
+    };
+    next();
+  });
   app.use('/api/faves', favesRoutes);
+  // Error handler — convert Zod errors to 400, expose other errors for debugging
+  app.use((err: any, _req: any, res: any, _next: any) => {
+    if (err?.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation error', details: err.errors });
+    }
+    res.status(500).json({ error: err?.message || 'Internal Server Error' });
+  });
   return app;
 }
 
@@ -165,9 +182,8 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('id');
       expect(response.body.model_id).toBe(newEval.model_id);
-      expect((eventBus as any).emit).toHaveBeenCalledWith(
-        'faves:evaluation_created',
-        expect.any(Object)
+      expect((eventBus as any).publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'faves:evaluation_created' })
       );
     });
 
@@ -277,9 +293,8 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('id');
       expect(response.body.deployment_allowed).toBe(true);
-      expect((eventBus as any).emit).toHaveBeenCalledWith(
-        'faves:evaluation_passed',
-        expect.any(Object)
+      expect((eventBus as any).publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'faves:evaluation_passed' })
       );
     });
 
@@ -433,9 +448,8 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('message');
       expect(response.body.status).toBe('PENDING_APPROVAL');
-      expect((eventBus as any).emit).toHaveBeenCalledWith(
-        'faves:override_requested',
-        expect.any(Object)
+      expect((eventBus as any).publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'faves:override_requested' })
       );
     });
 

@@ -1,6 +1,15 @@
 import type { AIRouterResponse } from '@researchflow/ai-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Mock vector-store to avoid chromadb dependency
+vi.mock('@researchflow/vector-store', () => ({
+  ChromaVectorStore: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    search: vi.fn().mockResolvedValue([]),
+  })),
+  DocumentEmbedder: vi.fn().mockImplementation(() => ({})),
+}));
+
 import { chatRepository } from '../../../repositories/chat.repository';
 import { PhaseChatService } from '../service';
 
