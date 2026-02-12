@@ -40,7 +40,7 @@ async function safeCreateAuditEntry(
   entry: Parameters<typeof createAuditEntry>[0]
 ): Promise<void> {
   try {
-    await safeCreateAuditEntry(entry);
+    await createAuditEntry(entry);
   } catch (err) {
     console.error("[manuscript-branches] Audit emission failed (non-blocking):", err);
   }
