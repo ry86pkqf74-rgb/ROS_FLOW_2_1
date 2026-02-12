@@ -4,7 +4,7 @@
  */
 
 import { orgIntegrations } from '@researchflow/core/types/schema';
-import { ZoteroService, zoteroService } from '@researchflow/manuscript-engine/services';
+import { ZoteroService, zoteroService, type ZoteroConfig } from '@researchflow/manuscript-engine/services';
 import { eq, and } from 'drizzle-orm';
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
@@ -87,7 +87,8 @@ literatureIntegrationsRouter.post('/zotero/configure', async (req: Request, res:
     }
 
     // Configure the ZoteroService instance
-    zoteroService.configure(config);
+    // After safeParse success, all required fields are present; assert to match ZoteroConfig
+    zoteroService.configure(config as ZoteroConfig);
 
     res.json({ success: true, message: 'Zotero configured successfully' });
   } catch (error: any) {
@@ -160,7 +161,8 @@ literatureIntegrationsRouter.get('/zotero/collections', async (req: Request, res
 literatureIntegrationsRouter.get('/zotero/collections/:collectionKey/items', async (req: Request, res: Response) => {
   try {
     const orgId = (req as any).orgId;
-    const { collectionKey } = req.params;
+    // Express route params are always strings for named params
+    const collectionKey = req.params.collectionKey as string;
 
     const configured = await ensureZoteroConfigured(orgId);
     if (!configured) {

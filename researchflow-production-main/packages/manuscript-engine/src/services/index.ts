@@ -122,7 +122,7 @@ export const plagiarismCheckService = new PlagiarismCheckService();
 // Note: finalPhiScanService already exists
 
 // Zotero integration (real implementation in zotero.service.ts)
-export { ZoteroService, zoteroService } from './zotero.service';
+export { ZoteroService, zoteroService, type ZoteroConfig } from './zotero.service';
 
 // Also export service classes for direct use
 export {
