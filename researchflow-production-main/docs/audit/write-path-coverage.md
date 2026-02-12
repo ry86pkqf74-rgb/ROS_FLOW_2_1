@@ -13,6 +13,21 @@ The audit strategy uses two layers:
 
 Read-only endpoints (GET) are not listed unless they have special audit considerations.
 
+## Failure Policy
+
+| Mechanism | Failure behavior | Rationale |
+|-----------|-----------------|-----------|
+| `appendEvent()` inside `runWithTransaction()` | **Blocking** — rolls back the mutation | Audit chain integrity: if we can't record the audit, we don't commit the write |
+| `logManuscriptEventTx()` inside transaction | **Blocking** — same as above | Part of the same DB transaction |
+| `appendAuditEvent()` in service layer (txn) | **Blocking** — same as above | Service-level transactions |
+| `safeCreateAuditEntry()` outside transaction | **Non-blocking** — logs error, returns success | Mutation already persisted; failing the response would hide success from client |
+| Worker `_safe_emit_audit()` | **Non-blocking** — logs debug, continues | Fire-and-forget HTTP to orchestrator; agent execution must not depend on audit |
+
+This asymmetry is **intentional**: transactional audit = fail-closed (integrity),
+post-mutation audit = fail-open (availability). Both guarantee the audit *attempt*
+is made; only the transactional path guarantees the audit record exists before the
+mutation is visible.
+
 ---
 
 ## manuscripts.ts (`/api/manuscripts`)

@@ -23,6 +23,28 @@ import * as diffService from "../services/diffService";
 import manuscriptVersionService from "../services/manuscriptVersionService";
 
 const router = Router();
+
+/**
+ * Non-blocking audit wrapper. createAuditEntry calls in this file happen
+ * AFTER the mutation has already succeeded (outside any DB transaction).
+ * If audit emission fails we log the error but do NOT fail the HTTP response.
+ *
+ * Policy rationale:
+ * - appendEvent() inside runWithTransaction() = BLOCKING (audit chain integrity:
+ *   if audit fails the mutation rolls back too — see manuscripts.ts).
+ * - createAuditEntry() outside a transaction = NON-BLOCKING (mutation already
+ *   persisted; failing the response would hide success from the client).
+ * - Worker-side _safe_emit_audit() = NON-BLOCKING (same principle).
+ */
+async function safeCreateAuditEntry(
+  entry: Parameters<typeof createAuditEntry>[0]
+): Promise<void> {
+  try {
+    await safeCreateAuditEntry(entry);
+  } catch (err) {
+    console.error("[manuscript-branches] Audit emission failed (non-blocking):", err);
+  }
+}
 export const manuscriptBranchingRoutes = Router();
 
 // Validation schemas
@@ -239,7 +261,7 @@ router.post(
       });
 
       // Audit log
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_CREATED",
         userId,
         resourceType: "artifact_version",
@@ -451,7 +473,7 @@ router.post(
             .where(eq(artifacts.id, artifactId));
         }
 
-        await createAuditEntry({
+        await safeCreateAuditEntry({
           eventType: "BRANCH_MERGED",
           userId,
           resourceType: "artifact_version",
@@ -556,7 +578,7 @@ router.post(
           .where(eq(artifacts.id, artifactId));
       }
 
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_MERGED",
         userId,
         resourceType: "artifact_version",
@@ -631,7 +653,7 @@ router.delete(
 
       // Soft delete all versions in the branch
       // Note: In production, you might want to keep versions but just remove the branch pointer
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_DELETED",
         userId,
         resourceType: "artifact",
@@ -676,7 +698,7 @@ manuscriptBranchingRoutes.post(
         parsed.data.fromVersionId
       );
 
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "MANUSCRIPT_BRANCH_CREATED",
         userId,
         resourceType: "manuscript_branch",
@@ -720,7 +742,7 @@ manuscriptBranchingRoutes.post(
         return res.status(409).json(result);
       }
 
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "MANUSCRIPT_BRANCH_MERGED",
         userId,
         resourceType: "manuscript_branch",
@@ -787,7 +809,7 @@ manuscriptBranchingRoutes.post(
 
       const result = await aiEditingService.runIterativeRefinement(id, parsed.data.maxIterations);
 
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "AI_REFINE_ITERATIVE",
         userId,
         resourceType: "manuscript",
