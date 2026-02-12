@@ -114,21 +114,10 @@ jobs:
           SSH_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_USER: ${{ secrets.HETZNER_USER }}
         run: |
-          # Write key
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-
-          # Show key type for debugging (no sensitive data)
-          ssh-keygen -l -f ~/.ssh/deploy_key || echo "::warning::Could not read key fingerprint"
-          head -1 ~/.ssh/deploy_key | sed 's/\(.\{20\}\).*/\1.../' 
-
-          # Disable strict host checking for CI
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-          # Connect with verbose output
-          ssh -vvv -i ~/.ssh/deploy_key -o ConnectTimeout=30 "$SSH_USER@$SSH_HOST" \
-            "export IMAGE_TAG=sha-${{ github.sha }} && bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh" \
-            2>&1 | tail -80
-
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 "$SSH_USER@$SSH_HOST" \
+            "export IMAGE_TAG=sha-${{ github.sha }} && bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh"
           rm -f ~/.ssh/deploy_key
