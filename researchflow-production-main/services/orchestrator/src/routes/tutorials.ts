@@ -12,6 +12,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { featureFlagsService } from '../services/featureFlagsService';
 import { tutorialService } from '../services/tutorialService';
 import { asString } from '../utils/asString';
+import { zodParseAs } from '../utils/zodParseAs';
 
 
 const router = express.Router();
@@ -260,15 +261,12 @@ router.post(
       });
     }
 
-    const tutorial = await tutorialService.createTutorial({
-      tutorialKey: validation.data.tutorialKey,
-      title: validation.data.title,
-      description: validation.data.description,
-      videoUrl: validation.data.videoUrl,
-      steps: validation.data.steps,
-      enabled: validation.data.enabled,
-      orgId: validation.data.orgId,
-    });
+    // Validate via zodParseAs (works around Zod >= 3.25 deep-infer
+    // regression). Derives the target type from the service method.
+    type CreateArg = Parameters<typeof tutorialService.createTutorial>[0];
+    const tutorial = await tutorialService.createTutorial(
+      zodParseAs<CreateArg>(createTutorialSchema, req.body)
+    );
 
     res.status(201).json({
       success: true,
@@ -308,13 +306,12 @@ router.put(
       });
     }
 
-    const tutorial = await tutorialService.updateTutorial(key, {
-      title: validation.data.title,
-      description: validation.data.description,
-      videoUrl: validation.data.videoUrl,
-      steps: validation.data.steps,
-      enabled: validation.data.enabled,
-    });
+    // Validate via zodParseAs (see createTutorial above).
+    type UpdateArg = Parameters<typeof tutorialService.updateTutorial>[1];
+    const tutorial = await tutorialService.updateTutorial(
+      key,
+      zodParseAs<UpdateArg>(updateTutorialSchema, req.body)
+    );
 
     if (!tutorial) {
       return res.status(404).json({
