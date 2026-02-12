@@ -10,6 +10,7 @@ import * as z from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { planningService } from '../services/planning';
 import { CreatePlanRequest } from '../types/planning';
+import { zodParseAs } from '../utils/zodParseAs';
 
 const router = Router();
 
@@ -98,12 +99,9 @@ router.post(
   '/plans',
   conditionalAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    // Validate at runtime — Zod throws on bad data.
-    // Then annotate with the hand-written interface because Zod ≥ 3.25
-    // has a known TS type-depth regression that infers deeply-nested
-    // object fields as optional (see zod#3721).
-    createPlanSchema.parse(req.body);
-    const body: CreatePlanRequest = req.body;
+    // Validate and type via zodParseAs (works around Zod >= 3.25
+    // type-depth regression — see zodParseAs.ts for details).
+    const body = zodParseAs<CreatePlanRequest>(createPlanSchema, req.body);
     const userId = (req as any).user?.id || 'demo-user';
 
     const result = await planningService.createPlan(body, userId);
