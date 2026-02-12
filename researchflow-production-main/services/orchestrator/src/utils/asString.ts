@@ -9,9 +9,15 @@
  * Our express.d.ts augmentation cannot override this because the
  * generic `Request<P>.params: P` takes precedence.
  *
- * If `val` is an array, returns the first element (or '' if empty).
- * If `val` is undefined, returns ''.
- * Otherwise returns `val` directly (already a string).
+ * @param val - The raw value from `req.params`, `req.query`, or `req.headers`.
+ * @returns The narrowed string value.
+ *
+ * Behaviour:
+ * - `undefined` → `''`  (safe for route params — they are never undefined
+ *   when the route matches — but callers processing *query* values should
+ *   be aware that a missing key will now yield `''` rather than `undefined`)
+ * - `string[]`  → first element, or `''` if empty
+ * - `string`    → returned as-is
  */
 export function asString(val: string | string[] | undefined): string {
   if (val === undefined) {
