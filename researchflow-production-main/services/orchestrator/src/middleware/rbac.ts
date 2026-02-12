@@ -105,7 +105,12 @@ export function requirePermission(permission: Permission) {
  * Usage:
  * router.post('/approve', requireRole('STEWARD'), async (req, res) => { ... });
  */
-export function requireRole(minRole: RoleName) {
+export function requireRole(minRole: RoleName | RoleName[]) {
+  // If an array of roles is passed, delegate to requireAnyRole
+  if (Array.isArray(minRole)) {
+    return requireAnyRole(minRole);
+  }
+
   return (req: Request, res: Response, next: NextFunction): void => {
     // Check if user is authenticated
     if (!req.user) {
@@ -273,7 +278,7 @@ export function protect(permission: Permission) {
  * Usage:
  * router.post('/admin', protectWithRole('ADMIN'), async (req, res) => { ... });
  */
-export function protectWithRole(minRole: RoleName) {
+export function protectWithRole(minRole: RoleName | RoleName[]) {
   return [requireActiveAccount, requireRole(minRole)];
 }
 
