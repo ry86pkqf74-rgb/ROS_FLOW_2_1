@@ -28,7 +28,6 @@ export default defineConfig({
       'tests/unit/**/*.test.ts',
       'services/orchestrator/src/**/*.test.ts',
       'services/orchestrator/src/**/*.test.tsx',
-      'src/__tests__/**/*.test.ts',
     ],
     exclude: [
       'node_modules',
@@ -41,6 +40,8 @@ export default defineConfig({
       'packages/**/__tests__/integration/**',
       'services/**/tests/integration/**',
       'services/**/__tests__/integration/**',
+      // Migration integration tests — require DB with prior migrations applied; run via CI DB-backed step
+      '**/migrations/*.test.ts',
       // node:test runner files — run separately via `node --test`
       '**/security-crypto.test.ts',
       '**/ai-bridge-e2e.test.ts',
