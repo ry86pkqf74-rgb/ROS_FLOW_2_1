@@ -30,11 +30,11 @@ jobs:
           - service: orchestrator
             context: researchflow-production-main
             dockerfile: services/orchestrator/Dockerfile
-            target: production
+            target: development
           - service: worker
             context: researchflow-production-main/services/worker
             dockerfile: Dockerfile
-            target: production
+            target: development
           - service: guideline-engine
             context: researchflow-production-main/packages/guideline-engine
             dockerfile: Dockerfile
@@ -42,7 +42,7 @@ jobs:
           - service: collab
             context: researchflow-production-main
             dockerfile: services/collab/Dockerfile
-            target: production
+            target: development
           - service: web
             context: researchflow-production-main
             dockerfile: services/web/Dockerfile

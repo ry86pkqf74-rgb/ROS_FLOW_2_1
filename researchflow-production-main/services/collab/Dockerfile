@@ -69,7 +69,7 @@ COPY services/collab/src ./src
 
 # Ensure @researchflow packages are accessible
 RUN mkdir -p ./node_modules/@researchflow && \
-    rm -rf ./node_modules/@researchflow/core ./node_modules/@researchfish/phi-engine && \
+    rm -rf ./node_modules/@researchflow/core ./node_modules/@researchflow/phi-engine && \
     cp -r ./packages/core ./node_modules/@researchflow/core && \
     cp -r ./packages/phi-engine ./node_modules/@researchflow/phi-engine
 

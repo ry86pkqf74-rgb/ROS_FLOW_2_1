@@ -94,6 +94,7 @@ jobs:
     name: Deploy to Hetzner
     needs: build_and_push
     runs-on: ubuntu-latest
+    environment: Hetzner production
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
