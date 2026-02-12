@@ -190,7 +190,7 @@ test.describe('AI Workflow - Full Execution', () => {
     let wsConnected = false;
     let lastAgentStatus = '';
 
-    const ws = await context.waitForEvent('websocket', async (ws) => {
+    const ws = await page.waitForEvent('websocket', (ws) => {
       if (ws.url().includes('ai') || ws.url().includes('workflow')) {
         wsConnected = true;
         console.log('✓ WebSocket connected:', ws.url());

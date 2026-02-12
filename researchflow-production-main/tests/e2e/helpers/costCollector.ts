@@ -15,7 +15,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { Page, APIResponse } from '@playwright/test';
+import { Page, Response as PWResponse } from '@playwright/test';
 
 // =============================================================================
 // Types
@@ -62,7 +62,7 @@ export class CostCollector {
   private startTime: string = '';
   private testName: string = '';
   private maxBudgetUsd?: number;
-  private responseHandler?: (response: APIResponse) => Promise<void>;
+  private responseHandler?: (response: PWResponse) => Promise<void>;
 
   // AI endpoint patterns to monitor
   private readonly AI_ENDPOINT_PATTERNS = [
@@ -88,7 +88,7 @@ export class CostCollector {
     this.startTime = new Date().toISOString();
     this.calls = [];
 
-    this.responseHandler = async (response: APIResponse) => {
+    this.responseHandler = async (response: PWResponse) => {
       await this.handleResponse(response);
     };
 
@@ -112,7 +112,7 @@ export class CostCollector {
   /**
    * Handle a response and extract cost headers if present
    */
-  private async handleResponse(response: APIResponse): Promise<void> {
+  private async handleResponse(response: PWResponse): Promise<void> {
     const url = response.url();
 
     // Check if this is an AI endpoint
