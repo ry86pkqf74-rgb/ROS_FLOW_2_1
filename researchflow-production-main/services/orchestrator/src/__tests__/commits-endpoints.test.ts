@@ -62,11 +62,13 @@ describe('commits endpoints', { skip: !hasDb }, () => {
 
   afterAll(async () => {
     if (!dbAvailable || !testBranchId) return;
-    await query('DELETE FROM manuscript_revisions WHERE branch_id = $1', [testBranchId]);
     try {
+      // Delete commits first (immutable table blocks cascading updates from revision deletes)
+      await query('DELETE FROM manuscript_branch_commits WHERE branch_id = $1', [testBranchId]);
+      await query('DELETE FROM manuscript_revisions WHERE branch_id = $1', [testBranchId]);
       await query('DELETE FROM manuscript_branches WHERE id = $1', [testBranchId]);
     } catch {
-      // Branch delete may fail if CASCADE to immutable commits is blocked by trigger
+      // Best-effort cleanup; CI DB may have constraints that prevent full cleanup
     }
   });
 

@@ -66,9 +66,9 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
     // Two revisions so we have two commits (commit1 = from, commit2 = to)
     const rev1Result = await query(
       `INSERT INTO manuscript_revisions (branch_id, revision_number, content, sections_changed, commit_message, created_by)
-       VALUES ($1, 1, $2::jsonb, '{}', 'Rev 1', TEST_USER_ID)
+       VALUES ($1, 1, $2::jsonb, '{}', 'Rev 1', $3)
        RETURNING id`,
-      [testBranchId, JSON.stringify({ abstract: 'A1', intro: 'I1' })]
+      [testBranchId, JSON.stringify({ abstract: 'A1', intro: 'I1' }), TEST_USER_ID]
     );
     rev1Id = rev1Result.rows[0].id;
     const contentHash1 = createHash('sha256').update(JSON.stringify({ abstract: 'A1', intro: 'I1' })).digest('hex');
@@ -83,9 +83,9 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
 
     const rev2Result = await query(
       `INSERT INTO manuscript_revisions (branch_id, revision_number, content, sections_changed, commit_message, created_by)
-       VALUES ($1, 2, $2::jsonb, '{}', 'Rev 2', TEST_USER_ID)
+       VALUES ($1, 2, $2::jsonb, '{}', 'Rev 2', $3)
        RETURNING id`,
-      [testBranchId, JSON.stringify({ abstract: 'A2', intro: 'I2' })]
+      [testBranchId, JSON.stringify({ abstract: 'A2', intro: 'I2' }), TEST_USER_ID]
     );
     rev2Id = rev2Result.rows[0].id;
     const contentHash2 = createHash('sha256').update(JSON.stringify({ abstract: 'A2', intro: 'I2' })).digest('hex');
@@ -122,11 +122,13 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
 
   afterAll(async () => {
     if (!dbAvailable || !testBranchId) return;
-    await query('DELETE FROM manuscript_revisions WHERE branch_id = $1', [testBranchId]);
     try {
+      // Delete commits first (immutable table blocks cascading updates from revision deletes)
+      await query('DELETE FROM manuscript_branch_commits WHERE branch_id = $1', [testBranchId]);
+      await query('DELETE FROM manuscript_revisions WHERE branch_id = $1', [testBranchId]);
       await query('DELETE FROM manuscript_branches WHERE id = $1', [testBranchId]);
     } catch {
-      // Branch delete may fail if CASCADE to immutable commits is blocked
+      // Best-effort cleanup; CI DB may have constraints that prevent full cleanup
     }
   });
 
