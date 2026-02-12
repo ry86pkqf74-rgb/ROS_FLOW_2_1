@@ -208,7 +208,7 @@ export class NotificationService {
     const limit = Math.max(1, Math.min(100, opts.limit));
     const offset = Math.max(0, opts.offset);
 
-    const res = await this.pool.query<NotificationRow>(
+    const res = await this.pool.query(
       `SELECT id, user_id, type, title, body, link, metadata, read_at, created_at
        FROM notifications
        WHERE user_id = $1
@@ -243,7 +243,7 @@ export class NotificationService {
   }
 
   async getPreferences(userId: string): Promise<PreferencesRow> {
-    const res = await this.pool.query<PreferencesRow>(
+    const res = await this.pool.query(
       `SELECT user_id, email_digest, slack_mentions, in_app, digest_frequency
        FROM notification_preferences
        WHERE user_id = $1`,
@@ -253,7 +253,7 @@ export class NotificationService {
     if (res.rows.length > 0) return res.rows[0];
 
     // Default preferences (and create row for future updates)
-    const created = await this.pool.query<PreferencesRow>(
+    const created = await this.pool.query(
       `INSERT INTO notification_preferences (user_id)
        VALUES ($1)
        ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
@@ -278,7 +278,7 @@ export class NotificationService {
       digest_frequency: patch.digest_frequency ?? current.digest_frequency,
     };
 
-    const res = await this.pool.query<PreferencesRow>(
+    const res = await this.pool.query(
       `INSERT INTO notification_preferences (user_id, email_digest, slack_mentions, in_app, digest_frequency)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id) DO UPDATE
