@@ -297,7 +297,12 @@ export class MultiToolOrchestrator extends EventEmitter {
           priority: this.getPriorityValue(task.priority),
           attempts: task.retryStrategy?.maxRetries || 3,
           backoff: task.retryStrategy?.backoffMs || 5000,
-          timeout: task.timeout,
+          // TODO: BEHAVIOR CHANGE — per-job `timeout` removed (BullMQ v5 dropped
+          // it from JobsOptions). If task.timeout was set to a meaningful value,
+          // job execution is no longer time-bounded. lockDuration is NOT equivalent
+          // (it controls lock renewal, not "kill after X ms"). To restore per-job
+          // time limits, implement a worker-level cancellation or job watchdog.
+          // See: https://docs.bullmq.io/patterns/cancellation
         }
       );
 
