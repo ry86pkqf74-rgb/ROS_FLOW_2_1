@@ -14,7 +14,7 @@ import './index.ts';
 // - Update the service start command to run `src/index.sentry.ts`
 // - Then move app creation here so we can register:
 //     app.get('/api/sentry-test', ...)
-//     app.use(Sentry.Handlers.errorHandler())
+//     Sentry.setupExpressErrorHandler(app)
 //
 // For now we provide a direct capture test when the process starts (optional).
 if ((process.env.SENTRY_STARTUP_SMOKE_TEST ?? 'false').toLowerCase() === 'true') {
