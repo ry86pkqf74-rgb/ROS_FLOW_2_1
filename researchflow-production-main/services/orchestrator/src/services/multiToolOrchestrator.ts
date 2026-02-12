@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { Queue, Job } from 'bullmq';
+import { Queue, Job, QueueEvents } from 'bullmq';
 import * as z from 'zod';
 
 /**
@@ -79,6 +79,7 @@ export interface TaskResult {
  */
 export class MultiToolOrchestrator extends EventEmitter {
   private queues: Map<TaskType, Queue>;
+  private queueEventInstances: Map<TaskType, QueueEvents>;
   private executionPlans: Map<string, ExecutionPlan>;
   private taskResults: Map<string, TaskResult>;
   private redisConnection;
@@ -87,6 +88,7 @@ export class MultiToolOrchestrator extends EventEmitter {
     super();
     this.redisConnection = redisConnection;
     this.queues = new Map();
+    this.queueEventInstances = new Map();
     this.executionPlans = new Map();
     this.taskResults = new Map();
 
@@ -128,6 +130,11 @@ export class MultiToolOrchestrator extends EventEmitter {
       });
 
       this.queues.set(taskType, queue);
+
+      const queueEvents = new QueueEvents(`orchestrator:${taskType}`, {
+        connection: this.redisConnection,
+      });
+      this.queueEventInstances.set(taskType, queueEvents);
     }
   }
 
@@ -307,7 +314,8 @@ export class MultiToolOrchestrator extends EventEmitter {
       );
 
       // Wait for job completion
-      const result = await job.waitUntilFinished(queue.events);
+      const queueEvents = this.queueEventInstances.get(task.type)!;
+      const result = await job.waitUntilFinished(queueEvents);
 
       const endTime = new Date();
       const taskResult: TaskResult = {

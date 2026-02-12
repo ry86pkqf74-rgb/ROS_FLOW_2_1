@@ -184,7 +184,7 @@ describe('ApiKeyRotationService', () => {
       });
 
       expect(reminders.length).toBeGreaterThan(0);
-      expect(reminders[0].urgency).toBeDefined();
+      expect(reminders[0].reminderLevel).toBeDefined();
     });
   });
 

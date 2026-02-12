@@ -165,7 +165,7 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('id');
       expect(response.body.model_id).toBe(newEval.model_id);
-      expect(eventBus.emit).toHaveBeenCalledWith(
+      expect((eventBus as any).emit).toHaveBeenCalledWith(
         'faves:evaluation_created',
         expect.any(Object)
       );
@@ -277,7 +277,7 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('id');
       expect(response.body.deployment_allowed).toBe(true);
-      expect(eventBus.emit).toHaveBeenCalledWith(
+      expect((eventBus as any).emit).toHaveBeenCalledWith(
         'faves:evaluation_passed',
         expect.any(Object)
       );
@@ -433,7 +433,7 @@ describe('FAVES API Routes', () => {
 
       expect(response.body).toHaveProperty('message');
       expect(response.body.status).toBe('PENDING_APPROVAL');
-      expect(eventBus.emit).toHaveBeenCalledWith(
+      expect((eventBus as any).emit).toHaveBeenCalledWith(
         'faves:override_requested',
         expect.any(Object)
       );

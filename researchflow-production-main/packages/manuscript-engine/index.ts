@@ -108,6 +108,8 @@ export * from './validators/word-budget';
 // ============================================================================
 
 export const MANUSCRIPT_ENGINE_VERSION = '2.0.0';
+export const VERSION = '1.0.0';
+export const PACKAGE_NAME = '@researchflow/manuscript-engine';
 export const PHASE_STATUS = {
   phase1: 'DEPLOYED',
   phase2: 'PARTIAL',

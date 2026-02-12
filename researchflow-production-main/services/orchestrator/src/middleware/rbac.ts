@@ -250,7 +250,7 @@ export function requireActiveAccount(req: Request, res: Response, next: NextFunc
     return;
   }
 
-  if (!req.user.isActive) {
+  if ('isActive' in req.user && !req.user.isActive) {
     res.status(403).json({
       error: 'Forbidden',
       message: 'Account is inactive. Please contact administrator.',

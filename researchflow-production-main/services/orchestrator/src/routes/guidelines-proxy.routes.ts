@@ -10,7 +10,7 @@ import axios from 'axios';
 import { Router, Request, Response, NextFunction } from 'express';
 
 // Type alias for axios request config (avoids TS2614 on named import)
-type AxiosRequestConfig = Parameters<typeof axios.request>[0];
+type AxiosRequestConfig = { method: string; url: string; params?: Record<string, any>; data?: any };
 type AxiosError = { response?: any; request?: any; message: string };
 
 const router = Router();

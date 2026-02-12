@@ -23,10 +23,10 @@ describe('PluginMarketplaceService', () => {
   describe('listPlugins', () => {
     it('should return all plugins by default', () => {
       const plugins = listPlugins();
-      expect(plugins.length).toBeGreaterThan(0);
-      expect(plugins[0]).toHaveProperty('id');
-      expect(plugins[0]).toHaveProperty('name');
-      expect(plugins[0]).toHaveProperty('manifest');
+      expect(plugins.items.length).toBeGreaterThan(0);
+      expect(plugins.items[0]).toHaveProperty('id');
+      expect(plugins.items[0]).toHaveProperty('name');
+      expect(plugins.items[0]).toHaveProperty('manifest');
     });
 
     it('should filter by category', () => {
@@ -36,13 +36,13 @@ describe('PluginMarketplaceService', () => {
 
     it('should filter verified plugins only', () => {
       const plugins = listPlugins({ verified: true });
-      expect(plugins.every(p => p.verified === true)).toBe(true);
+      expect(plugins.items.every(p => p.verified === true)).toBe(true);
     });
 
     it('should search by query term', () => {
       const plugins = listPlugins({ search: 'statistical' });
-      expect(plugins.length).toBeGreaterThan(0);
-      expect(plugins.some(p =>
+      expect(plugins.items.length).toBeGreaterThan(0);
+      expect(plugins.items.some(p =>
         p.name.toLowerCase().includes('statistical') ||
         p.description.toLowerCase().includes('statistical')
       )).toBe(true);
