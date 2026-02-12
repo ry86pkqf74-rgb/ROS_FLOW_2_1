@@ -636,22 +636,33 @@ try {
   logger.info('Continuing without collaboration features...');
 }
 
-// Initialize WebSocket manager for real-time run events (Phase 4B)
-try {
-  webSocketManager.initialize(httpServer);
-  logger.info('WebSocket event system initialized', { path: '/ws' });
-} catch (error) {
-  logger.logError('Failed to initialize WebSocket event manager', error as Error);
-  logger.info('Continuing without WebSocket event system...');
+// Initialize WebSocket manager for real-time run events (Phase 4B) only when enabled.
+// Single owner of /ws: no second WebSocketServer on same path (avoids PR #48 collision).
+const WEBSOCKET_EVENTS_ENABLED = process.env.WEBSOCKET_EVENTS_ENABLED !== 'false';
+if (WEBSOCKET_EVENTS_ENABLED) {
+  try {
+    webSocketManager.initialize(httpServer);
+    logger.info('WebSocket event system initialized', {
+      path: '/ws',
+      owner: 'WebSocketManager',
+      purpose: 'event-bus run events',
+    });
+  } catch (error) {
+    logger.logError('Failed to initialize WebSocket event manager', error as Error);
+    logger.info('Continuing without WebSocket event system...');
+  }
+} else {
+  logger.info('WebSocket event system disabled', { WEBSOCKET_EVENTS_ENABLED: false });
 }
 
 // Phase 4B: Mount PHI-safe event WebSocket server when WEBSOCKET_EVENTS_ENABLED=true (safe for prod rollout; default off).
+// Phase 4B path is owned by websocket/server.ts and must remain distinct from /ws (legacy webSocketManager).
 let phase4bEventWsEnabled = false;
 if (process.env.WEBSOCKET_EVENTS_ENABLED === 'true') {
   try {
     phase4bEventServer.initialize(httpServer);
     phase4bEventWsEnabled = true;
-    logger.info('Phase 4B PHI-safe event WebSocket server enabled', { path: '/ws' });
+    logger.info('Phase 4B PHI-safe event WebSocket server enabled', { pathFromModule: 'websocket/server.ts' });
   } catch (error) {
     logger.logError('Failed to initialize Phase 4B event WebSocket server', error as Error);
   }
@@ -777,14 +788,23 @@ async function initializeServer() {
 
 function startServer() {
   httpServer.listen(PORT, () => {
+  // Unambiguous WebSocket topology: which system owns which path (no double upgrade on /ws).
+  const wsTopology: Record<string, string> = {
+    '/collaboration': 'CollaborationWebSocketServer (presence/collab)',
+    '/api/agents/ws/:taskId': 'Agent proxy (noServer upgrade)',
+  };
+  if (WEBSOCKET_EVENTS_ENABLED) {
+    wsTopology['/ws'] = 'WebSocketManager (event-bus run events)';
+  }
   logger.info('ResearchFlow Canvas Server Started', {
     environment: NODE_ENV,
     port: PORT,
     governanceMode: process.env.GOVERNANCE_MODE || 'DEMO',
     health_check: `http://localhost:${PORT}/health`,
     api_base: `http://localhost:${PORT}/api`,
+    websocket_topology: wsTopology,
     websocket_collaboration: `ws://localhost:${PORT}/collaboration`,
-    websocket_events: `ws://localhost:${PORT}/ws`
+    websocket_events: WEBSOCKET_EVENTS_ENABLED ? `ws://localhost:${PORT}/ws` : undefined,
   });
 
   // Log active features

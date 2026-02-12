@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { publish, subscribe } from "../event-bus";
+import { publish, subscribe } from "../protocol-event-bus";
 import { createProtocolEvent } from "../protocol";
 
 describe("websocket event bus", () => {
