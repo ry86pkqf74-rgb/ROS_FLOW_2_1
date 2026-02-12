@@ -664,6 +664,7 @@ manuscriptBranchingRoutes.post(
   async (req: Request, res: Response) => {
     try {
       const id = asString(req.params.id);
+      const userId = (req as any).user?.id || "system";
       const parsed = createManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -674,6 +675,19 @@ manuscriptBranchingRoutes.post(
         parsed.data.name,
         parsed.data.fromVersionId
       );
+
+      await createAuditEntry({
+        eventType: "MANUSCRIPT_BRANCH_CREATED",
+        userId,
+        resourceType: "manuscript_branch",
+        resourceId: branch?.id ?? id,
+        action: "create",
+        details: {
+          manuscriptId: id,
+          branchName: parsed.data.name,
+          fromVersionId: parsed.data.fromVersionId,
+        },
+      });
 
       res.status(201).json(branch);
     } catch (error: any) {
@@ -688,7 +702,9 @@ manuscriptBranchingRoutes.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
+      const id = asString(req.params.id);
       const branchId = asString(req.params.branchId);
+      const userId = (req as any).user?.id || "system";
       const parsed = mergeManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -703,6 +719,20 @@ manuscriptBranchingRoutes.post(
       if (!result.success) {
         return res.status(409).json(result);
       }
+
+      await createAuditEntry({
+        eventType: "MANUSCRIPT_BRANCH_MERGED",
+        userId,
+        resourceType: "manuscript_branch",
+        resourceId: branchId,
+        action: "merge",
+        details: {
+          manuscriptId: id,
+          branchId,
+          targetBranch: parsed.data.targetBranch,
+          strategy: parsed.data.strategy,
+        },
+      });
 
       res.json(result);
     } catch (error: any) {
@@ -749,12 +779,26 @@ manuscriptBranchingRoutes.post(
   async (req: Request, res: Response) => {
     try {
       const id = asString(req.params.id);
+      const userId = (req as any).user?.id || "system";
       const parsed = refineSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
       }
 
       const result = await aiEditingService.runIterativeRefinement(id, parsed.data.maxIterations);
+
+      await createAuditEntry({
+        eventType: "AI_REFINE_ITERATIVE",
+        userId,
+        resourceType: "manuscript",
+        resourceId: id,
+        action: "ai_refine",
+        details: {
+          manuscriptId: id,
+          maxIterations: parsed.data.maxIterations,
+        },
+      });
+
       res.json(result);
     } catch (error: any) {
       console.error("[manuscript-branches] AI refinement error:", error);
