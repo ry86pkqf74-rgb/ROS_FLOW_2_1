@@ -13,13 +13,10 @@
 export { DocumentEmbedder } from './embedder.js';
 export { HybridRetriever } from './retriever.js';
 export {
-  ChromaDBClient,
-  createChromaClient,
-  COLLECTION_NAMES,
+  ChromaVectorStore,
+  createChromaVectorStore,
   type CollectionName,
   type ChromaConfig,
-  type DocumentPayload,
-  type QueryResult,
 } from './chroma-client.js';
 export type {
   VectorDocument,

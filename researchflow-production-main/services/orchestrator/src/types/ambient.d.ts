@@ -3,6 +3,105 @@
  * Linear Issue: ROS-59
  */
 
+// ChromaDB — vector store client (used by @researchflow/vector-store)
+declare module 'chromadb' {
+  export interface CollectionMetadata {
+    [key: string]: string | number | boolean;
+  }
+
+  export interface AddParams {
+    ids: string[];
+    embeddings?: number[][];
+    documents?: string[];
+    metadatas?: Array<Record<string, any>>;
+  }
+
+  export interface QueryParams {
+    queryEmbeddings: number[][];
+    nResults?: number;
+    where?: Record<string, any>;
+    include?: IncludeEnum[];
+  }
+
+  export interface QueryResponse {
+    ids: string[][];
+    embeddings: number[][][] | null;
+    documents: (string | null)[][] | null;
+    metadatas: (Record<string, any> | null)[][] | null;
+    distances: number[][] | null;
+  }
+
+  export interface GetParams {
+    ids?: string[];
+    where?: Record<string, any>;
+    include?: IncludeEnum[];
+  }
+
+  export interface GetResponse {
+    ids: string[];
+    embeddings: number[][] | null;
+    documents: (string | null)[] | null;
+    metadatas: (Record<string, any> | null)[] | null;
+  }
+
+  export interface Collection {
+    name: string;
+    metadata?: CollectionMetadata;
+    add(params: AddParams): Promise<void>;
+    query(params: QueryParams): Promise<QueryResponse>;
+    get(params?: GetParams): Promise<GetResponse>;
+    delete(params: { ids: string[] }): Promise<void>;
+    update(params: { ids: string[]; embeddings?: number[][]; documents?: string[]; metadatas?: Array<Record<string, any>> }): Promise<void>;
+    count(): Promise<number>;
+  }
+
+  export type IncludeEnum = 'documents' | 'metadatas' | 'embeddings' | 'distances';
+
+  export class ChromaClient {
+    constructor(params?: {
+      path?: string;
+      auth?: { provider: string; credentials: string } | undefined;
+      tenant?: string;
+      database?: string;
+    });
+    getOrCreateCollection(params: { name: string; metadata?: CollectionMetadata }): Promise<Collection>;
+    deleteCollection(params: { name: string }): Promise<void>;
+    listCollections(): Promise<Collection[]>;
+    heartbeat(): Promise<number>;
+  }
+
+  export default ChromaClient;
+}
+
+// Socket.IO — real-time collaboration server
+declare module 'socket.io' {
+  export interface ServerOptions {
+    cors?: { origin: string | string[]; methods?: string[] };
+    path?: string;
+    transports?: string[];
+  }
+
+  export interface Socket {
+    id: string;
+    data: Record<string, any>;
+    join(room: string): void;
+    leave(room: string): void;
+    to(room: string): { emit(event: string, ...args: any[]): void };
+    emit(event: string, ...args: any[]): void;
+    on(event: string, listener: (...args: any[]) => void): void;
+    disconnect(close?: boolean): void;
+  }
+
+  export class Server {
+    constructor(httpServer?: any, opts?: Partial<ServerOptions>);
+    sockets: { sockets: Map<string, Socket> };
+    engine: { on(event: string, listener: (...args: any[]) => void): void };
+    on(event: string, listener: (...args: any[]) => void): this;
+    emit(event: string, ...args: any[]): boolean;
+    close(fn?: (err?: Error) => void): void;
+  }
+}
+
 // OpenAI
 declare module 'openai' {
   export default class OpenAI {
@@ -12,6 +111,19 @@ declare module 'openai' {
     audio: {
       transcriptions: { create(params: any): Promise<any> };
       speech: { create(params: any): Promise<any> };
+    };
+    embeddings: {
+      create(params: {
+        model: string;
+        input: string | string[];
+        encoding_format?: string;
+        dimensions?: number;
+      }): Promise<{
+        data: Array<{ embedding: number[]; index: number; object: string }>;
+        model: string;
+        object: string;
+        usage: { prompt_tokens: number; total_tokens: number };
+      }>;
     };
   }
   export interface ChatCompletionMessageParam {

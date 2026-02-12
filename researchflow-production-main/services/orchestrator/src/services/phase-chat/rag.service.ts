@@ -1,4 +1,4 @@
-import { ChromaVectorStore, DocumentEmbedder, type SearchResult } from '@researchflow/vector-store';
+import { ChromaVectorStore, DocumentEmbedder, type SearchResult, type CollectionName } from '@researchflow/vector-store';
 
 export interface RagContextItem {
   id: string;
@@ -52,7 +52,7 @@ export class PhaseRagService {
     if (!this.store) return [];
 
     try {
-      const results: SearchResult[] = await this.store.search(collection, query, {
+      const results: SearchResult[] = await this.store.search(collection as CollectionName, query, {
         topK: options.topK ?? 5,
       });
 
