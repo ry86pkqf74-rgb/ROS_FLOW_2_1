@@ -14,7 +14,8 @@ import {
   SUBSCRIPTION_TIERS,
   TIER_LIMITS,
 } from "@researchflow/core/types/organization";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { count } from "drizzle-orm/sql";
 import { Router, Request, Response } from "express";
 
 import { db } from "../../db";
