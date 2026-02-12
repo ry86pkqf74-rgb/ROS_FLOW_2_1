@@ -40,6 +40,12 @@ export default defineConfig({
       'packages/**/__tests__/integration/**',
       'services/**/tests/integration/**',
       'services/**/__tests__/integration/**',
+      // node:test runner files — run separately via `node --test`
+      '**/security-crypto.test.ts',
+      '**/ai-bridge-e2e.test.ts',
+      '**/ai-bridge-production-validation.test.ts',
+      '**/ai-bridge-simple.test.ts',
+      '**/ai-bridge-llm.test.ts',
     ],
     testTimeout: 10000,
     coverage: {
