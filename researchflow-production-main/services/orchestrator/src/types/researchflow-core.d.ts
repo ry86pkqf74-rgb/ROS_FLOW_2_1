@@ -389,6 +389,10 @@ declare module '@researchflow/phi-engine' {
   export const isConsoleScrubberInstalled: () => boolean;
 
   export const PHI_ENGINE_VERSION: "1.0.0";
+
+  export const phiEngine: {
+    scan(text: string): Promise<{ hasPHI: boolean }>;
+  };
 }
 
 declare module '@researchflow/phi-engine/*' {

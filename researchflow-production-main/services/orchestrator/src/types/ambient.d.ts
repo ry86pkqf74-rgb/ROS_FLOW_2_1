@@ -340,12 +340,27 @@ declare module 'multer' {
 declare module 'axios' { const axios: any; export default axios; export const create: any; }
 declare module 'body-parser' { const bp: any; export = bp; }
 declare module 'helmet' { const helmet: any; export = helmet; }
-declare module 'jsonwebtoken' { export const sign: any; export const verify: any; export const decode: any; }
+declare module 'jsonwebtoken' {
+  export const sign: any;
+  export const verify: any;
+  export const decode: any;
+  export interface JwtPayload { [key: string]: unknown; }
+}
 declare module 'express-rate-limit' { const rateLimit: any; export default rateLimit; }
 declare module 'rate-limit-redis' { const store: any; export default store; }
 declare module 'node-fetch' { const fetch: any; export default fetch; }
 declare module 'form-data' { export default class FormData { append(k: string, v: any): void; } }
-declare module 'archiver' { const archiver: any; export = archiver; }
+declare module 'archiver' {
+  export type Archiver = NodeJS.ReadWriteStream & {
+    pipe<T extends NodeJS.WritableStream>(destination: T): T;
+    pointer(): number;
+    append(source: any, data?: { name: string }): this;
+    directory(dirpath: string, destpath: string | false): this;
+    finalize(): Promise<void>;
+  };
+  function archiver(format: string, options?: unknown): Archiver;
+  export default archiver;
+}
 declare module 'bottleneck' {
   export default class Bottleneck {
     constructor(opts?: any);
@@ -371,9 +386,11 @@ declare module 'drizzle-orm' { export const eq: any; export const and: any; expo
 // @researchflow/manuscript-engine — resolved via tsconfig paths; ambient override removed (PR151)
 // declare module '@researchflow/manuscript-engine' { export const ManuscriptService: any; }
 // declare module '@researchflow/manuscript-engine/*' { const mod: any; export = mod; }
-declare module '@researchflow/notion-integration' { export const NotionClient: any; }
-declare module '@researchflow/cursor-integration' { const mod: any; export = mod; }
-declare module '@researchflow/cursor-integration/*' { const mod: any; export = mod; }
+// @researchflow/notion-integration — resolved via tsconfig paths; ambient override removed (PR203)
+// declare module '@researchflow/notion-integration' { export const NotionClient: any; }
+// @researchflow/cursor-integration — resolved via tsconfig paths; ambient override removed (PR203)
+// declare module '@researchflow/cursor-integration' { const mod: any; export = mod; }
+// declare module '@researchflow/cursor-integration/*' { const mod: any; export = mod; }
 
 // Local modules
 declare module '../lib/db' { export const db: any; export const pool: any; }

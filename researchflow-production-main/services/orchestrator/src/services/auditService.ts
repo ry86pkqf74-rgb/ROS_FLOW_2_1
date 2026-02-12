@@ -173,6 +173,43 @@ export async function validateAuditChain(): Promise<{
 }
 
 /**
+ * Convenience wrapper: log an audit action.
+ * Accepts either a plain string or a structured audit payload.
+ * Delegates to createAuditEntry — preserves async/await so callers
+ * can choose whether to await or fire-and-forget at their own level.
+ */
+export async function logAction(
+  actionOrPayload:
+    | string
+    | {
+        action: string;
+        userId?: string;
+        resourceType?: string;
+        resourceId?: string;
+        details?: Record<string, unknown>;
+      },
+  details?: Record<string, unknown>
+): Promise<void> {
+  const entry =
+    typeof actionOrPayload === "string"
+      ? {
+          eventType: "action" as const,
+          action: actionOrPayload,
+          details: details ?? null,
+        }
+      : {
+          eventType: "action" as const,
+          action: actionOrPayload.action,
+          userId: actionOrPayload.userId,
+          resourceType: actionOrPayload.resourceType,
+          resourceId: actionOrPayload.resourceId,
+          details: actionOrPayload.details ?? null,
+        };
+
+  await createAuditEntry(entry);
+}
+
+/**
  * Gets the hash of the most recent audit log entry
  * Used as the starting point for new entries in the hash chain
  * 

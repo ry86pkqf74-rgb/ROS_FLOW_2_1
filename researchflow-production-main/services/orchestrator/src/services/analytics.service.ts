@@ -18,7 +18,8 @@ import {
   type AnalyticsEventName,
   type GovernanceMode,
 } from '@researchflow/core/schema';
-import { sql, desc, count, gte, lte, and, eq } from 'drizzle-orm';
+import { sql, desc, gte, lte, and, eq } from 'drizzle-orm';
+import { count } from 'drizzle-orm/sql';
 
 import { db } from '../../db';
 

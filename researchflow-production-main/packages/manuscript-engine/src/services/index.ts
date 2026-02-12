@@ -121,6 +121,9 @@ export const litMatrixService = new LitMatrixService();
 export const plagiarismCheckService = new PlagiarismCheckService();
 // Note: finalPhiScanService already exists
 
+// Zotero integration (real implementation in zotero.service.ts)
+export { ZoteroService, zoteroService } from './zotero.service';
+
 // Also export service classes for direct use
 export {
   PubMedService,

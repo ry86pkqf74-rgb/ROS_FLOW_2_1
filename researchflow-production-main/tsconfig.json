@@ -52,6 +52,8 @@
       "@researchflow/phi-engine/types": ["packages/phi-engine/src/types.ts"],
       "@packages/core": ["packages/core"],
       "@packages/core/*": ["packages/core/*"],
+      "@researchflow/notion-integration": ["packages/notion-integration/src/index.ts"],
+      "@researchflow/cursor-integration": ["packages/cursor-integration/src/index.ts"],
       "@researchflow/vector-store": ["packages/vector-store/src/index.ts"],
       "@researchflow/vector-store/*": ["packages/vector-store/src/*"],
       "@apps/api-node": ["services/orchestrator"],
