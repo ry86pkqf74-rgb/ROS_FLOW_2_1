@@ -335,7 +335,7 @@ export class MercuryNotificationService {
         logDeployment(this.config.notion, {
           environment: params.environment,
           version: params.version,
-          status: params.status,
+          status: params.status as 'success' | 'failed' | 'rollback',
           deployedBy: params.deployer || 'system',
           commitHash: params.commitHash,
           commitMessage: params.commitMessage,
