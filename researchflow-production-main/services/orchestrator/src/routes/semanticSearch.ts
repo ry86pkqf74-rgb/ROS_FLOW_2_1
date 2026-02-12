@@ -42,7 +42,7 @@ const requireSemanticSearch = asyncHandler(async (req: Request, res: Response, n
   }
 
   // Check feature flag
-  const enabled = await featureFlagsService.isFlagEnabled('semantic_search', org.id);
+  const enabled = await featureFlagsService.isFlagEnabled('semantic_search');
   if (!enabled) {
     return res.status(403).json({
       error: 'Semantic search is currently disabled',

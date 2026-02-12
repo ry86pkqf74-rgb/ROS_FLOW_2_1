@@ -33,7 +33,7 @@ const tutorialStepSchema = z.object({
 const requireTutorialsEnabled = asyncHandler(async (req, res, next) => {
   const orgId = req.headers['x-organization-id'] as string || null;
 
-  const enabled = await featureFlagsService.isFlagEnabled('inline_tutorials', orgId);
+  const enabled = await featureFlagsService.isFlagEnabled('inline_tutorials');
   if (!enabled) {
     return res.status(403).json({
       error: 'Inline tutorials feature is currently disabled',
