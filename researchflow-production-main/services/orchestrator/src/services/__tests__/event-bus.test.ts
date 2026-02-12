@@ -36,7 +36,7 @@ describe('EventBus', () => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'governance.mode_changed',
-          data: expect.objectContaining({
+          payload: expect.objectContaining({
             previousMode: 'DEMO',
             newMode: 'LIVE',
           }),
@@ -133,7 +133,7 @@ describe('EventBus', () => {
 
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
-          timestamp: expect.any(String),
+          ts: expect.any(String),
         })
       );
     });
@@ -153,7 +153,7 @@ describe('EventBus', () => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'job.started',
-          data: expect.objectContaining({
+          payload: expect.objectContaining({
             jobId: 'job-123',
             researchId: 'research-456',
           }),
@@ -175,7 +175,7 @@ describe('EventBus', () => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'job.progress',
-          data: expect.objectContaining({
+          payload: expect.objectContaining({
             progress: 50,
             stage: 'PHI_SCANNING',
           }),
@@ -213,7 +213,7 @@ describe('EventBus', () => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'job.failed',
-          data: expect.objectContaining({
+          payload: expect.objectContaining({
             errorCode: 'PHI_DETECTED',
           }),
         })
@@ -253,7 +253,7 @@ describe('EventBus', () => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'governance.flag_changed',
-          data: expect.objectContaining({
+          payload: expect.objectContaining({
             flagKey: 'ALLOW_EXPORTS',
             newValue: true,
           }),

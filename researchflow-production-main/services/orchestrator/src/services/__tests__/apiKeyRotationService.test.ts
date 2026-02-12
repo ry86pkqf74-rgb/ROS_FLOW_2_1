@@ -34,7 +34,7 @@ describe('ApiKeyRotationService', () => {
       expect(result.key.label).toBe('Test Key');
       expect(result.key.scopes).toEqual(['READ', 'WRITE']);
       expect(result.key.status).toBe('ACTIVE');
-      expect(result.secretKey).toMatch(/^rfk_/);
+      expect(result.secretKey).toMatch(/^rf_/);
     });
 
     it('should generate unique key prefix', () => {
@@ -127,9 +127,9 @@ describe('ApiKeyRotationService', () => {
       expect(result!.secretKey).toBeDefined();
       expect(result!.secretKey).not.toBe(created.secretKey);
 
-      // Old key should be rotated (inactive)
+      // Key is rotated in-place — same ID, new key material, stays ACTIVE
       const oldKey = getApiKey(oldKeyId);
-      expect(oldKey?.status).toBe('ROTATED');
+      expect(oldKey?.status).toBe('ACTIVE');
     });
 
     it('should throw error for revoked keys', () => {
@@ -198,7 +198,7 @@ describe('ApiKeyRotationService', () => {
 
       expect(summary).toHaveProperty('totalKeys');
       expect(summary).toHaveProperty('activeKeys');
-      expect(summary).toHaveProperty('expiringWithin30Days');
+      expect(summary).toHaveProperty('needsRotation');
       expect(summary).toHaveProperty('revokedKeys');
     });
   });

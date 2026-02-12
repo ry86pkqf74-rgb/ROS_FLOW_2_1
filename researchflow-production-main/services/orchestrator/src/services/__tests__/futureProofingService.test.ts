@@ -156,7 +156,7 @@ describe('FutureProofingService', () => {
       const checklist = createUpgradeChecklist('1.0.0', '2.0.0', userId);
 
       expect(() => approveChecklist(checklist.id, userId))
-        .toThrow('Cannot approve');
+        .toThrow('Checklist must be completed');
     });
   });
 

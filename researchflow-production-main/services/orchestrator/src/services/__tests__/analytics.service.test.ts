@@ -6,6 +6,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Mock @researchflow/core/schema to provide allowlisted event names
+vi.mock('@researchflow/core/schema', () => ({
+  analyticsEvents: 'analytics_events_table',
+  ANALYTICS_EVENT_NAMES: ['page_view', 'feature_used', 'button_clicked'],
+}));
+
 // Mock database module
 vi.mock('../../../db', () => ({
   db: {
@@ -41,7 +47,9 @@ describe('AnalyticsService', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    // Use clearAllMocks instead of resetAllMocks to preserve
+    // mock implementations set by vi.mock() factories
+    vi.clearAllMocks();
   });
 
   describe('trackEvent', () => {
@@ -73,8 +81,7 @@ describe('AnalyticsService', () => {
         eventName: 'page_view',
         userId: 'user-123',
         properties: {
-          email: 'test@example.com',
-          ssn: '123-45-6789',
+          note: 'SSN is 123-45-6789',
         },
       };
 

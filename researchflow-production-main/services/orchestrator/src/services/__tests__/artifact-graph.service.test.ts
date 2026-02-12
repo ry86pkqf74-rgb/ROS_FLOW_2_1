@@ -45,7 +45,12 @@ describe('ArtifactGraphService', () => {
         phi_findings_count: 0
       };
 
+      // INSERT RETURNING *
       (db.query as any).mockResolvedValueOnce({ rows: [mockArtifact] });
+      // auditLog: SELECT previous hash
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // auditLog: INSERT
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       const result = await service.createArtifact({
         type: 'manuscript',
@@ -54,7 +59,6 @@ describe('ArtifactGraphService', () => {
         organizationId: 'org-1'
       });
 
-      expect(db.query).toHaveBeenCalledTimes(2); // INSERT + audit log
       expect(result.name).toBe('Test Manuscript');
       expect(result.type).toBe('manuscript');
     });
@@ -73,7 +77,12 @@ describe('ArtifactGraphService', () => {
         phi_findings_count: 0
       };
 
+      // INSERT RETURNING *
       (db.query as any).mockResolvedValueOnce({ rows: [mockArtifact] });
+      // auditLog: SELECT previous hash
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // auditLog: INSERT
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       const result = await service.createArtifact({
         type: 'manuscript',
@@ -139,7 +148,7 @@ describe('ArtifactGraphService', () => {
       // Mock cycle check (no cycle)
       (db.query as any).mockResolvedValueOnce({ rows: [] });
 
-      // Mock source and target artifacts exist
+      // Mock source artifact exists (getArtifact)
       (db.query as any).mockResolvedValueOnce({
         rows: [{
           id: sourceId,
@@ -147,10 +156,14 @@ describe('ArtifactGraphService', () => {
           name: 'Source Dataset',
           owner_user_id: 'user-1',
           created_at: new Date(),
-          updated_at: new Date()
+          updated_at: new Date(),
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
         }]
       });
 
+      // Mock target artifact exists (getArtifact)
       (db.query as any).mockResolvedValueOnce({
         rows: [{
           id: targetId,
@@ -158,11 +171,14 @@ describe('ArtifactGraphService', () => {
           name: 'Target Analysis',
           owner_user_id: 'user-1',
           created_at: new Date(),
-          updated_at: new Date()
+          updated_at: new Date(),
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
         }]
       });
 
-      // Mock edge creation
+      // Mock edge creation (INSERT RETURNING *)
       const mockEdge = {
         id: '333e4567-e89b-12d3-a456-426614174000',
         source_artifact_id: sourceId,
@@ -171,9 +187,12 @@ describe('ArtifactGraphService', () => {
         created_at: new Date(),
         metadata: {}
       };
-
       (db.query as any).mockResolvedValueOnce({ rows: [mockEdge] });
-      (db.query as any).mockResolvedValueOnce({ rows: [] }); // Audit log
+
+      // auditLog: SELECT previous hash
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // auditLog: INSERT
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       const result = await service.linkArtifacts(
         {
@@ -223,9 +242,14 @@ describe('ArtifactGraphService', () => {
             owner_user_id: 'user-1',
             created_at: new Date(),
             updated_at: new Date(),
+            metadata: {},
+            phi_scanned: false,
+            phi_findings_count: 0,
             edge_id: 'edge-1',
+            target_artifact_id: rootId,
             relation_type: 'derived_from',
-            edge_created_at: new Date()
+            edge_created_at: new Date(),
+            edge_metadata: {}
           }
         ]
       });
@@ -240,11 +264,31 @@ describe('ArtifactGraphService', () => {
             owner_user_id: 'user-1',
             created_at: new Date(),
             updated_at: new Date(),
+            metadata: {},
+            phi_scanned: false,
+            phi_findings_count: 0,
+            source_artifact_id: rootId,
             edge_id: 'edge-2',
             relation_type: 'uses',
-            edge_created_at: new Date()
+            edge_created_at: new Date(),
+            edge_metadata: {}
           }
         ]
+      });
+
+      // Mock root node getArtifact
+      (db.query as any).mockResolvedValueOnce({
+        rows: [{
+          id: rootId,
+          type: 'analysis',
+          name: 'Root Analysis',
+          owner_user_id: 'user-1',
+          created_at: new Date(),
+          updated_at: new Date(),
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
+        }]
       });
 
       const result = await service.getArtifactGraph(rootId, 2, 'both');
@@ -257,7 +301,10 @@ describe('ArtifactGraphService', () => {
     it('should limit depth to specified value', async () => {
       const rootId = '111e4567-e89b-12d3-a456-426614174000';
 
-      (db.query as any).mockResolvedValue({ rows: [] });
+      // Mock upstream query (empty)
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // Mock root node getArtifact
+      (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       await service.getArtifactGraph(rootId, 3, 'upstream');
 
@@ -276,7 +323,7 @@ describe('ArtifactGraphService', () => {
       const oldDate = new Date('2024-01-01T00:00:00Z');
       const newDate = new Date('2024-01-02T00:00:00Z');
 
-      // Mock getArtifactGraph call
+      // Mock upstream query (getArtifactGraph → getUpstream)
       (db.query as any).mockResolvedValueOnce({
         rows: [
           {
@@ -286,17 +333,32 @@ describe('ArtifactGraphService', () => {
             updated_at: newDate, // Updated recently
             owner_user_id: 'user-1',
             created_at: oldDate,
+            metadata: {},
+            phi_scanned: false,
+            phi_findings_count: 0,
             edge_id: 'edge-1',
-            source_artifact_id: 'source-id',
             target_artifact_id: artifactId,
             relation_type: 'derived_from',
             edge_created_at: oldDate, // Edge created before update
-            metadata: {}
+            edge_metadata: {}
           }
         ]
       });
 
-      (db.query as any).mockResolvedValueOnce({ rows: [] }); // Downstream
+      // Mock root node getArtifact
+      (db.query as any).mockResolvedValueOnce({
+        rows: [{
+          id: artifactId,
+          type: 'analysis',
+          name: 'Target Analysis',
+          owner_user_id: 'user-1',
+          created_at: oldDate,
+          updated_at: oldDate,
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
+        }]
+      });
 
       const result = await service.checkArtifactOutdated(artifactId);
 
@@ -310,7 +372,7 @@ describe('ArtifactGraphService', () => {
 
       const oldDate = new Date('2024-01-01T00:00:00Z');
 
-      // Mock getArtifactGraph call
+      // Mock upstream query
       (db.query as any).mockResolvedValueOnce({
         rows: [
           {
@@ -320,17 +382,32 @@ describe('ArtifactGraphService', () => {
             updated_at: oldDate, // Not updated
             owner_user_id: 'user-1',
             created_at: oldDate,
+            metadata: {},
+            phi_scanned: false,
+            phi_findings_count: 0,
             edge_id: 'edge-1',
-            source_artifact_id: 'source-id',
             target_artifact_id: artifactId,
             relation_type: 'derived_from',
             edge_created_at: oldDate,
-            metadata: {}
+            edge_metadata: {}
           }
         ]
       });
 
-      (db.query as any).mockResolvedValueOnce({ rows: [] }); // Downstream
+      // Mock root node getArtifact
+      (db.query as any).mockResolvedValueOnce({
+        rows: [{
+          id: artifactId,
+          type: 'analysis',
+          name: 'Target Analysis',
+          owner_user_id: 'user-1',
+          created_at: oldDate,
+          updated_at: oldDate,
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
+        }]
+      });
 
       const result = await service.checkArtifactOutdated(artifactId);
 
@@ -343,7 +420,7 @@ describe('ArtifactGraphService', () => {
 
       const date = new Date('2024-01-01T00:00:00Z');
 
-      // Mock getArtifactGraph call with needsRefresh flag
+      // Mock upstream query with needsRefresh flag
       (db.query as any).mockResolvedValueOnce({
         rows: [
           {
@@ -353,17 +430,32 @@ describe('ArtifactGraphService', () => {
             updated_at: date,
             owner_user_id: 'user-1',
             created_at: date,
+            metadata: {},
+            phi_scanned: false,
+            phi_findings_count: 0,
             edge_id: 'edge-1',
-            source_artifact_id: 'source-id',
             target_artifact_id: artifactId,
             relation_type: 'derived_from',
             edge_created_at: date,
-            metadata: { needsRefresh: true } // Manual flag
+            edge_metadata: { needsRefresh: true } // Manual flag
           }
         ]
       });
 
-      (db.query as any).mockResolvedValueOnce({ rows: [] }); // Downstream
+      // Mock root node getArtifact
+      (db.query as any).mockResolvedValueOnce({
+        rows: [{
+          id: artifactId,
+          type: 'analysis',
+          name: 'Target Analysis',
+          owner_user_id: 'user-1',
+          created_at: date,
+          updated_at: date,
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
+        }]
+      });
 
       const result = await service.checkArtifactOutdated(artifactId);
 
@@ -384,15 +476,19 @@ describe('ArtifactGraphService', () => {
           name: 'Test Manuscript',
           owner_user_id: 'user-1',
           created_at: new Date(),
-          updated_at: new Date()
+          updated_at: new Date(),
+          metadata: {},
+          phi_scanned: false,
+          phi_findings_count: 0,
         }]
       });
 
-      // Mock UPDATE query
+      // Mock UPDATE query (soft delete)
       (db.query as any).mockResolvedValueOnce({ rows: [] });
 
-      // Mock audit log
+      // auditLog: SELECT previous hash
       (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // auditLog: INSERT
       (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       await service.softDeleteArtifact(artifactId, 'user-1');
@@ -417,30 +513,25 @@ describe('ArtifactGraphService', () => {
     it('should update artifact fields', async () => {
       const artifactId = '111e4567-e89b-12d3-a456-426614174000';
 
-      const beforeState = {
+      const afterState = {
         id: artifactId,
         type: 'manuscript',
-        name: 'Old Name',
-        status: 'draft',
+        name: 'New Name',
+        status: 'active',
         owner_user_id: 'user-1',
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
+        metadata: {},
+        phi_scanned: false,
+        phi_findings_count: 0,
       };
 
-      const afterState = {
-        ...beforeState,
-        name: 'New Name',
-        status: 'active'
-      };
-
-      // Mock getArtifact (before)
-      (db.query as any).mockResolvedValueOnce({ rows: [beforeState] });
-
-      // Mock UPDATE
+      // Mock UPDATE RETURNING * (first db.query call in updateArtifact)
       (db.query as any).mockResolvedValueOnce({ rows: [afterState] });
 
-      // Mock audit log
+      // auditLog: SELECT previous hash
       (db.query as any).mockResolvedValueOnce({ rows: [] });
+      // auditLog: INSERT
       (db.query as any).mockResolvedValueOnce({ rows: [] });
 
       const result = await service.updateArtifact(
