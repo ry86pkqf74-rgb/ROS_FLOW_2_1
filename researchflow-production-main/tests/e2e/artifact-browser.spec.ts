@@ -322,7 +322,7 @@ test.describe('VAL-003: Artifact Browser', () => {
 
     if (hasDownloadButton) {
       // Listen for download
-      const downloadPromise = context.waitForEvent('download');
+      const downloadPromise = page.waitForEvent('download');
 
       await downloadButton.click();
 
