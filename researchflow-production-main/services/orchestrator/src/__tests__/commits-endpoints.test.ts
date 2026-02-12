@@ -48,7 +48,7 @@ describe('commits endpoints', { skip: !hasDb }, () => {
       branchId: testBranchId,
       content: initialContent,
       commitMessage: 'Initial commit for commit tests',
-      createdBy: 'test-user',
+      createdBy: randomUUID(),
     });
     initialRevisionId = revision.id;
 
@@ -110,7 +110,7 @@ describe('commits endpoints', { skip: !hasDb }, () => {
         branchId: testBranchId,
         content: contentObj,
         commitMessage: `Rollback to commit ${initialCommitId}`,
-        createdBy: 'test-user',
+        createdBy: randomUUID(),
       });
 
       expect(newRevision.id).toBeDefined();
@@ -134,7 +134,7 @@ describe('commits endpoints', { skip: !hasDb }, () => {
         branchId: testBranchId,
         content,
         commitMessage: 'Commit for audit test',
-        createdBy: 'audit-test-user',
+        createdBy: randomUUID(),
       });
 
       const streamRow = await query(

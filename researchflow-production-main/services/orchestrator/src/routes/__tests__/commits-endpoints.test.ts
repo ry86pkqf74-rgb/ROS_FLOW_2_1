@@ -19,13 +19,14 @@ import commitsRoutes from '../commits.routes';
 
 const hasDb = !!pool;
 let dbAvailable = false;
+const TEST_USER_ID = '00000000-0000-4000-8000-000000000099';
 
 // Minimal app: inject user so requireRole passes, mount commits routes at /api/ros
 function createApp() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as unknown as { user?: { id: string; role: string } }).user = { id: 'test-user', role: 'RESEARCHER' };
+    (req as unknown as { user?: { id: string; role: string } }).user = { id: TEST_USER_ID, role: 'RESEARCHER' };
     next();
   });
   app.use('/api/ros', commitsRoutes);
@@ -65,7 +66,7 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
     // Two revisions so we have two commits (commit1 = from, commit2 = to)
     const rev1Result = await query(
       `INSERT INTO manuscript_revisions (branch_id, revision_number, content, sections_changed, commit_message, created_by)
-       VALUES ($1, 1, $2::jsonb, '{}', 'Rev 1', 'test-user')
+       VALUES ($1, 1, $2::jsonb, '{}', 'Rev 1', TEST_USER_ID)
        RETURNING id`,
       [testBranchId, JSON.stringify({ abstract: 'A1', intro: 'I1' })]
     );
@@ -76,13 +77,13 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
       `INSERT INTO manuscript_branch_commits (branch_id, commit_hash, commit_message, revision_id, content_hash, created_by)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [testBranchId, commitHash1, 'Commit 1', rev1Id, contentHash1, 'test-user']
+      [testBranchId, commitHash1, 'Commit 1', rev1Id, contentHash1, TEST_USER_ID]
     );
     commit1Id = commit1Row.rows[0].id;
 
     const rev2Result = await query(
       `INSERT INTO manuscript_revisions (branch_id, revision_number, content, sections_changed, commit_message, created_by)
-       VALUES ($1, 2, $2::jsonb, '{}', 'Rev 2', 'test-user')
+       VALUES ($1, 2, $2::jsonb, '{}', 'Rev 2', TEST_USER_ID)
        RETURNING id`,
       [testBranchId, JSON.stringify({ abstract: 'A2', intro: 'I2' })]
     );
@@ -93,7 +94,7 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
       `INSERT INTO manuscript_branch_commits (branch_id, commit_hash, parent_commit_id, commit_message, revision_id, content_hash, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [testBranchId, commitHash2, commit1Id, 'Commit 2', rev2Id, contentHash2, 'test-user']
+      [testBranchId, commitHash2, commit1Id, 'Commit 2', rev2Id, contentHash2, TEST_USER_ID]
     );
     commit2Id = commit2Row.rows[0].id;
 
@@ -110,7 +111,7 @@ describe('commits endpoints (routes)', { skip: !hasDb }, () => {
         'Stored diff commit',
         rev2Id,
         contentHash2,
-        'test-user',
+        TEST_USER_ID,
         ' abstract\n+abstract updated\n',
         JSON.stringify([{ section: 'abstract', action: 'modified' }]),
         'stored',

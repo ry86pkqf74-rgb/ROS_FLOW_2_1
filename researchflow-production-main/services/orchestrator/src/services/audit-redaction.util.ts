@@ -26,6 +26,8 @@ const SAFE_KEY_PATTERNS: RegExp[] = [
   /At$/,
   /^(status|type|action|stage|seq|version|mode|level|code|success|duration|size|offset|limit)$/,
   /^(is_|has_)/i,
+  /^dedupe_key$/,       // operational idempotency key (not PHI)
+  /^note_redacted$/,    // boolean flag indicating redaction was applied
 ];
 
 function isKeyAllowed(key: string): boolean {
