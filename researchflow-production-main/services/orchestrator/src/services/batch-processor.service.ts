@@ -110,7 +110,7 @@ export class BatchProcessorService {
       throw new Error(`Batch processing blocked: ${callCheck.reason.replace(/_/g, ' ')}`);
     }
 
-    const mode = getGovernanceMode();
+    const mode = await getGovernanceMode();
 
     const jobId = `batch_${crypto.randomBytes(12).toString('hex')}`;
 

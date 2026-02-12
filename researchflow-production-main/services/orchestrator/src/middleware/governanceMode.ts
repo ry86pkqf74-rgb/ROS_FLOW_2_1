@@ -14,14 +14,14 @@ import { getGovernanceState } from '../routes/governance.js';
 
 export type GovernanceMode = 'DEMO' | 'LIVE';
 
-export function getGovernanceMode(): GovernanceMode {
-  const state = getGovernanceState();
+export async function getGovernanceMode(): Promise<GovernanceMode> {
+  const state = await getGovernanceState();
   return state.mode as GovernanceMode;
 }
 
 export function requireLiveMode(operationType: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const mode = getGovernanceMode();
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const mode = await getGovernanceMode();
 
     if (mode === 'DEMO') {
       res.status(403).json({
@@ -37,8 +37,8 @@ export function requireLiveMode(operationType: string) {
 }
 
 export function requireDemoSafe(operationType: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const mode = getGovernanceMode();
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const mode = await getGovernanceMode();
 
     if (mode === 'DEMO') {
       res.status(403).json({

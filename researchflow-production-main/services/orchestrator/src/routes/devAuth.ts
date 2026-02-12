@@ -15,9 +15,7 @@ const mockUser: CoreUser = {
   id: 'user-dev-001',
   email: 'steward@researchflow.dev',
   name: 'Development Steward',
-  role: 'STEWARD',
-  createdAt: new Date('2024-01-01'),
-  isActive: true
+  role: 'STEWARD'
 };
 
 /**

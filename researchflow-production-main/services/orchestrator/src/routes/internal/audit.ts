@@ -83,7 +83,7 @@ router.post('/events', async (req: Request, res: Response) => {
   }
 
   const validated = validateBody(req.body);
-  if (!validated.ok) {
+  if (validated.ok === false) {
     badRequest(res, validated.error);
     return;
   }
