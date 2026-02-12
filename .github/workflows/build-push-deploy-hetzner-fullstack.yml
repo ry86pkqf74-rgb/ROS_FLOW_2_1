@@ -96,12 +96,26 @@ jobs:
     runs-on: ubuntu-latest
     environment: Hetzner production
     steps:
+      - name: Verify SSH secrets are set
+        run: |
+          if [ -z "${{ secrets.HETZNER_HOST }}" ]; then echo "::error::HETZNER_HOST secret is empty"; exit 1; fi
+          if [ -z "${{ secrets.HETZNER_USER }}" ]; then echo "::error::HETZNER_USER secret is empty"; exit 1; fi
+          if [ -z "${{ secrets.HETZNER_SSH_KEY }}" ]; then echo "::error::HETZNER_SSH_KEY secret is empty"; exit 1; fi
+          echo "All SSH secrets are set"
+
+      - name: Test host connectivity
+        run: |
+          echo "Testing connectivity to Hetzner..."
+          nc -z -w 10 ${{ secrets.HETZNER_HOST }} 22 && echo "Port 22 reachable" || echo "::warning::Port 22 not reachable"
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 10m
           script: |
             export IMAGE_TAG=sha-${{ github.sha }}
             bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh
