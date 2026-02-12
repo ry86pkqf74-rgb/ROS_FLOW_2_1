@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock bullmq to avoid uuid CJS resolution failure (uuid@11 missing stringify.js in CJS dist)
+vi.mock('bullmq', () => ({
+  Worker: vi.fn(),
+  Job: vi.fn(),
+}));
 
 import { __stage2TestUtils } from '@apps/api-node/src/services/workflow-stages/worker';
 
