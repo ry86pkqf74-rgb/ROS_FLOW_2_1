@@ -7,6 +7,117 @@ declare module '@researchflow/core' {
   export * from '@researchflow/core/types';
   export * from '@researchflow/core/policy';
   export * from '@researchflow/core/security';
+
+  // ── Literature types (fixes TS2305 ×13 in arxiv.ts, pubmed.ts, semantic-scholar.ts, literature.ts) ──
+
+  export type LiteratureProvider = 'pubmed' | 'semantic_scholar' | 'arxiv';
+
+  export interface LiteratureAuthor {
+    name: string;
+    affiliation?: string;
+    orcid?: string;
+  }
+
+  export interface LiteratureItem {
+    id: string;
+    provider: LiteratureProvider;
+    title: string;
+    abstract?: string;
+    authors: LiteratureAuthor[];
+    year?: number;
+    venue?: string;
+    doi?: string;
+    pmid?: string;
+    pmcid?: string;
+    arxivId?: string;
+    s2PaperId?: string;
+    urls: string[];
+    pdfUrl?: string;
+    fetchedAt: string;
+    keywords?: string[];
+    citationCount?: number;
+    influentialCitationCount?: number;
+    relevanceScore?: number;
+    meshTerms?: string[];
+    publicationTypes?: string[];
+  }
+
+  export interface LiteratureSearchRequest {
+    query: string;
+    provider?: LiteratureProvider;
+    providers?: LiteratureProvider[];
+    limit?: number;
+    offset?: number;
+    yearStart?: number;
+    yearEnd?: number;
+    publicationTypes?: string[];
+    useCache?: boolean;
+    cacheTtlSeconds?: number;
+  }
+
+  export interface LiteratureSearchResponse {
+    items: LiteratureItem[];
+    total: number;
+    query: string;
+    providers: string[];
+    cached: boolean;
+    searchDurationMs?: number;
+    cachedAt?: string;
+    providerResults?: Record<string, {
+      count: number;
+      total: number;
+      durationMs?: number;
+      error?: string;
+    }>;
+  }
+
+  // ── RBAC types (fixes TS2305 ×7 in rbac.ts) ──
+
+  export type RoleName = 'VIEWER' | 'RESEARCHER' | 'STEWARD' | 'ADMIN';
+  export type Permission = string;
+
+  export const ROLES: {
+    readonly VIEWER: 'VIEWER';
+    readonly RESEARCHER: 'RESEARCHER';
+    readonly STEWARD: 'STEWARD';
+    readonly ADMIN: 'ADMIN';
+  };
+
+  export const ROLE_CONFIGS: Record<RoleName, {
+    can: Permission[];
+    level: number;
+    description?: string;
+  }>;
+
+  export function hasPermission(user: { role: RoleName }, permission: Permission): boolean;
+  export function hasMinimumRole(user: { role: RoleName }, requiredRole: RoleName): boolean;
+
+  export class InsufficientPermissionsError extends Error {
+    readonly required: Permission | RoleName;
+    readonly actual: Permission[] | RoleName;
+    readonly operation: string;
+    constructor(
+      required: Permission | RoleName,
+      actual: Permission[] | RoleName,
+      operation: string,
+    );
+  }
+
+  // ── App mode types (fixes TS2305 ×3 in mode-guard.ts, mock-ai-service.ts) ──
+
+  export enum AppMode {
+    DEMO = 'DEMO',
+    LIVE = 'LIVE',
+    STANDBY = 'STANDBY',
+  }
+
+  export const MODE_CONFIGS: Record<AppMode, {
+    mode: AppMode;
+    requiresAuth: boolean;
+    allowsRealAI: boolean;
+    allowsRealData: boolean;
+    allowsExport: boolean;
+  }>;
 }
 
 declare module '@researchflow/core/schema' {
