@@ -458,11 +458,12 @@ router.post('/agents/:agentName/debug', asyncHandler(async (req: Request, res: R
     trace: true,
   });
 
+  const typedData = result.data as { trace?: unknown; timing?: unknown } | undefined;
   res.json({
     agentName,
     result: result.data,
-    trace: result.data?.trace,
-    timing: result.data?.timing,
+    trace: typedData?.trace,
+    timing: typedData?.timing,
   });
 }));
 

@@ -9,6 +9,7 @@ import { EventEmitter } from 'events';
 
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 
+import type { PlanSpec } from '../../types/planning';
 import { planningService } from './planning.service';
 
 // Redis connection config from environment
@@ -157,8 +158,9 @@ export async function initPlanningQueues(): Promise<void> {
         await planningService.executePlanInBackground(
           job.data.planId,
           job.data.jobId,
-          job.data.planSpec,
-          job.data.constraints,
+          job.data.planSpec as PlanSpec,
+          job.data.constraints as any,
+          'full',
           job.data.configOverrides
         );
 
@@ -191,11 +193,13 @@ export async function initPlanningQueues(): Promise<void> {
 
   // Forward queue events
   planBuildQueueEvents.on('progress', ({ jobId, data }) => {
-    jobEvents.emit(`job:${data?.jobId}:progress`, data);
+    const d = data as { jobId?: string };
+    jobEvents.emit(`job:${d?.jobId}:progress`, data);
   });
 
   planRunQueueEvents.on('progress', ({ jobId, data }) => {
-    jobEvents.emit(`job:${data?.jobId}:progress`, data);
+    const d = data as { jobId?: string };
+    jobEvents.emit(`job:${d?.jobId}:progress`, data);
   });
 
   // Error handlers

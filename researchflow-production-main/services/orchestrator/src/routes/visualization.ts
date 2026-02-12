@@ -106,6 +106,7 @@ const ChartGenerationRequestSchema = z.object({
     dpi: z.number().min(72).max(600).optional(),
     width: z.number().optional(),
     height: z.number().optional(),
+    quality: z.string().optional(),
   }).optional(),
   research_id: z.string().optional(),
   metadata: z.record(z.any()).optional(),

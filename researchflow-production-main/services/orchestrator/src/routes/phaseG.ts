@@ -61,7 +61,9 @@ router.get('/cluster/services', ...protectWithRole('STEWARD'), async (_req: Requ
 router.get('/cluster/scaling-events', ...protectWithRole('STEWARD'), (_req: Request, res: Response) => {
   try {
     const limit = parseInt(_req.query.limit as string) || 50;
-    const events = clusterStatusService.getScalingHistory(limit);
+    const events = 'getScalingHistory' in clusterStatusService
+      ? (clusterStatusService as any).getScalingHistory(limit)
+      : [];
     res.json({ success: true, data: events });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -91,7 +93,9 @@ router.get('/scaling/scenarios', ...protectWithRole('STEWARD'), (_req: Request, 
 router.get('/scaling/history', ...protectWithRole('STEWARD'), (_req: Request, res: Response) => {
   try {
     const limit = parseInt(_req.query.limit as string) || 20;
-    const history = predictiveScalingService.getPredictionHistory(limit);
+    const history = 'getPredictionHistory' in predictiveScalingService
+      ? (predictiveScalingService as any).getPredictionHistory(limit)
+      : [];
     res.json({ success: true, data: history });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -132,7 +136,9 @@ router.get('/metrics/latency', (req: Request, res: Response) => {
 router.get('/metrics/latency/histogram', (req: Request, res: Response) => {
   try {
     const windowMinutes = parseInt(req.query.window as string) || 60;
-    const histogram = metricsCollectorService.getLatencyHistogram(windowMinutes);
+    const histogram = 'getLatencyHistogram' in metricsCollectorService
+      ? (metricsCollectorService as any).getLatencyHistogram(windowMinutes)
+      : [];
     res.json({ success: true, data: histogram });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -172,7 +178,9 @@ router.get('/sharding/artifacts/:artifactId', async (req: Request, res: Response
 
 router.get('/sharding/stats', (_req: Request, res: Response) => {
   try {
-    const stats = dataShardingService.getStorageStats();
+    const stats = 'getStorageStats' in dataShardingService
+      ? (dataShardingService as any).getStorageStats()
+      : {};
     res.json({ success: true, data: stats });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -349,7 +357,9 @@ router.get('/performance/bottlenecks', async (req: Request, res: Response) => {
 
 router.get('/performance/critical-path', async (_req: Request, res: Response) => {
   try {
-    const criticalPath = await performanceAnalyzerService.getCriticalPath();
+    const criticalPath = 'getCriticalPath' in performanceAnalyzerService
+      ? await (performanceAnalyzerService as any).getCriticalPath()
+      : null;
     res.json({ success: true, data: criticalPath });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });

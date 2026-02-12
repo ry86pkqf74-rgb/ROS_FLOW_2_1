@@ -50,6 +50,8 @@ const FigureSchema = z.object({
   phi_risk_level: z.enum(['SAFE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
   phi_findings: z.array(z.any()).default([]),
   metadata: z.record(z.any()).default({}),
+  created_at: z.coerce.date().optional(),
+  updated_at: z.coerce.date().optional(),
 });
 
 export type Figure = z.infer<typeof FigureSchema>;
