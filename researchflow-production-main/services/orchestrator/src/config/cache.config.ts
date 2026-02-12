@@ -326,7 +326,7 @@ export function shouldBypassCacheForAuth(path: string): boolean {
 export function getCacheInvalidationTargets(path: string): string[] {
   for (const [route, targets] of Object.entries(CACHE_INVALIDATION_RULES)) {
     if (route === path) {
-      return targets.invalidates;
+      return [...targets.invalidates];
     }
   }
   return [];
