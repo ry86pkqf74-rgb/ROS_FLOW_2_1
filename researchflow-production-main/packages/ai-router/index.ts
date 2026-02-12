@@ -83,6 +83,16 @@ export {
   type OrchestratorAgent,
 } from './src/agents';
 
+// Watermark Service
+export {
+  WatermarkService,
+  getWatermarkService,
+  isWatermarkingEnabled,
+  type WatermarkMetadata,
+  type WatermarkConfig,
+  type WatermarkVerification,
+} from './src/watermark.service';
+
 // Middleware - Trace Emitter for Insights
 export {
   emitTraceEvent,
@@ -91,7 +101,9 @@ export {
   shutdownTraceEmitter,
   type TraceEmitterOptions,
   type TraceContext,
-  type AIRouterResponse,
+  // NOTE: AIRouterResponse is already exported from ./src/types via export *.
+  // The middleware's AIRouterResponse<T> is a different interface; import it
+  // directly from '@researchflow/ai-router/middleware' if needed.
 } from './src/middleware';
 
 // Package version

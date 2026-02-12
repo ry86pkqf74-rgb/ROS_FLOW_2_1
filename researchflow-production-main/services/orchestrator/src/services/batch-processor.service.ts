@@ -105,7 +105,7 @@ export class BatchProcessorService {
 
     // Check governance mode using centralized gating
     const callCheck = checkAICallAllowed();
-    if (!callCheck.allowed) {
+    if (callCheck.allowed === false) {
       telemetry.recordBlockedCall(callCheck.reason, (config.provider || 'anthropic') as any);
       throw new Error(`Batch processing blocked: ${callCheck.reason.replace(/_/g, ' ')}`);
     }
@@ -152,7 +152,7 @@ export class BatchProcessorService {
     // Check governance mode again using centralized gating
     const telemetry = getTelemetry();
     const callCheck = checkAICallAllowed();
-    if (!callCheck.allowed) {
+    if (callCheck.allowed === false) {
       job.status = 'CANCELLED';
       job.errorMessage = `Batch processing blocked: ${callCheck.reason.replace(/_/g, ' ')}`;
       job.updatedAt = new Date();

@@ -83,7 +83,7 @@ export async function generateEnhancedResearchBrief(
   // Check governance mode using centralized gating
   if (!options.skipGovernanceCheck) {
     const callCheck = checkAICallAllowed();
-    if (!callCheck.allowed) {
+    if (callCheck.allowed === false) {
       telemetry.recordBlockedCall(callCheck.reason, 'anthropic');
       throw new Error(`AI generation blocked: ${callCheck.reason.replace(/_/g, ' ')}`);
     }

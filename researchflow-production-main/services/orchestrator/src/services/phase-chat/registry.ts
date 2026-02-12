@@ -1,10 +1,15 @@
 import type { AITaskType, ModelTier } from '@researchflow/ai-router';
 
+// 'STANDARD' is used in the registry but not yet in the ModelTier union.
+// Preserves existing runtime behavior; a follow-up should either add
+// 'STANDARD' to ModelTier or map it to an existing tier intentionally.
+type ExtendedModelTier = ModelTier | 'STANDARD';
+
 export interface PhaseAgentDefinition {
   id: string;
   name: string;
   description: string;
-  modelTier: ModelTier;
+  modelTier: ExtendedModelTier;
   phiScanRequired: boolean;
   maxTokens: number;
   taskType: AITaskType;

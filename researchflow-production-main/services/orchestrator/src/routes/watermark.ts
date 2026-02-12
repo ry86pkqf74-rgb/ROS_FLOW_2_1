@@ -7,7 +7,7 @@
  * Tasks: 96-115 (AI Output Watermarking)
  */
 
-import { getWatermarkService, WatermarkVerification } from '@researchflow/ai-router/watermark.service';
+import { getWatermarkService, type WatermarkVerification } from '@researchflow/ai-router';
 import { Router, Request, Response } from 'express';
 import * as z from 'zod';
 
