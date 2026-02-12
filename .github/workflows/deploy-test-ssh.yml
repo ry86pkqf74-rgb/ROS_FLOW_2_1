@@ -1,0 +1,56 @@
+# Temporary: SSH deploy debug workflow (no builds)
+name: "[DEBUG] Test SSH Deploy"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test_ssh:
+    name: Test SSH Connection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify SSH secrets are set
+        run: |
+          if [ -z "${{ secrets.HETZNER_HOST }}" ]; then echo "::error::HETZNER_HOST secret is empty"; exit 1; fi
+          if [ -z "${{ secrets.HETZNER_USER }}" ]; then echo "::error::HETZNER_USER secret is empty"; exit 1; fi
+          if [ -z "${{ secrets.HETZNER_SSH_KEY }}" ]; then echo "::error::HETZNER_SSH_KEY secret is empty"; exit 1; fi
+          echo "::notice::All SSH secrets are set"
+
+      - name: Test host connectivity
+        run: |
+          nc -z -w 10 ${{ secrets.HETZNER_HOST }} 22 && echo "::notice::Port 22 reachable" || echo "::error::Port 22 not reachable"
+
+      - name: SSH connection test
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          KEY_INFO=$(ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || true)
+          echo "::notice::SSH key info: $KEY_INFO"
+          KEY_LINES=$(wc -l < ~/.ssh/deploy_key)
+          KEY_BYTES=$(wc -c < ~/.ssh/deploy_key)
+          KEY_HEAD=$(head -1 ~/.ssh/deploy_key)
+          echo "::notice::Key stats: ${KEY_LINES} lines, ${KEY_BYTES} bytes, header: ${KEY_HEAD}"
+          echo "::notice::Connecting to ${SSH_USER}@${SSH_HOST}"
+
+          ssh -vvv -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            -i ~/.ssh/deploy_key \
+            "${SSH_USER}@${SSH_HOST}" \
+            "echo SSH_CONNECTION_OK && hostname && uptime" \
+            2>/tmp/ssh_debug.log || {
+              EXIT_CODE=$?
+              echo "::error::SSH failed with exit code $EXIT_CODE"
+              tail -30 /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::warning::SSH: $line"
+              done
+              grep -i "auth\|identity\|key\|denied\|permission\|publickey\|offered\|trying" /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::error::SSH-AUTH: $line"
+              done
+              exit $EXIT_CODE
+            }
+          echo "::notice::SSH connection successful!"

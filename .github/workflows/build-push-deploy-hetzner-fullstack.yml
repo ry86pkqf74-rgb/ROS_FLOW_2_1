@@ -94,7 +94,6 @@ jobs:
     name: Deploy to Hetzner
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: Hetzner production
     steps:
       - name: Verify SSH secrets are set
         run: |
@@ -117,10 +116,29 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Show key type for debugging
-          ssh-keygen -l -f ~/.ssh/deploy_key || echo "::warning::Could not read key fingerprint"
-          # Attempt SSH with verbose output
-          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+          # Capture key info as annotation
+          KEY_INFO=$(ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || true)
+          echo "::notice::SSH key info: $KEY_INFO"
+          KEY_LINES=$(wc -l < ~/.ssh/deploy_key)
+          KEY_BYTES=$(wc -c < ~/.ssh/deploy_key)
+          KEY_HEAD=$(head -1 ~/.ssh/deploy_key)
+          echo "::notice::Key stats: ${KEY_LINES} lines, ${KEY_BYTES} bytes, header: ${KEY_HEAD}"
+          echo "::notice::Connecting to ${SSH_USER}@${SSH_HOST}"
+          # Attempt SSH, capture verbose output
+          ssh -vvv -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
             -i ~/.ssh/deploy_key \
             "${SSH_USER}@${SSH_HOST}" \
-            "export IMAGE_TAG=sha-${{ github.sha }} && bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh"
+            "echo SSH_OK && export IMAGE_TAG=sha-${{ github.sha }} && bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh" \
+            2>/tmp/ssh_debug.log || {
+              EXIT_CODE=$?
+              # Output last 20 lines of SSH debug as annotations
+              echo "::error::SSH failed with exit code $EXIT_CODE"
+              tail -20 /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::warning::SSH: $line"
+              done
+              # Also output auth-related lines
+              grep -i "auth\|identity\|key\|denied\|permission\|publickey" /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::error::SSH-AUTH: $line"
+              done
+              exit $EXIT_CODE
+            }
