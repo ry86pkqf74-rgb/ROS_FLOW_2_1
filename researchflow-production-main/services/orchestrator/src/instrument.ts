@@ -8,6 +8,9 @@ Sentry.init({
   sendDefaultPii: (process.env.SENTRY_SEND_DEFAULT_PII ?? 'true').toLowerCase() === 'true',
   environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
   release: process.env.SENTRY_RELEASE,
+  integrations: [
+    Sentry.expressIntegration(), // v8: replaces Handlers.requestHandler + tracingHandler
+  ],
 });
 
 export { Sentry };

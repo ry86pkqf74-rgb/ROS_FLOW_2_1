@@ -68,6 +68,8 @@ declare module 'uuid' {
 declare module 'ws' {
   import { EventEmitter } from 'events';
   export class WebSocket extends EventEmitter {
+    constructor(address: string | URL, options?: any);
+    constructor(address: string | URL, protocols?: string | string[], options?: any);
     static OPEN: number;
     static CLOSED: number;
     readonly OPEN: number;
@@ -232,7 +234,17 @@ declare module 'rate-limit-redis' { const store: any; export default store; }
 declare module 'node-fetch' { const fetch: any; export default fetch; }
 declare module 'form-data' { export default class FormData { append(k: string, v: any): void; } }
 declare module 'archiver' { const archiver: any; export = archiver; }
-declare module 'bottleneck' { export default class Bottleneck { constructor(opts?: any); schedule<T>(fn: () => Promise<T>): Promise<T>; } }
+declare module 'bottleneck' {
+  export default class Bottleneck {
+    constructor(opts?: any);
+    schedule<T>(opts: Record<string, any>, fn: () => Promise<T>): Promise<T>;
+    schedule<T>(fn: () => Promise<T>): Promise<T>;
+    on(event: string, callback: (...args: any[]) => void): void;
+    once(event: string, callback: (...args: any[]) => void): void;
+    stop(options?: { dropWaitingJobs?: boolean }): Promise<void>;
+    counts(): { RECEIVED: number; QUEUED: number; RUNNING: number; EXECUTING: number; DONE: number; RESERVOIR: number };
+  }
+}
 declare module 'prom-client' { export const Registry: any; export const Counter: any; export const Gauge: any; export const Histogram: any; export const collectDefaultMetrics: any; }
 declare module 'redis' {
   export type RedisClientType = any;
