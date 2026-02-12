@@ -63,7 +63,6 @@ describe('PredictiveScalingService (Task 117)', () => {
   it('should predict scaling needs', async () => {
     const prediction = await predictiveScalingService.predictScaling({
       loadIncrease: 50,
-      affectedServices: ['web'],
     });
 
     expect(prediction).toBeDefined();
@@ -82,7 +81,7 @@ describe('PredictiveScalingService (Task 117)', () => {
 
   it('should compare scenarios', async () => {
     const results = await predictiveScalingService.compareScenarios([
-      { loadIncrease: 50, affectedServices: ['web'] },
+      { loadIncrease: 50 },
     ]);
     expect(results).toBeInstanceOf(Array);
   });
