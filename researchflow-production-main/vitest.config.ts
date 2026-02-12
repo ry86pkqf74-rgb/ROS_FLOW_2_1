@@ -28,6 +28,7 @@ export default defineConfig({
       'tests/unit/**/*.test.ts',
       'services/orchestrator/src/**/*.test.ts',
       'services/orchestrator/src/**/*.test.tsx',
+      'src/__tests__/**/*.test.ts',
     ],
     exclude: [
       'node_modules',
