@@ -290,7 +290,11 @@ export class AIEditingService {
         applied === 0
           ? "No high-confidence edits applied"
           : `Applied ${applied} suggestions across ${iterations} iteration(s)`,
-      sections: content.sections,
+      sections: content.sections
+        ? (Object.fromEntries(
+            Object.entries(content.sections).filter(([, v]) => v.content != null)
+          ) as Record<string, { content: string }>)
+        : undefined,
     };
   }
 

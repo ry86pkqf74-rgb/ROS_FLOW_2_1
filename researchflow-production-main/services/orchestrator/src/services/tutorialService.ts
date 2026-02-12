@@ -52,7 +52,7 @@ export class TutorialService {
     orgId: string | null
   ): Promise<TutorialAsset[]> {
     // Check feature flag
-    const flagEnabled = await featureFlagsService.isFlagEnabled('inline_tutorials', orgId);
+    const flagEnabled = await featureFlagsService.isFlagEnabled('inline_tutorials');
     if (!flagEnabled) {
       return [];
     }
