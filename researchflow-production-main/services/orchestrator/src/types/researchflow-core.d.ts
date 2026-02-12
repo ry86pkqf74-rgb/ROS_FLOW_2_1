@@ -86,6 +86,14 @@ declare module '@researchflow/core/schema' {
   export const userOnboarding: any;
   export const venues: any;
 
+  // TS2724 cluster fix: tables & schemas missing from initial .d.ts
+  export const topics: any;
+  export const analyticsEvents: any;
+  export const artifactEdges: any;
+  export const insertArtifactSchema: any;
+  export const insertArtifactVersionSchema: any;
+  export const insertArtifactComparisonSchema: any;
+
   // TS2305 cluster fix (PR150): const arrays / enums
   export const GOVERNANCE_MODES: readonly string[];
   export const ANALYTICS_EVENT_NAMES: readonly string[];
@@ -122,6 +130,12 @@ declare module '@researchflow/core/schema' {
   export type InsertFileUpload = any;
   export type ResearchSession = any;
   export type InsertResearchSession = any;
+
+  // TS2724 cluster fix: type exports missing from initial .d.ts
+  export type OrganizationRecord = any;
+  export type StatisticalPlanRecord = any;
+  export type ResearchBriefRecord = any;
+  export type InsertTopicBrief = any;
 
   // TS2305 cluster fix (PR150): type exports added after initial .d.ts authoring
   export type AnalyticsEventName = string;
