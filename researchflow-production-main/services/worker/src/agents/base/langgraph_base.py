@@ -26,6 +26,16 @@ from datetime import datetime
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
+# LangSmith tracing (graceful degradation — never blocks execution)
+try:
+    from ...tracing.langsmith_config import get_tracer, redact_for_trace, TRACING_ENABLED
+except ImportError:
+    def get_tracer():  # type: ignore[misc]
+        return None
+    def redact_for_trace(data):  # type: ignore[misc]
+        return data
+    TRACING_ENABLED = False
+
 from .state import (
     AgentState,
     AgentId,
@@ -175,6 +185,16 @@ class LangGraphBaseAgent(ABC):
         # Compiled graph (lazy initialization)
         self._graph: Optional[Any] = None
 
+        # LangSmith tracer (None if disabled or unavailable)
+        self._tracer: Optional[Any] = None
+        if TRACING_ENABLED:
+            try:
+                self._tracer = get_tracer()
+                if self._tracer:
+                    logger.info("LangSmith tracing enabled for agent %s", agent_id)
+            except Exception as exc:
+                logger.debug("LangSmith tracer init skipped: %s", exc)
+
     @property
     def graph(self) -> Any:
         """Get the compiled graph, building it if necessary."""
@@ -272,11 +292,36 @@ class LangGraphBaseAgent(ABC):
             }
         )
 
+        # Emit RUN_STARTED audit event
+        _invoke_started_ms = int(time.time() * 1000)
+        _invoke_input_hash = _content_hash(_state_minimal(state))
+        _emit_node_audit(
+            state, "__invoke__", "RUN_STARTED", 0,
+            started_at_ms=_invoke_started_ms, input_hash=_invoke_input_hash,
+        )
+
         # Execute graph
         try:
             result = await self.graph.ainvoke(state, config)
+            _invoke_duration = int(time.time() * 1000) - _invoke_started_ms
+            _emit_node_audit(
+                result, "__invoke__", "RUN_FINISHED", 0,
+                started_at_ms=_invoke_started_ms,
+                duration_ms=_invoke_duration,
+                input_hash=_invoke_input_hash,
+                output_hash=_content_hash(_state_minimal(result)),
+            )
             return result
         except Exception as e:
+            _invoke_duration = int(time.time() * 1000) - _invoke_started_ms
+            _emit_node_audit(
+                state, "__invoke__", "RUN_FAILED", 0,
+                started_at_ms=_invoke_started_ms,
+                duration_ms=_invoke_duration,
+                input_hash=_invoke_input_hash,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
             logger.error(f"Agent execution failed: {e}", exc_info=True)
             raise
 
@@ -323,9 +368,37 @@ class LangGraphBaseAgent(ABC):
         if feedback:
             state.values['feedback'] = feedback
 
+        # Emit RESUME_STARTED audit event
+        _resume_started_ms = int(time.time() * 1000)
+        _resume_input_hash = _content_hash(_state_minimal(state.values))
+        _emit_node_audit(
+            state.values, "__resume__", "RESUME_STARTED", 0,
+            started_at_ms=_resume_started_ms, input_hash=_resume_input_hash,
+        )
+
         # Resume execution
-        result = await self.graph.ainvoke(None, config)
-        return result
+        try:
+            result = await self.graph.ainvoke(None, config)
+            _resume_duration = int(time.time() * 1000) - _resume_started_ms
+            _emit_node_audit(
+                result, "__resume__", "RESUME_FINISHED", 0,
+                started_at_ms=_resume_started_ms,
+                duration_ms=_resume_duration,
+                input_hash=_resume_input_hash,
+                output_hash=_content_hash(_state_minimal(result)),
+            )
+            return result
+        except Exception as e:
+            _resume_duration = int(time.time() * 1000) - _resume_started_ms
+            _emit_node_audit(
+                state.values, "__resume__", "RESUME_FAILED", 0,
+                started_at_ms=_resume_started_ms,
+                duration_ms=_resume_duration,
+                input_hash=_resume_input_hash,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
+            raise
 
     # =========================================================================
     # Common Node Implementations
@@ -648,6 +721,15 @@ class LangGraphBaseAgent(ABC):
     # =========================================================================
     # Utility Methods
     # =========================================================================
+
+    def _get_langsmith_callbacks(self) -> List[Any]:
+        """Return LangSmith callback list (empty if tracing disabled)."""
+        return [self._tracer] if self._tracer else []
+
+    @staticmethod
+    def _redact_for_trace(data: Any) -> Any:
+        """Strip PHI patterns from data before sending to LangSmith traces."""
+        return redact_for_trace(data)
 
     async def call_llm(
         self,

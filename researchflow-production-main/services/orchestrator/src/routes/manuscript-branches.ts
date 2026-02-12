@@ -23,6 +23,28 @@ import * as diffService from "../services/diffService";
 import manuscriptVersionService from "../services/manuscriptVersionService";
 
 const router = Router();
+
+/**
+ * Non-blocking audit wrapper. createAuditEntry calls in this file happen
+ * AFTER the mutation has already succeeded (outside any DB transaction).
+ * If audit emission fails we log the error but do NOT fail the HTTP response.
+ *
+ * Policy rationale:
+ * - appendEvent() inside runWithTransaction() = BLOCKING (audit chain integrity:
+ *   if audit fails the mutation rolls back too — see manuscripts.ts).
+ * - createAuditEntry() outside a transaction = NON-BLOCKING (mutation already
+ *   persisted; failing the response would hide success from the client).
+ * - Worker-side _safe_emit_audit() = NON-BLOCKING (same principle).
+ */
+async function safeCreateAuditEntry(
+  entry: Parameters<typeof createAuditEntry>[0]
+): Promise<void> {
+  try {
+    await createAuditEntry(entry);
+  } catch (err) {
+    console.error("[manuscript-branches] Audit emission failed (non-blocking):", err);
+  }
+}
 export const manuscriptBranchingRoutes = Router();
 
 // Validation schemas
@@ -239,7 +261,7 @@ router.post(
       });
 
       // Audit log
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_CREATED",
         userId,
         resourceType: "artifact_version",
@@ -451,7 +473,7 @@ router.post(
             .where(eq(artifacts.id, artifactId));
         }
 
-        await createAuditEntry({
+        await safeCreateAuditEntry({
           eventType: "BRANCH_MERGED",
           userId,
           resourceType: "artifact_version",
@@ -556,7 +578,7 @@ router.post(
           .where(eq(artifacts.id, artifactId));
       }
 
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_MERGED",
         userId,
         resourceType: "artifact_version",
@@ -631,7 +653,7 @@ router.delete(
 
       // Soft delete all versions in the branch
       // Note: In production, you might want to keep versions but just remove the branch pointer
-      await createAuditEntry({
+      await safeCreateAuditEntry({
         eventType: "BRANCH_DELETED",
         userId,
         resourceType: "artifact",
@@ -664,6 +686,7 @@ manuscriptBranchingRoutes.post(
   async (req: Request, res: Response) => {
     try {
       const id = asString(req.params.id);
+      const userId = (req as any).user?.id || "system";
       const parsed = createManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -674,6 +697,19 @@ manuscriptBranchingRoutes.post(
         parsed.data.name,
         parsed.data.fromVersionId
       );
+
+      await safeCreateAuditEntry({
+        eventType: "MANUSCRIPT_BRANCH_CREATED",
+        userId,
+        resourceType: "manuscript_branch",
+        resourceId: branch?.id ?? id,
+        action: "create",
+        details: {
+          manuscriptId: id,
+          branchName: parsed.data.name,
+          fromVersionId: parsed.data.fromVersionId,
+        },
+      });
 
       res.status(201).json(branch);
     } catch (error: any) {
@@ -688,7 +724,9 @@ manuscriptBranchingRoutes.post(
   requireRole("RESEARCHER"),
   async (req: Request, res: Response) => {
     try {
+      const id = asString(req.params.id);
       const branchId = asString(req.params.branchId);
+      const userId = (req as any).user?.id || "system";
       const parsed = mergeManuscriptBranchSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
@@ -703,6 +741,20 @@ manuscriptBranchingRoutes.post(
       if (!result.success) {
         return res.status(409).json(result);
       }
+
+      await safeCreateAuditEntry({
+        eventType: "MANUSCRIPT_BRANCH_MERGED",
+        userId,
+        resourceType: "manuscript_branch",
+        resourceId: branchId,
+        action: "merge",
+        details: {
+          manuscriptId: id,
+          branchId,
+          targetBranch: parsed.data.targetBranch,
+          strategy: parsed.data.strategy,
+        },
+      });
 
       res.json(result);
     } catch (error: any) {
@@ -749,12 +801,26 @@ manuscriptBranchingRoutes.post(
   async (req: Request, res: Response) => {
     try {
       const id = asString(req.params.id);
+      const userId = (req as any).user?.id || "system";
       const parsed = refineSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
       }
 
       const result = await aiEditingService.runIterativeRefinement(id, parsed.data.maxIterations);
+
+      await safeCreateAuditEntry({
+        eventType: "AI_REFINE_ITERATIVE",
+        userId,
+        resourceType: "manuscript",
+        resourceId: id,
+        action: "ai_refine",
+        details: {
+          manuscriptId: id,
+          maxIterations: parsed.data.maxIterations,
+        },
+      });
+
       res.json(result);
     } catch (error: any) {
       console.error("[manuscript-branches] AI refinement error:", error);

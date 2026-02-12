@@ -282,6 +282,10 @@ services:
       # Chat agent configuration (from commit 15faea0)
       - CHAT_AGENT_MODEL=${CHAT_AGENT_MODEL:-gpt-4}
       - CHAT_AGENT_ENABLED=${CHAT_AGENT_ENABLED:-true}
+      # LangSmith Tracing (agent observability)
+      - LANGCHAIN_TRACING_V2=true
+      - LANGCHAIN_PROJECT=researchflow-${GOVERNANCE_MODE:-demo}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
       # RAG / Chroma (use docker-compose.chromadb.yml for chromadb service)
       - CHROMA_HOST=${CHROMA_HOST:-chromadb}
       - CHROMA_PORT=${CHROMA_PORT:-8000}
