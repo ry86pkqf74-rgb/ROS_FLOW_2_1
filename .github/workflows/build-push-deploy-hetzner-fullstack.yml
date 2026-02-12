@@ -94,7 +94,6 @@ jobs:
     name: Deploy to Hetzner
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: Hetzner production
     steps:
       - name: Verify SSH secrets are set
         run: |
@@ -109,13 +108,37 @@ jobs:
           nc -z -w 10 ${{ secrets.HETZNER_HOST }} 22 && echo "Port 22 reachable" || echo "::warning::Port 22 not reachable"
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          timeout: 30s
-          command_timeout: 10m
-          script: |
-            export IMAGE_TAG=sha-${{ github.sha }}
-            bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Capture key info as annotation
+          KEY_INFO=$(ssh-keygen -l -f ~/.ssh/deploy_key 2>&1 || true)
+          echo "::notice::SSH key info: $KEY_INFO"
+          KEY_LINES=$(wc -l < ~/.ssh/deploy_key)
+          KEY_BYTES=$(wc -c < ~/.ssh/deploy_key)
+          KEY_HEAD=$(head -1 ~/.ssh/deploy_key)
+          echo "::notice::Key stats: ${KEY_LINES} lines, ${KEY_BYTES} bytes, header: ${KEY_HEAD}"
+          echo "::notice::Connecting to ${SSH_USER}@${SSH_HOST}"
+          # Attempt SSH, capture verbose output
+          ssh -vvv -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            -i ~/.ssh/deploy_key \
+            "${SSH_USER}@${SSH_HOST}" \
+            "echo SSH_OK && export IMAGE_TAG=sha-${{ github.sha }} && bash /opt/researchflow/researchflow-production-main/tools/deploy/hetzner-fullstack-deploy.sh" \
+            2>/tmp/ssh_debug.log || {
+              EXIT_CODE=$?
+              # Output last 20 lines of SSH debug as annotations
+              echo "::error::SSH failed with exit code $EXIT_CODE"
+              tail -20 /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::warning::SSH: $line"
+              done
+              # Also output auth-related lines
+              grep -i "auth\|identity\|key\|denied\|permission\|publickey" /tmp/ssh_debug.log | while IFS= read -r line; do
+                echo "::error::SSH-AUTH: $line"
+              done
+              exit $EXIT_CODE
+            }
