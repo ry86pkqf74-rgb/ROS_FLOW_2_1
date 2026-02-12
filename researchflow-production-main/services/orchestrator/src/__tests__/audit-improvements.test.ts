@@ -9,12 +9,21 @@
  * - Section 5: Open Issues (integration tests)
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 // Enable mock auth so JWT functions use HS256 dev fallback
 // (JWT_PRIVATE_KEY / JWT_PUBLIC_KEY are not set in the test env)
+let _prevAllowMockAuth: string | undefined;
 beforeAll(() => {
+  _prevAllowMockAuth = process.env.ALLOW_MOCK_AUTH;
   process.env.ALLOW_MOCK_AUTH = 'true';
+});
+afterAll(() => {
+  if (_prevAllowMockAuth === undefined) {
+    delete process.env.ALLOW_MOCK_AUTH;
+  } else {
+    process.env.ALLOW_MOCK_AUTH = _prevAllowMockAuth;
+  }
 });
 
 // ============================================
@@ -325,7 +334,7 @@ describe('Audit Section 2: JWT Authentication', () => {
       expect(devFallbackUser).toBeDefined();
       expect(devFallbackUser.id).toBeDefined();
       expect(devFallbackUser.email).toBe('dev@researchflow.local');
-      expect(devFallbackUser.role.toLowerCase()).toBe('admin');
+      expect(devFallbackUser.role).toBe('ADMIN');
     });
   });
 });

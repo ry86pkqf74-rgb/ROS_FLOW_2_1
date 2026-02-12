@@ -51,15 +51,15 @@ vi.mock('../../utils/logger', () => ({
 }));
 
 // Mock middleware that may have side effects
-const mockValidateBatch = vi.fn(() => ({ valid: true, errors: [] }));
+const mockValidateBatch = vi.fn((_batch?: any): { valid: boolean; errors: string[] } => ({ valid: true, errors: [] }));
 const mockOptimizeBatch = vi.fn((requests: any[]) => [{
   requests,
   processingStrategy: 'parallel' as const,
 }]);
 vi.mock('../../middleware/ai-bridge-batch-optimizer', () => ({
   getBatchOptimizer: vi.fn(() => ({
-    validateBatch: (...args: any[]) => mockValidateBatch(...args),
-    optimizeBatch: (...args: any[]) => mockOptimizeBatch(...args),
+    validateBatch: (batch: any) => mockValidateBatch(batch),
+    optimizeBatch: (batch: any) => mockOptimizeBatch(batch),
     getProcessingRecommendations: vi.fn(() => ({
       totalEstimatedCost: 0.01,
       estimatedDuration: '1s',

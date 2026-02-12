@@ -78,9 +78,10 @@ function connectClient(port: number): Promise<WsClient> {
     (client as any).__msgQueue = queue;
     (client as any).__msgPending = pending;
 
-    client.on('open', () => resolve(client));
-    client.on('error', reject);
-    setTimeout(() => reject(new Error('Connection timeout')), 5000);
+    // Clear timeout on success/failure to avoid dangling handles in CI
+    const timeout = setTimeout(() => reject(new Error('Connection timeout')), 5000);
+    client.on('open', () => { clearTimeout(timeout); resolve(client); });
+    client.on('error', (err) => { clearTimeout(timeout); reject(err); });
   });
 }
 

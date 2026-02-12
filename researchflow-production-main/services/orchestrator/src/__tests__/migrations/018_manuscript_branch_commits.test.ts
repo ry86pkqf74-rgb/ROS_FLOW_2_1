@@ -36,7 +36,7 @@ describe('018_manuscript_branch_commits', { skip: !hasDb }, () => {
 
   it('applies migration 018 without error', async () => {
     if (!hasDb) return;
-    const migrationPath = join(__dirname, '../../../../migrations/018_manuscript_branch_commits.sql');
+    const migrationPath = join(__dirname, '../../../migrations/018_manuscript_branch_commits.sql');
     const sql = readFileSync(migrationPath, 'utf-8');
     await expect(query(sql)).resolves.toBeDefined();
   });

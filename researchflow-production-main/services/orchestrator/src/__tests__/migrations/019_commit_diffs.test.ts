@@ -36,7 +36,7 @@ describe('019_commit_diffs', { skip: !hasDb }, () => {
 
   it('applies migration 019 without error', async () => {
     if (!hasDb) return;
-    const migrationPath = join(__dirname, '../../../../migrations/019_commit_diffs.sql');
+    const migrationPath = join(__dirname, '../../../migrations/019_commit_diffs.sql');
     const sql = readFileSync(migrationPath, 'utf-8');
     await expect(query(sql)).resolves.toBeDefined();
   });

@@ -103,7 +103,10 @@ jobs:
 
       - name: DB-backed tests
         run: |
-          pnpm vitest run services/orchestrator/src/services/__tests__/edit-session.service.test.ts
-          pnpm vitest run src/__tests__/migrations/020_edit_sessions.test.ts
+          pnpm vitest run \
+            services/orchestrator/src/services/__tests__/edit-session.service.test.ts \
+            services/orchestrator/src/services/__tests__/audit-ledger.service.test.ts \
+            services/orchestrator/src/__tests__/commits-endpoints.test.ts \
+            services/orchestrator/src/routes/__tests__/commits-endpoints.test.ts
         env:
           DATABASE_URL: postgresql://researchflow_test:test_password@localhost:5432/researchflow_test

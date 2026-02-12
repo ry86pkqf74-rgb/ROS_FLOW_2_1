@@ -166,13 +166,30 @@ export class EventBus {
 
   /**
    * Emit event locally without publishing to Redis
+   * Subscriber errors are isolated so one bad subscriber doesn't block others.
    */
   private emitLocal(event: AppEvent): void {
-    // Emit to specific topic subscribers
-    this.emitter.emit(event.topic, event);
+    // Emit to specific topic subscribers with error isolation.
+    // Use .call(this.emitter, ...) to preserve EventEmitter `this` binding
+    // for non-arrow listener functions.
+    const topicListeners = this.emitter.listeners(event.topic);
+    for (const listener of topicListeners) {
+      try {
+        (listener as (event: AppEvent) => void).call(this.emitter, event);
+      } catch (error) {
+        console.warn('[EventBus] Subscriber error:', error);
+      }
+    }
     // Also emit to 'all' topic subscribers
     if (event.topic !== 'all') {
-      this.emitter.emit('all', event);
+      const allListeners = this.emitter.listeners('all');
+      for (const listener of allListeners) {
+        try {
+          (listener as (event: AppEvent) => void).call(this.emitter, event);
+        } catch (error) {
+          console.warn('[EventBus] Subscriber error:', error);
+        }
+      }
     }
   }
 

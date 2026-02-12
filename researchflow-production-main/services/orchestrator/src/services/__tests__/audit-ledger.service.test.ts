@@ -67,8 +67,8 @@ describe('AuditLedger service (integration)', {
       const row1 = await appendAuditEvent(client, { ...baseInput, payload: { ...baseInput.payload, seq: 1 } });
       const row2 = await appendAuditEvent(client, { ...baseInput, payload: { ...baseInput.payload, seq: 2 } });
 
-      expect(row1.seq).toBe(1);
-      expect(row2.seq).toBe(2);
+      expect(Number(row1.seq)).toBe(1);
+      expect(Number(row2.seq)).toBe(2);
       expect(row1.payload_hash).toBeTruthy();
       expect(row2.payload_hash).toBeTruthy();
       expect(row1.event_hash).toBeTruthy();
