@@ -25,6 +25,8 @@ declare namespace express {
   const request: core.Request;
   const response: core.Response;
 
+  type Application = core.Express;
+
   function Router(options?: core.RouterOptions): core.Router;
 }
 
