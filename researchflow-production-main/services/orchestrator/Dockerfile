@@ -125,7 +125,8 @@ RUN mkdir -p ./node_modules/@researchflow && \
     cp -r ./packages/notion-integration ./node_modules/@researchflow/notion-integration
 
 # Compile TypeScript to JavaScript
-RUN npx tsc --project tsconfig.json || npx tsc --skipLibCheck --outDir dist --rootDir . index.ts
+# CI already validates types; skipLibCheck avoids failures from isolated Docker build context
+RUN npx tsc --project tsconfig.json --skipLibCheck
 
 # Production stage - Run pre-compiled JavaScript
 FROM node:20-alpine AS production
